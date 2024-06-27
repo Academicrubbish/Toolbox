@@ -41,9 +41,19 @@
 				]
 			},
 			/* ios打包配置 */
-			"ios": {},
+			"ios": {
+				"dSYMs": false
+			},
 			/* SDK配置 */
-			"sdkConfigs": {}
+			"sdkConfigs": {
+				"geolocation": {
+					"amap": {
+						"__platform__": ["ios", "android"],
+						"appkey_ios": "152d670fa2b52c5126115f65e78162d1",
+						"appkey_android": "152d670fa2b52c5126115f65e78162d1"
+					}
+				}
+			}
 		}
 	},
 	/* 快应用特有相关 */
@@ -57,7 +67,15 @@
 			"postcss": true,
 			"es6": true
 		},
-		"usingComponents": true
+		"usingComponents": true,
+		"permission": {
+			"scope.userLocation": {
+				"desc": "你的位置信息将用于请求当地天气情况，以供参考"
+			}
+		},
+		"requiredPrivateInfos": [
+			"getLocation"
+		]
 	},
 	"mp-alipay": {
 		"usingComponents": true
