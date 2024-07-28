@@ -7,6 +7,14 @@
 		{
 			"path": "pages/home/index",
 			"style": {}
+		},
+		{
+			"path": "pages/depart/index",
+			"style": {}
+		},
+		{
+			"path": "pages/record/index",
+			"style": {}
 		}
 	],
 	"globalStyle": {

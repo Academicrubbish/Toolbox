@@ -25,7 +25,6 @@
 <script>
 import moment from "moment";
 const db = uniCloud.database(); //创建数据库连接
-import store from "../../store";
 export default {
   methods: {
     //第一步，先判断是否注册过
