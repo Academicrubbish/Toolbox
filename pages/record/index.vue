@@ -2,7 +2,7 @@
  * @Author: yuanchuang 1226377893@qq.com
  * @Date: 2024-08-01 17:31:22
  * @LastEditors: yuanchuang 1226377893@qq.com
- * @LastEditTime: 2024-08-01 17:55:13
+ * @LastEditTime: 2024-08-01 18:01:43
  * @FilePath: \Toolbox\pages\record\index.vue
  * @Description: 
  * 
@@ -97,15 +97,13 @@ export default {
       this.recordType = options.value;
       this.recordTypeLabel = options.label;
     },
-    radioChange(e) {
-      this.form.completionType = Number(e.detail.value);
-    },
-    TimeChange(e) {
-      this.form.completionTime = e.detail.value;
-    },
-    recordTypePickerChange(e) {
-      this.form.recordType = e.detail.value;
-    }
+    submit(form) {
+			this.$refs.form.validate().then(res=>{
+				console.log('表单数据信息：', res);
+			}).catch(err =>{
+				console.log('表单错误信息：', err);
+			})
+		}
   }
 };
 </script>
