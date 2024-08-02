@@ -21,7 +21,7 @@ const user = {
       return new Promise((resolve, reject) => {
         uniCloud.callFunction({
           name: 'login',
-          data: { code }
+          data: { code: code.code }
         }).then(res => {
           let openid = res.result.data.openid
           commit('SET_OPENID', openid)

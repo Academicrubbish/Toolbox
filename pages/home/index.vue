@@ -5,7 +5,7 @@
     </cu-custom>
 
     <view class="cu-list menu sm-border">
-      <view class="cu-item arrow" @tap="depart">
+      <view class="cu-item arrow" @tap="goDepart">
         <view class="content">
           <image src="/static/logo.png" class="png" mode="aspectFit"></image>
           <text class="text-grey">柒月</text>
@@ -140,9 +140,9 @@ export default {
     };
   },
   methods: {
-    depart() {
+    goDepart() {
       uni.navigateTo({
-        url: "/pages/depart/index",
+        url: "/subpackage/depart/index",
       });
     },
     showModal(e) {

@@ -7,14 +7,25 @@
 		{
 			"path": "pages/home/index",
 			"style": {}
-		},
+		}
+	],
+	"subPackages": [
 		{
-			"path": "pages/depart/index",
-			"style": {}
-		},
-		{
-			"path": "pages/record/index",
-			"style": {}
+			"root": "subpackage",
+			"pages": [
+				{
+					"path": "record/index",
+					"style": {}
+				},
+				{
+					"path": "depart/index",
+					"style": {}
+				},
+				{
+					"path": "summarize/index",
+					"style": {}
+				}
+			]
 		}
 	],
 	"globalStyle": {
