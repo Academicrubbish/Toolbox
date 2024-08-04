@@ -9,31 +9,28 @@
 			"style": {}
 		}
 	],
-	"subPackages": [
-		{
-			"root": "subpackage",
-			"pages": [
-				{
-					"path": "record/index",
-					"style": {}
-				},
-				{
-					"path": "depart/index",
-					"style": {}
-				},
-				{
-					"path": "summarize/index",
-					"style": {}
-				}
-			]
-		}
-	],
+	"subPackages": [{
+		"root": "subpackage",
+		"pages": [{
+				"path": "record/index",
+				"style": {}
+			},
+			{
+				"path": "depart/index",
+				"style": {}
+			},
+			{
+				"path": "depart/detail",
+				"style": {}
+			},
+			{
+				"path": "summarize/index",
+				"style": {}
+			}
+		]
+	}],
 	"globalStyle": {
-		"navigationStyle": "custom",
-		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "uni-app",
-		"navigationBarBackgroundColor": "#F8F8F8",
-		"backgroundColor": "#F8F8F8"
+		"navigationStyle": "custom"
 	},
 	"uniIdRouter": {}
 }

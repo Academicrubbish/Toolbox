@@ -6,6 +6,9 @@ import Vue from 'vue'
 import store from './store'
 import './uni.promisify.adaptor'
 
+import cuCustom from './colorui/components/cu-custom.vue'
+Vue.component('cu-custom', cuCustom)
+
 Vue.config.productionTip = false
 App.mpType = 'app'
 const app = new Vue({
@@ -26,6 +29,3 @@ export function createApp() {
 	}
 }
 // #endif
-
-import cuCustom from './colorui/components/cu-custom.vue'
-Vue.component('cu-custom', cuCustom)

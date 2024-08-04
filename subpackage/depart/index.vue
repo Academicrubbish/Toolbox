@@ -12,7 +12,7 @@
   <view class="depart">
     <z-paging ref="paging" v-model="recordList" @query="queryList">
       <view slot="top">
-        <cu-custom bgcolor="bg-gradual-blue" :isBack="true">
+        <cu-custom bgColor="bg-gradual-blue" :isBack="true">
           <block slot="backText">返回</block>
           <block slot="content">在路上</block>
         </cu-custom>
@@ -31,8 +31,8 @@
             class="cu-item"
             v-for="citem in item.children"
             :key="citem._id"
-            @longpress="onLongPress($event,citem)"
-            @tap="updateRecord(citem)"
+            @longpress="onLongPress($event, citem)"
+            @tap="goDetail(citem)"
           >
             <view class="content padding-tb-sm">
               <view>
@@ -45,7 +45,9 @@
               </view>
             </view>
             <view class="action">
-              <text class="text-grey text-sm">{{ citem.completionPeriod[1] }}</text>
+              <text class="text-grey text-sm">{{
+                citem.completionPeriod[1]
+              }}</text>
             </view>
           </view>
         </view>
@@ -54,14 +56,19 @@
 
     <!-- 长按弹窗 -->
     <view class="shade" v-show="showShade" @tap="hidePop">
-      <view class="pop" :style="popStyle" :class="{'show':showPop}">
-        <view v-for="item in popButton" :key="item" @tap="pickerMenu(item)">{{item}}</view>
+      <view class="pop" :style="popStyle" :class="{ show: showPop }">
+        <view v-for="item in popButton" :key="item" @tap="pickerMenu(item)">{{
+          item
+        }}</view>
       </view>
     </view>
 
     <!-- 新增记录 -->
     <view class="add">
-      <button class="cu-btn cuIcon-add bg-green shadow" @tap="addRecord"></button>
+      <button
+        class="cu-btn cuIcon-add bg-green shadow"
+        @tap="addRecord"
+      ></button>
     </view>
 
     <!-- 删除提示 -->
@@ -97,26 +104,26 @@ export default {
       /* 选择的记录内容下标 */
       pickerRecordItem: null,
       /* 删除提醒文本 */
-      dialogContent: ""
+      dialogContent: "",
     };
   },
   methods: {
     queryList(pageNo, pageSize) {
       getRecordList({
         pageNum: pageNo,
-        pageSize: pageSize
+        pageSize: pageSize,
       })
-        .then(res => {
+        .then((res) => {
           let list = res.result.data;
           let groupedRecords = [];
-          list.forEach(element => {
+          list.forEach((element) => {
             let groupDate = moment(element.completionPeriod[0]).format(
               "YYYY-MM-DD"
             );
 
             // 查找是否已存在该日期分组
             let existingGroup = groupedRecords.find(
-              group => group.date === groupDate
+              (group) => group.date === groupDate
             );
 
             if (existingGroup) {
@@ -126,34 +133,38 @@ export default {
               // 如果不存在该日期分组，则创建新的分组对象并添加到groupedRecords中
               groupedRecords.push({
                 date: groupDate,
-                children: [element]
+                children: [element],
               });
             }
           });
           // 调用 z-paing 组件的 complete 方法，将数据传入组件，并完成分页显示
           this.$refs.paging.complete(groupedRecords);
         })
-        .catch(err => {
+        .catch((err) => {
           this.$refs.paging.complete(false);
         });
     },
     addRecord() {
       uni.navigateTo({
-        url: "/subpackage/record/index?type=add"
+        url: "/subpackage/record/index?type=add",
       });
     },
-    updateRecord(row) {},
+    goDetail(row) {
+      uni.navigateTo({
+        url: `/subpackage/depart/detail?&id=${row._id}`,
+      });
+    },
     pickerMenu(item) {
       console.log(item);
       switch (item) {
         case "添加总结":
           uni.navigateTo({
-            url: `/subpackage/summarize/index`
+            url: `/subpackage/summarize/index?recordId=${this.pickerRecordItem._id}`,
           });
           break;
         case "编辑":
           uni.navigateTo({
-            url: `/subpackage/record/index?type=update&id=${this.pickerRecordItem._id}`
+            url: `/subpackage/record/index?type=update&id=${this.pickerRecordItem._id}`,
           });
           break;
         case "删除":
@@ -199,18 +210,18 @@ export default {
     },
     // 确认删除
     dialogConfirm() {
-      delRecord(this.pickerRecordItem._id).then(res => {
+      delRecord(this.pickerRecordItem._id).then((res) => {
         if (res.result.code === 0) {
           uni.showToast({
             title: "删除成功",
-            icon: "none"
+            icon: "none",
           });
           this.$refs.paging.refresh();
         }
       });
     },
-    dialogClose() {}
-  }
+    dialogClose() {},
+  },
 };
 </script>
 <style lang="scss" scoped>
