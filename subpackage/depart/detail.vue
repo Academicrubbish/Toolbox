@@ -1,25 +1,52 @@
 <template>
-  <view>
+  <view style="height: 100vh; background-color: #fff">
     <cu-custom bgColor="bg-gradual-blue" :isBack="true">
       <block slot="backText">返回</block>
       <block slot="content">记录详情</block>
     </cu-custom>
-    <uni-section title="记录信息" type="line">
-      <view style="padding: 0 20rpx">
-        <view>标题：{{ recordData.title }}</view>
-        <view>简介：{{ recordData.summary }}</view>
-        <view>{{
-          recordData.completionPeriod[0] +
-          " ~ " +
-          recordData.completionPeriod[1]
-        }}</view>
-      </view>
-    </uni-section>
-    <uni-section title="总结" type="line">
-      <view class="main-content">
-        <view class="ql-container ql-snow" style="border: none">
+    <uni-section :title="recordData.title" type="line">
+      <template v-slot:right>
+        <view
+          v-if="recordData.recordType === 1"
+          class="cu-tag round bg-orange light"
+          >工作</view
+        >
+        <view
+          v-if="recordData.recordType === 0"
+          class="cu-tag round bg-olive light"
+          >学习</view
+        >
+        <view
+          v-if="recordData.recordType === 2"
+          class="cu-tag round bg-blue light"
+          >其他</view
+        >
+      </template>
+      <view class="record-info">
+        <view class="item">
+          <text class="cuIcon-timefill text-olive">时间：</text>
+          <text class="text-grey"
+            >{{
+              recordData.completionPeriod[0] +
+              " ~ " +
+              recordData.completionPeriod[1]
+            }}
+          </text>
+        </view>
+        <view class="item">
+          <text class="cuIcon-commentfill text-green">简介：</text>
+          <text class="text-grey">{{ recordData.summary }}</text>
+        </view>
+        <view class="item">
+          <text class="cuIcon-countdownfill text-cyan">耗时：</text>
+          <text class="text-grey">{{ recordData.timeSpent }}min</text>
+        </view>
+        <view
+          class="ql-container ql-snow"
+          style="border: none; margin-top: 30rpx"
+        >
           <view class="ql-editor">
-            <rich-text :nodes="summarizeData.content" />
+            <rich-text class="text-lg" :nodes="summarizeData.content" />
           </view>
         </view>
       </view>
@@ -65,10 +92,20 @@ export default {
   },
 };
 </script>
+
 <style>
-.main-content {
-  margin: 0 20rpx;
-  padding-bottom: 120rpx;
-  background-color: #ffffff;
+.uni-section-header__decoration {
+  height: 18px !important;
+}
+.uni-section-header__content {
+  font-size: 16px !important;
+  font-weight: bold !important;
+}
+.record-info {
+  padding: 0 20rpx;
+  font-size: 28rpx;
+}
+.record-info .item {
+  line-height: 50rpx;
 }
 </style>

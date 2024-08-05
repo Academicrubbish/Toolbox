@@ -16,7 +16,12 @@
     </cu-custom>
     <view class="record_content">
       <uni-section title="记录表单" type="line">
-        <uni-forms ref="valiForm" :modelValue="formData" :rules="rules" :label-width="78">
+        <uni-forms
+          ref="valiForm"
+          :modelValue="formData"
+          :rules="rules"
+          :label-width="78"
+        >
           <uni-forms-item name="recordType" label="记录类型" required>
             <easy-select
               ref="easySelect"
@@ -27,11 +32,19 @@
             />
           </uni-forms-item>
           <uni-forms-item name="title" label="标题" required>
-            <uni-easyinput v-model="formData.title" :maxlength="20" placeholder="请填写事件标题" />
+            <uni-easyinput
+              v-model="formData.title"
+              :maxlength="20"
+              placeholder="请填写事件标题"
+            />
           </uni-forms-item>
 
           <uni-forms-item name="summary" label="事件简介" required>
-            <uni-easyinput type="textarea" v-model="formData.summary" placeholder="请输入简介" />
+            <uni-easyinput
+              type="textarea"
+              v-model="formData.summary"
+              placeholder="请输入简介"
+            />
           </uni-forms-item>
 
           <uni-forms-item name="completionType" label="完成方式" required>
@@ -41,16 +54,30 @@
             />
           </uni-forms-item>
 
-          <uni-forms-item name="completionPeriodStart" label="开始时间" required>
-            <uni-datetime-picker type="datetime" v-model="formData.completionPeriodStart" />
+          <uni-forms-item
+            name="completionPeriodStart"
+            label="开始时间"
+            required
+          >
+            <uni-datetime-picker
+              type="datetime"
+              v-model="formData.completionPeriodStart"
+            />
           </uni-forms-item>
 
           <uni-forms-item name="completionPeriodEnd" label="结束时间" required>
-            <uni-datetime-picker type="datetime" v-model="formData.completionPeriodEnd" />
+            <uni-datetime-picker
+              type="datetime"
+              v-model="formData.completionPeriodEnd"
+            />
           </uni-forms-item>
 
           <uni-forms-item name="timeSpent" label="耗时(min)" required>
-            <uni-easyinput v-model="formData.timeSpent" :maxlength="20" placeholder="耗时" />
+            <uni-easyinput
+              v-model="formData.timeSpent"
+              :maxlength="20"
+              placeholder="耗时"
+            />
           </uni-forms-item>
         </uni-forms>
       </uni-section>
@@ -66,7 +93,7 @@ import debounce from "lodash/debounce";
 import moment from "moment";
 export default {
   components: {
-    "easy-select": easySelect
+    "easy-select": easySelect,
   },
   data() {
     return {
@@ -76,18 +103,18 @@ export default {
       recordTypeOptions: [
         { label: "学习", value: 0 },
         { label: "工作", value: 1 },
-        { label: "其他", value: 2 }
+        { label: "其他", value: 2 },
       ],
       // 单选数据源
       completionTypeOptions: [
         {
           text: "碎片完成",
-          value: 0
+          value: 0,
         },
         {
           text: "整段完成",
-          value: 1
-        }
+          value: 1,
+        },
       ],
       formData: {
         recordType: 0,
@@ -97,7 +124,7 @@ export default {
         completionPeriod: null,
         completionPeriodStart: null,
         completionPeriodEnd: null,
-        timeSpent: null
+        timeSpent: null,
       },
       // 校验规则
       rules: {
@@ -105,66 +132,66 @@ export default {
           rules: [
             {
               required: true,
-              errorMessage: "不能为空"
-            }
-          ]
+              errorMessage: "不能为空",
+            },
+          ],
         },
         title: {
           rules: [
             {
               required: true,
-              errorMessage: "不能为空"
-            }
-          ]
+              errorMessage: "不能为空",
+            },
+          ],
         },
         summary: {
           rules: [
             {
               required: true,
-              errorMessage: "不能为空"
-            }
-          ]
+              errorMessage: "不能为空",
+            },
+          ],
         },
         completionType: {
           rules: [
             {
               required: true,
-              errorMessage: "不能为空"
-            }
-          ]
+              errorMessage: "不能为空",
+            },
+          ],
         },
         completionPeriodStart: {
           rules: [
             {
               required: true,
-              errorMessage: "不能为空"
-            }
-          ]
+              errorMessage: "不能为空",
+            },
+          ],
         },
         completionPeriodEnd: {
           rules: [
             {
               required: true,
-              errorMessage: "不能为空"
-            }
-          ]
+              errorMessage: "不能为空",
+            },
+          ],
         },
         timeSpent: {
           rules: [
             {
               required: true,
-              errorMessage: "不能为空"
-            }
-          ]
-        }
-      }
+              errorMessage: "不能为空",
+            },
+          ],
+        },
+      },
     };
   },
   onLoad(option) {
     console.log(option);
     if (option.type === "update") {
       this.type = "update";
-      getRecord(option.id).then(res => {
+      getRecord(option.id).then((res) => {
         let data = res.result.data[0];
         this.formData = data;
         this.formData.completionPeriodStart = data.completionPeriod[0];
@@ -177,10 +204,10 @@ export default {
       this.recordType = options.value;
       this.recordTypeLabel = options.label;
     },
-    submit: debounce(function(form) {
+    submit: debounce(function (form) {
       this.$refs[form]
         .validate()
-        .then(res => {
+        .then((res) => {
           let data = {
             recordType: res.recordType,
             title: res.title,
@@ -188,51 +215,68 @@ export default {
             completionType: res.completionType,
             completionPeriod: [
               res.completionPeriodStart,
-              res.completionPeriodEnd
+              res.completionPeriodEnd,
             ],
             timeSpent: Number(res.timeSpent),
             createTime: moment().format("YYYY-MM-DD HH:mm:ss"),
             updateTime: moment().format("YYYY-MM-DD HH:mm:ss"),
-            createBy: this.$store.state.user.openid
+            createBy: this.$store.state.user.openid,
           };
 
           if (this.type === "add") {
-            addRecord(data).then(res => {
+            addRecord(data).then((res) => {
               if (res.result.code === 0) {
                 uni.showToast({
                   title: "添加成功",
                   icon: "none",
-                  mask: true
+                  mask: true,
                 });
                 setTimeout(() => {
                   uni.navigateBack({
-                    delta: 1
+                    delta: 1,
                   });
                 }, 1000);
               }
             });
           } else {
-            updateRecord(this.formData._id,data).then(res => {
+            data.createTime = this.formData.createTime;
+            updateRecord(this.formData._id, data).then((res) => {
               if (res.result.code === 0) {
                 uni.showToast({
                   title: "修改成功",
                   icon: "none",
-                  mask: true
+                  mask: true,
                 });
                 setTimeout(() => {
                   uni.navigateBack({
-                    delta: 1
+                    delta: 1,
                   });
                 }, 1000);
               }
             });
           }
         })
-        .catch(err => {
+        .catch((err) => {
           console.log("表单错误信息：", err);
         });
-    }, 500)
-  }
+    }, 500),
+    calculateTimeSpent() {
+      const start = moment(this.formData.completionPeriodStart);
+      const end = moment(this.formData.completionPeriodEnd);
+
+      if (start.isValid() && end.isValid()) {
+        const duration = moment.duration(end.diff(start));
+        const minutes = duration.asMinutes();
+        this.formData.timeSpent = minutes.toFixed(2); // 设置耗时，保留两位小数
+      } else {
+        this.formData.timeSpent = ""; // 如果开始时间或结束时间无效，清空耗时字段
+      }
+    },
+  },
+  watch: {
+    "formData.completionPeriodStart": "calculateTimeSpent",
+    "formData.completionPeriodEnd": "calculateTimeSpent",
+  },
 };
 </script>
 

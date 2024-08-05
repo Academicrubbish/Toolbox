@@ -19,11 +19,20 @@
       </view>
 
       <!-- 记录列表 -->
-      <view v-for="item in recordList" :key="item.date">
+      <view v-for="item in recordList" :key="item.date" class="padding-lr-sm">
         <view class="cu-bar bg-white solid-bottom margin-top">
           <view class="action">
-            <text class="cuIcon-title text-orange"></text>
-            {{ item.date }}
+            <text class="text-gray text-sm">{{ item.date }}</text>
+          </view>
+          <view class="action">
+            <text class="text-gray text-sm"
+              >耗时：{{
+                (
+                  item.children.reduce((acc, task) => acc + task.timeSpent, 0) /
+                  60
+                ).toFixed(2)
+              }}h</text
+            >
           </view>
         </view>
         <view class="cu-list menu sm-border">
@@ -36,17 +45,17 @@
           >
             <view class="content padding-tb-sm">
               <view>
-                <text class="cuIcon-clothesfill text-blue margin-right-xs" />
+                <text class="cuIcon-creativefill text-orange margin-right-xs" />
                 {{ citem.title }}
               </view>
-              <view class="text-gray text-sm">
-                <text class="cuIcon-infofill margin-right-xs" />
-                {{ citem.summary }}
+              <view class="text-sm">
+                <text class="cuIcon-activityfill text-blue margin-right-xs" />
+                <text>{{ citem.summary }}</text>
               </view>
             </view>
             <view class="action">
               <text class="text-grey text-sm">{{
-                citem.completionPeriod[1]
+                citem.completionPeriod[1].split(" ")[1]
               }}</text>
             </view>
           </view>
@@ -225,6 +234,9 @@ export default {
 };
 </script>
 <style lang="scss" scoped>
+.cu-bar {
+  min-height: 70rpx;
+}
 .depart {
   position: relative;
   height: 100%;
