@@ -117,6 +117,7 @@ export default {
     });
   },
   methods: {
+    // 修改操作删除之前的图片
     deleteImg(htmlString) {
       // 正则表达式匹配所有图片的 src 属性
       const regex = /<img.*?src=["'](.*?)["']/g;
@@ -144,7 +145,6 @@ export default {
         cloudPathAsRealPath: true,
         fileType: 'image'
       })
-      console.log('img', res);
       return res.fileID
     },
     // 处理富文本中的图片地址，将富文本中的图片地址替换为云存储的路径
@@ -177,7 +177,6 @@ export default {
       })
       this.editorCtx.getContents({
         success: async function (data) {
-          console.log('上传信息', data);
 
           // 将富文本中的图片地址替换为云存储的路径
           let richText = await _this.handleImg(data.html);

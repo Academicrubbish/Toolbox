@@ -1,13 +1,3 @@
-<!--
- * @Author: yuanchuang 1226377893@qq.com
- * @Date: 2024-08-01 17:31:22
- * @LastEditors: yuanchuang 1226377893@qq.com
- * @LastEditTime: 2024-08-02 16:59:00
- * @FilePath: \Toolbox\subpackage\depart\index.vue
- * @Description: 
- * 
- * Copyright (c) 2024 by 坤智数联科技(宁波), All Rights Reserved. 
--->
 <template>
   <view class="depart">
     <z-paging ref="paging" v-model="recordList" @query="queryList">
@@ -18,6 +8,18 @@
         </cu-custom>
       </view>
 
+      <view class="cu-bar bg-red search">
+        <view class="search-form radius">
+          <text class="cuIcon-search"></text>
+          <input @focus="InputFocus" @blur="InputBlur" :adjust-position="false" type="text" placeholder="搜索图片、文章、视频"
+            confirm-type="search" />
+        </view>
+        <view class="action">
+          <text>广州</text>
+          <text class="cuIcon-triangledownfill"></text>
+        </view>
+      </view>
+
       <!-- 记录列表 -->
       <view v-for="item in recordList" :key="item.date" class="padding-lr-sm">
         <view class="cu-bar bg-white solid-bottom margin-top">
@@ -25,24 +27,17 @@
             <text class="text-gray text-sm">{{ item.date }}</text>
           </view>
           <view class="action">
-            <text class="text-gray text-sm"
-              >耗时：{{
-                (
-                  item.children.reduce((acc, task) => acc + task.timeSpent, 0) /
-                  60
-                ).toFixed(2)
-              }}h</text
-            >
+            <text class="text-gray text-sm">用时：{{
+              (
+                item.children.reduce((acc, task) => acc + task.timeSpent, 0) /
+                60
+              ).toFixed(2)
+            }}h</text>
           </view>
         </view>
         <view class="cu-list menu sm-border">
-          <view
-            class="cu-item"
-            v-for="citem in item.children"
-            :key="citem._id"
-            @longpress="onLongPress($event, citem)"
-            @tap="goDetail(citem)"
-          >
+          <view class="cu-item" v-for="citem in item.children" :key="citem._id" @longpress="onLongPress($event, citem)"
+            @tap="goDetail(citem)">
             <view class="content padding-tb-sm">
               <view>
                 <text class="cuIcon-creativefill text-orange margin-right-xs" />
@@ -74,23 +69,13 @@
 
     <!-- 新增记录 -->
     <view class="add">
-      <button
-        class="cu-btn cuIcon-add bg-green shadow"
-        @tap="addRecord"
-      ></button>
+      <button class="cu-btn cuIcon-add bg-green shadow" @tap="addRecord"></button>
     </view>
 
     <!-- 删除提示 -->
     <uni-popup ref="alertDialog" type="dialog">
-      <uni-popup-dialog
-        type="warn"
-        title="提醒"
-        :content="dialogContent"
-        cancelText="取消"
-        confirmText="确定"
-        @confirm="dialogConfirm"
-        @close="dialogClose"
-      ></uni-popup-dialog>
+      <uni-popup-dialog type="warn" title="提醒" :content="dialogContent" cancelText="取消" confirmText="确定"
+        @confirm="dialogConfirm" @close="dialogClose" />
     </uni-popup>
   </view>
 </template>
@@ -107,7 +92,7 @@ export default {
       /* 显示操作弹窗 */
       showPop: false,
       /* 弹窗按钮列表 */
-      popButton: ["添加总结", "编辑", "删除"],
+      popButton: ["编辑总结", "编辑", "删除"],
       /* 弹窗定位样式 */
       popStyle: "",
       /* 选择的记录内容下标 */
@@ -117,6 +102,8 @@ export default {
     };
   },
   methods: {
+    InputFocus() { },
+    InputBlur() { },
     queryList(pageNo, pageSize) {
       getRecordList({
         pageNum: pageNo,
@@ -229,7 +216,7 @@ export default {
         }
       });
     },
-    dialogClose() {},
+    dialogClose() { },
   },
 };
 </script>
@@ -237,6 +224,7 @@ export default {
 .cu-bar {
   min-height: 70rpx;
 }
+
 .depart {
   position: relative;
   height: 100%;
@@ -278,7 +266,7 @@ export default {
       transform: scale(1, 1);
     }
 
-    & > view {
+    &>view {
       padding: 0 20upx;
       overflow: hidden;
       text-overflow: ellipsis;
