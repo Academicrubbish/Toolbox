@@ -1,6 +1,6 @@
 <template>
   <view class="depart">
-    <z-paging ref="paging" v-model="recordList" @query="queryList">
+    <z-paging ref="paging" v-model="KnowledgePointList" @query="queryList">
       <view slot="top">
         <cu-custom bgColor="bg-gradual-blue" :isBack="true">
           <block slot="backText">返回</block>
@@ -21,7 +21,7 @@
       </view> -->
 
       <!-- 记录列表 -->
-      <view v-for="item in recordList" :key="item.date" class="padding-lr-sm">
+      <view v-for="item in KnowledgePointList" :key="item.date" class="padding-lr-sm">
         <view class="cu-bar bg-white solid-bottom margin-top">
           <view class="action">
             <text class="text-gray text-sm">{{ item.date }}</text>
@@ -69,7 +69,7 @@
 
     <!-- 新增记录 -->
     <view class="add">
-      <button class="cu-btn cuIcon-add bg-green shadow" @tap="addRecord"></button>
+      <button class="cu-btn cuIcon-add bg-green shadow" @tap="addKnowledgePoint"></button>
     </view>
 
     <!-- 删除提示 -->
@@ -80,23 +80,23 @@
   </view>
 </template>
 <script>
-import { getRecordList, delRecord } from "@/api/record.js";
+import { getKnowledgePointList, delKnowledgePoint } from "@/api/knowledge.js";
 import moment from "moment";
 export default {
   data() {
     return {
-      recordList: [],
+      KnowledgePointList: [],
       //test
       /* 显示遮罩 */
       showShade: false,
       /* 显示操作弹窗 */
       showPop: false,
       /* 弹窗按钮列表 */
-      popButton: ["编辑总结", "编辑", "删除"],
+      popButton: [ "编辑", "删除"],
       /* 弹窗定位样式 */
       popStyle: "",
       /* 选择的记录内容下标 */
-      pickerRecordItem: null,
+      pickerKnowledgePointItem: null,
       /* 删除提醒文本 */
       dialogContent: "",
     };
@@ -105,20 +105,20 @@ export default {
     InputFocus() { },
     InputBlur() { },
     queryList(pageNo, pageSize) {
-      getRecordList({
+      getKnowledgePointList({
         pageNum: pageNo,
         pageSize: pageSize,
       })
         .then((res) => {
           let list = res.result.data;
-          let groupedRecords = [];
+          let groupedKnowledgePoints = [];
           list.forEach((element) => {
             let groupDate = moment(element.completionPeriod[0]).format(
               "YYYY-MM-DD"
             );
 
             // 查找是否已存在该日期分组
-            let existingGroup = groupedRecords.find(
+            let existingGroup = groupedKnowledgePoints.find(
               (group) => group.date === groupDate
             );
 
@@ -126,46 +126,41 @@ export default {
               // 如果已存在该日期分组，则将当前元素添加到该分组的children中
               existingGroup.children.push(element);
             } else {
-              // 如果不存在该日期分组，则创建新的分组对象并添加到groupedRecords中
-              groupedRecords.push({
+              // 如果不存在该日期分组，则创建新的分组对象并添加到groupedKnowledgePoints中
+              groupedKnowledgePoints.push({
                 date: groupDate,
                 children: [element],
               });
             }
           });
           // 调用 z-paing 组件的 complete 方法，将数据传入组件，并完成分页显示
-          this.$refs.paging.complete(groupedRecords);
+          this.$refs.paging.complete(groupedKnowledgePoints);
         })
         .catch((err) => {
           this.$refs.paging.complete(false);
         });
     },
-    addRecord() {
+    addKnowledgePoint() {
       uni.navigateTo({
-        url: "/subpackage/record/index?type=add",
+        url: "/subpackage/knowledge/record?type=add",
       });
     },
     goDetail(row) {
       uni.navigateTo({
-        url: `/subpackage/depart/detail?&id=${row._id}`,
+        url: `/subpackage/knowledge/detail?&id=${row._id}`,
       });
     },
     pickerMenu(item) {
       console.log(item);
       switch (item) {
-        case "编辑总结":
-          uni.navigateTo({
-            url: `/subpackage/summarize/index?recordId=${this.pickerRecordItem._id}`,
-          });
-          break;
         case "编辑":
           uni.navigateTo({
-            url: `/subpackage/record/index?type=update&id=${this.pickerRecordItem._id}`,
+            url: `/subpackage/knowledge/record?type=update&id=${this.pickerKnowledgePointItem._id}`,
           });
           break;
         case "删除":
           this.dialogToggle();
-          this.dialogContent = `确定删除名为 '${this.pickerRecordItem.title}' 的记录？`;
+          this.dialogContent = `确定删除名为 '${this.pickerKnowledgePointItem.title}' 的记录？`;
           break;
       }
     },
@@ -185,7 +180,7 @@ export default {
       style += `left:${touches.clientX}px`;
       // }
 
-      this.pickerRecordItem = row;
+      this.pickerKnowledgePointItem = row;
       this.popStyle = style;
       this.showShade = true;
       this.$nextTick(() => {
@@ -206,7 +201,7 @@ export default {
     },
     // 确认删除
     dialogConfirm() {
-      delRecord(this.pickerRecordItem._id).then((res) => {
+      delKnowledgePoint(this.pickerKnowledgePointItem._id).then((res) => {
         if (res.result.code === 0) {
           uni.showToast({
             title: "删除成功",

@@ -26,6 +26,18 @@
 			{
 				"path": "summarize/index",
 				"style": {}
+			},
+			{
+				"path": "knowledge/detail",
+				"style": {}
+			},
+			{
+				"path": "knowledge/index",
+				"style": {}
+			},
+			{
+				"path": "knowledge/record",
+				"style": {}
 			}
 		]
 	}],
