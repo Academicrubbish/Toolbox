@@ -17,16 +17,12 @@
 				<view class="iconfont icon-code" @click="toolBarClick('code')"></view>
 				<view class="iconfont icon-table" @click="toolBarClick('table')"></view>
 				<view class="iconfont icon-qingkong" @click="toolBarClick('clear')"></view>
+				<view class="iconfont icon-qingkong" @click="toolBarClick('yulan')"></view>
 			</view>
 			<view class="input-content">
-				<textarea auto-height maxlength="-1" v-model="textareaData" @blur="getCursor"></textarea>
+				<textarea v-if="status" auto-height maxlength="-1" v-model="textareaData" @blur="getCursor"></textarea>
+				<towxml v-if="!status" :nodes="textareaHtml" />
 			</view>
-		</view>
-		<view class="preview">
-			<!-- <scroll-view scroll-y :style="'height:' + screenHeight / 2.5 + 'px;padding:10px'"> -->
-				<!-- <mp-html :content="textareaHtml" /> -->
-				<wxParse :content="textareaHtml" @preview="preview" @navigate="navigate" />
-			<!-- </scroll-view> -->
 		</view>
 	</view>
 </template>
@@ -46,7 +42,8 @@ export default {
 			screenHeight: 0,
 			cursor: 0,
 			textareaData: "",
-			textareaHtml: ""
+			textareaHtml: "",
+			status: true
 		}
 	},
 	props: {
@@ -176,6 +173,8 @@ export default {
 						}
 					}
 				})
+			}else if(type == "yulan") {
+				this.status = !this.status;
 			}
 		},
 		getCursor(e) {
@@ -185,12 +184,20 @@ export default {
 	},
 	watch: {
 		"textareaData": function (newValue, oldValue) {
-			console.log('111',newValue);			
+			console.log('111', newValue);
 			// this.textareaHtml = marked(newValue)
-			this.textareaHtml =  marked(newValue).replace(/<pre>/g, "<pre class='hljs'>");
-			console.log(this.textareaHtml);			
-			this.$emit('update:textareaData', newValue)
-			this.$emit('update:textareaHtml', this.textareaHtml)
+			// this.textareaHtml = marked(newValue).replace(/<pre>/g, "<pre class='hljs'>");
+			// console.log(this.textareaHtml);
+			// this.$emit('update:textareaData', newValue)
+			// this.$emit('update:textareaHtml', this.textareaHtml)
+			this.textareaHtml = this.towxml(newValue, 'markdown', {
+				theme: 'dark',
+				events: {
+					tap: (e) => {
+						console.log('tap', e);
+					}
+				}
+			})
 		}
 	},
 	onLoad: function () {

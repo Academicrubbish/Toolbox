@@ -1,6 +1,8 @@
 import Vue from 'vue'
 import App from './App'
 
+Vue.prototype.towxml = require('./wxcomponents/towxml/index.js')
+
 Vue.config.productionTip = false
 
 App.mpType = 'app'
