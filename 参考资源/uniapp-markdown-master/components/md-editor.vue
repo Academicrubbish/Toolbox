@@ -1,49 +1,43 @@
 <template>
-	<view>
-		<view>
-			<view class="toolbar">
-				<view class="iconfont icon-bold" @click="toolBarClick('bold')"></view>
-				<view class="iconfont icon-italic" @click="toolBarClick('italic')"></view>
-				<view class="iconfont icon-xiahuaxian1" @click="toolBarClick('header')"></view>
-				<view class="iconfont icon-underline" @click="toolBarClick('underline')"></view>
-				<view class="iconfont icon-strike" @click="toolBarClick('strike')"></view>
-				<view class="iconfont icon-sup" @click="toolBarClick('sup')"></view>
-				<view class="iconfont icon-sub" @click="toolBarClick('sub')"></view>
-				<view class="iconfont icon-alignleft" @click="toolBarClick('alignleft')"></view>
-				<view class="iconfont icon-aligncenter" @click="toolBarClick('aligncenter')"></view>
-				<view class="iconfont icon-alignright" @click="toolBarClick('alignright')"></view>
-				<view class="iconfont icon-link" @click="toolBarClick('link')"></view>
-				<view class="iconfont icon-image" @click="toolBarClick('imgage')"></view>
-				<view class="iconfont icon-code" @click="toolBarClick('code')"></view>
-				<view class="iconfont icon-table" @click="toolBarClick('table')"></view>
-				<view class="iconfont icon-qingkong" @click="toolBarClick('clear')"></view>
-				<view class="iconfont icon-qingkong" @click="toolBarClick('yulan')"></view>
-			</view>
-			<view class="input-content">
-				<textarea v-if="status" auto-height maxlength="-1" v-model="textareaData" @blur="getCursor"></textarea>
-				<towxml v-if="!status" :nodes="textareaHtml" />
-			</view>
+	<view class="mdEditor">
+		<view class="toolbar">
+			<view class="iconfont icon-bold" @click="toolBarClick('bold')"></view>
+			<view class="iconfont icon-italic" @click="toolBarClick('italic')"></view>
+			<view class="iconfont icon-title" @click="toolBarClick('header')"></view>
+			<view class="iconfont icon-underline" @click="toolBarClick('underline')"></view>
+			<view class="iconfont icon-strikeThrough" @click="toolBarClick('strike')"></view>
+			<view class="iconfont icon-inIndentation" @click="toolBarClick('inIndentation')"></view>
+			<view class="iconfont icon-reIndentation" @click="toolBarClick('reIndentation')"></view>
+			<view class="iconfont icon-superscript" @click="toolBarClick('sup')"></view>
+			<view class="iconfont icon-subscript" @click="toolBarClick('sub')"></view>
+			<view class="iconfont icon-ul" @click="toolBarClick('ul')"></view>
+			<view class="iconfont icon-ol" @click="toolBarClick('ol')"></view>
+			<view class="iconfont icon-dividingLine" @click="toolBarClick('dividingLine')"></view>
+			<view class="iconfont icon-hyperlinke" @click="toolBarClick('link')"></view>
+			<view class="iconfont icon-image" @click="toolBarClick('img')"></view>
+			<view class="iconfont icon-inlineCode" @click="toolBarClick('inlineCode')"></view>
+			<view class="iconfont icon-codeBlock" @click="toolBarClick('code')"></view>
+			<view class="iconfont icon-table" @click="toolBarClick('table')"></view>
+			<view class="iconfont icon-quote" @click="toolBarClick('quote')"></view>
+			<view class="iconfont icon-taskList" @click="toolBarClick('taskList')"></view>
+			<view class="iconfont icon-empty" @click="toolBarClick('clear')"></view>
+			<view class="iconfont icon-toggle" @click="toolBarClick('toggle')"></view>
+		</view>
+		<view class="input-content">
+			<textarea v-if="status" maxlength="-1" v-model="textareaData"></textarea>
+			<towxml v-if="!status" :nodes="textareaHtml" />
 		</view>
 	</view>
 </template>
 
 <script>
-import marked from '../components/marked'
-import wxParse from '../components/mpvue-wxparse/src/wxParse.vue'
-import mpHtml from "mp-html/dist/uni-app/components/mp-html/mp-html";
 export default {
-	name: "ly-markdown",
-	components: {
-		wxParse,
-		mpHtml
-	},
-	data: function () {
+	name: "mdEditor",
+	data() {
 		return {
-			screenHeight: 0,
-			cursor: 0,
 			textareaData: "",
 			textareaHtml: "",
-			status: true
+			status: true,
 		}
 	},
 	props: {
@@ -54,10 +48,6 @@ export default {
 		textareaHtmlProp: {
 			type: String,
 			default: ""
-		},
-		showPreview: {
-			type: Boolean,
-			default: true
 		}
 	},
 	created() {
@@ -98,22 +88,22 @@ export default {
 					success: res => {
 						switch (res.tapIndex) {
 							case 0:
-								this.textareaData += "# 标题1\r";
+								this.textareaData += "\n# 标题1\r";
 								return;
 							case 1:
-								this.textareaData += "## 标题2\r";
+								this.textareaData += "\n## 标题2\r";
 								return;
 							case 2:
-								this.textareaData += "### 标题3\r";
+								this.textareaData += "\n### 标题3\r";
 								return;
 							case 3:
-								this.textareaData += "#### 标题4\r";
+								this.textareaData += "\n#### 标题4\r";
 								return;
 							case 4:
-								this.textareaData += "##### 标题5\r";
+								this.textareaData += "\n##### 标题5\r";
 								return;
 							case 5:
-								this.textareaData += "###### 标题6\r";
+								this.textareaData += "\n###### 标题6\r";
 								return;
 						}
 					}
@@ -121,20 +111,14 @@ export default {
 			} else if (type == "underline") {
 				this.textareaData += "++下划线++ "
 			} else if (type == "strike") {
-				this.textareaData += "~~中划线~~ "
+				this.textareaData += "~~删除线~~ "
 			} else if (type == "sup") {
 				this.textareaData += "^上角标^ "
 			} else if (type == "sub") {
 				this.textareaData += "~下角标~ "
-			} else if (type == "alignleft") {
-				this.textareaData += "\n::: hljs-left\n\n左对齐\n\n:::\n"
-			} else if (type == "aligncenter") {
-				this.textareaData += "\n::: hljs-center\n\n居中对齐\n\n:::\n"
-			} else if (type == "alignright") {
-				this.textareaData += "\n::: hljs-right\n\n\n\n右对齐\n\n:::\n"
 			} else if (type == "link") {
 				this.textareaData += "[在此输入网址描述](在此输入网址) "
-			} else if (type == "imgage") {
+			} else if (type == "img") {
 				uni.chooseImage({
 					count: 1,
 					success: chooseImageRes => {
@@ -163,7 +147,35 @@ export default {
 				this.textareaData += "\n``` 代码块 \n\n```\n"
 			} else if (type == "table") {
 				this.textareaData += "\n|列1|列2|列3|\n|-|-|-|\n|单元格1|单元格2|单元格3|\n"
-			} else if (type == "clear") {
+			}
+			else if (type == 'inlineCode') {
+				this.textareaData += "`行内代码块`"
+			}
+			else if (type == 'taskList') {
+				this.textareaData += "\n- [ ] 任务列表\n"
+			}
+			else if (type == "quote") {
+				this.textareaData += "\n> 引用内容\n"
+			}
+
+			else if (type == "inIndentation") {
+				this.textareaData += "增加缩进"
+			}
+			else if (type == "reIndentation") {
+				this.textareaData += "减少缩进"
+			}
+
+			else if (type == "dividingLine") {
+				this.textareaData += "\n------\n"
+			}
+			else if (type == 'ul') {
+				this.textareaData += "\n- 无序列表1\n"
+			}
+			else if (type == 'ol') {
+				this.textareaData += "\n1. 有序列表\n"
+			}
+
+			else if (type == "clear") {
 				uni.showModal({
 					title: "提示",
 					content: "确定清空?",
@@ -173,23 +185,14 @@ export default {
 						}
 					}
 				})
-			}else if(type == "yulan") {
+			} else if (type == "toggle") {
 				this.status = !this.status;
 			}
 		},
-		getCursor(e) {
-			//安卓失去焦点获取不到cursor位置,暂不使用
-			//this.cursor = e.detail.cursor; 
-		}
 	},
 	watch: {
 		"textareaData": function (newValue, oldValue) {
 			console.log('111', newValue);
-			// this.textareaHtml = marked(newValue)
-			// this.textareaHtml = marked(newValue).replace(/<pre>/g, "<pre class='hljs'>");
-			// console.log(this.textareaHtml);
-			// this.$emit('update:textareaData', newValue)
-			// this.$emit('update:textareaHtml', this.textareaHtml)
 			this.textareaHtml = this.towxml(newValue, 'markdown', {
 				theme: 'dark',
 				events: {
@@ -199,35 +202,18 @@ export default {
 				}
 			})
 		}
-	},
-	onLoad: function () {
-		uni.getSystemInfo({
-			success: res => {
-				this.screenHeight = res.screenHeight
-			}
-		})
 	}
 }
 </script>
 
 <style>
 @import '../static/markdown.css';
-@import url("../components/mpvue-wxparse/src/wxParse.css");
 
-.input-content {
+.mdEditor {
 	width: 100%;
-}
-
-.input-content textarea {
-	padding: 16px 25px 15px 25px;
-	font-size: 30px;
-	min-height: 500px;
-	line-height: 1.5;
-}
-
-.preview {
-	border-top: 1px solid #e0e0e0;
-	width: 100%;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
 }
 
 .toolbar {
@@ -239,22 +225,37 @@ export default {
 .toolbar .iconfont {
 	display: inline-block;
 	cursor: pointer;
-	height: 61.6px;
-	width: 61.6px;
-	margin: 13px 0 11px 0px;
+	width: calc(100% / 9);
+	/* 固定宽度 */
+	aspect-ratio: 1;
+	/* 高度与宽度相等 */
 	font-size: 33px;
-	padding: 10px 13px 11px 8px;
+	padding: 10rpx;
 	color: #757575;
-	border-radius: 11px;
 	text-align: center;
 	background: none;
 	border: none;
 	outline: none;
 	line-height: 2.2;
 	vertical-align: middle;
+	box-sizing: border-box;
 }
 
+
 .input-content {
-	min-height: ;
+	width: 100%;
+	flex: 1;
+	/* 占据剩余空间 */
+	overflow: auto;
+}
+
+.input-content textarea {
+	font-family: PingFang SC, Lantinghei SC, Microsoft Yahei, Hiragino Sans GB, Microsoft Sans Serif, WenQuanYi Micro Hei, sans-serif;
+	height: 100%;
+	width: 100%;
+	padding: 16rpx 25rpx;
+	box-sizing: border-box;
+	font-size: 30px;
+	line-height: 1.5;
 }
 </style>

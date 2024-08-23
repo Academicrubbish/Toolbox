@@ -1,7 +1,0 @@
-{
-  "dependencies": {
-    "highlight.js": "^11.10.0",
-    "marked": "^13.0.3",
-    "mp-html": "^2.5.0"
-  }
-}
