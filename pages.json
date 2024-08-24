@@ -42,7 +42,11 @@
 		]
 	}],
 	"globalStyle": {
-		"navigationStyle": "custom"
+		"navigationStyle": "custom",
+		"usingComponents": {
+			"towxml": "/wxcomponents/towxml/towxml",
+			"decode": "/wxcomponents/towxml/decode"
+		}
 	},
 	"uniIdRouter": {}
 }

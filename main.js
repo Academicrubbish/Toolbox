@@ -6,6 +6,8 @@ import Vue from 'vue'
 import store from './store'
 import './uni.promisify.adaptor'
 
+Vue.prototype.towxml = require('./wxcomponents/towxml/index.js')
+
 import cuCustom from './colorui/components/cu-custom.vue'
 Vue.component('cu-custom', cuCustom)
 

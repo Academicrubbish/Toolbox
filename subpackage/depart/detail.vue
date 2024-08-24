@@ -6,18 +6,31 @@
     </cu-custom>
     <uni-section :title="recordData.title" type="line">
       <template v-slot:right>
-        <view v-if="recordData.recordType === 1" class="cu-tag round bg-orange light">工作</view>
-        <view v-if="recordData.recordType === 0" class="cu-tag round bg-olive light">学习</view>
-        <view v-if="recordData.recordType === 2" class="cu-tag round bg-blue light">其他</view>
+        <view
+          v-if="recordData.recordType === 1"
+          class="cu-tag round bg-orange light"
+          >工作</view
+        >
+        <view
+          v-if="recordData.recordType === 0"
+          class="cu-tag round bg-olive light"
+          >学习</view
+        >
+        <view
+          v-if="recordData.recordType === 2"
+          class="cu-tag round bg-blue light"
+          >其他</view
+        >
       </template>
       <view class="record-info">
         <view class="item">
           <text class="cuIcon-timefill text-olive">时间：</text>
-          <text class="text-grey">{{
-            recordData.completionPeriod[0] +
-            " ~ " +
-            recordData.completionPeriod[1]
-          }}
+          <text class="text-grey"
+            >{{
+              recordData.completionPeriod[0] +
+              " ~ " +
+              recordData.completionPeriod[1]
+            }}
           </text>
         </view>
         <view class="item">
@@ -28,11 +41,8 @@
           <text class="cuIcon-countdownfill text-cyan">耗时：</text>
           <text class="text-grey">{{ recordData.timeSpent }}min</text>
         </view>
-        <view class="ql-container ql-snow" style="border: none; margin: 30rpx 0">
-          <view class="ql-editor">
-            <rich-text class="text-lg" :nodes="summarizeData.content" />
-          </view>
-        </view>
+
+        <towxml :nodes="towxmlData" />
       </view>
     </uni-section>
   </view>
@@ -40,14 +50,11 @@
 <script>
 import { getRecord } from "@/api/record";
 import { summarizeRecordInfoById } from "@/api/summarize";
-import "@/static/editor/quill.bubble.css";
-import "@/static/editor/quill.core.css";
-import "@/static/editor/quill.snow.css";
 export default {
   data() {
     return {
       recordData: null,
-      summarizeData: null,
+      towxmlData: "",
     };
   },
   async onLoad(option) {
@@ -61,9 +68,18 @@ export default {
 
       // 检查查询结果并更新汇总数据
       if (summarizeRes.result.data.length > 0) {
-        this.summarizeData = summarizeRes.result.data[0];
+        let summarizeData = summarizeRes.result.data[0];
+        this.towxmlData = this.towxml(summarizeData.content, "markdown", {
+          // theme: "dark",
+          events: {
+            tap: (e) => {
+              console.log("tap", e);
+            },
+          },
+        });
       } else {
-        this.summarizeData = null; // 或者其他处理方式，表示没有找到汇总数据
+        // 表示没有找到汇总数据
+        this.towxmlData = this.towxml("", "markdown");
       }
     } catch (error) {
       console.error("Error in onLoad:", error);
