@@ -17,6 +17,19 @@
         </view>
       </view>
 
+      <!-- 分类字典 -->
+      <view class="cu-item arrow"  @tap="goDictCategory">
+        <view class="content">
+          <text class="cuIcon-tagfill text-red margin-right-xs"></text>
+          <text class="text-grey">分类管理</text>
+        </view>
+        <view class="action">
+          <view class="cu-tag round bg-orange light">音乐</view>
+          <view class="cu-tag round bg-olive light">电影</view>
+          <view class="cu-tag round bg-blue light">旅行</view>
+        </view>
+      </view>
+
       <view class="cu-item arrow">
         <button class="cu-btn content" open-type="contact">
           <text class="cuIcon-btn text-olive"></text>
@@ -24,12 +37,7 @@
         </button>
       </view>
       <view class="cu-item arrow">
-        <navigator
-          class="content"
-          hover-class="none"
-          url="../list/list"
-          open-type="redirect"
-        >
+        <navigator class="content" hover-class="none" url="../list/list" open-type="redirect">
           <text class="cuIcon-discoverfill text-orange"></text>
           <text class="text-grey">Navigator 跳转</text>
         </navigator>
@@ -41,30 +49,18 @@
         </view>
         <view class="action">
           <view class="cu-avatar-group">
-            <view
-              class="cu-avatar round sm"
-              style="
+            <view class="cu-avatar round sm" style="
                 background-image: url(https://ossweb-img.qq.com/images/lol/web201310/skin/big10001.jpg);
-              "
-            ></view>
-            <view
-              class="cu-avatar round sm"
-              style="
+              "></view>
+            <view class="cu-avatar round sm" style="
                 background-image: url(https://ossweb-img.qq.com/images/lol/web201310/skin/big81005.jpg);
-              "
-            ></view>
-            <view
-              class="cu-avatar round sm"
-              style="
+              "></view>
+            <view class="cu-avatar round sm" style="
                 background-image: url(https://ossweb-img.qq.com/images/lol/web201310/skin/big25002.jpg);
-              "
-            ></view>
-            <view
-              class="cu-avatar round sm"
-              style="
+              "></view>
+            <view class="cu-avatar round sm" style="
                 background-image: url(https://ossweb-img.qq.com/images/lol/web201310/skin/big91012.jpg);
-              "
-            ></view>
+              "></view>
           </view>
           <text class="text-grey text-sm">4 人</text>
         </view>
@@ -112,12 +108,7 @@
           </view>
         </view>
         <view class="action">
-          <switch
-            class="switch-sex"
-            @change="SwitchSex"
-            :class="skin ? 'checked' : ''"
-            :checked="skin ? true : false"
-          >
+          <switch class="switch-sex" @change="SwitchSex" :class="skin ? 'checked' : ''" :checked="skin ? true : false">
           </switch>
         </view>
       </view>
@@ -148,6 +139,11 @@ export default {
     goKnowledge() {
       uni.navigateTo({
         url: "/subpackage/knowledge/index",
+      });
+    },
+    goDictCategory() {
+      uni.navigateTo({
+        url: "/subpackage/dictCategory/index",
       });
     },
     showModal(e) {

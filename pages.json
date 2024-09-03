@@ -1,6 +1,10 @@
 {
 	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
 		{
+			"path": "pages/open/test",
+			"style": {}
+		},
+		{
 			"path": "pages/open/index",
 			"style": {}
 		},
@@ -9,38 +13,45 @@
 			"style": {}
 		}
 	],
-	"subPackages": [{
-		"root": "subpackage",
-		"pages": [{
-				"path": "record/index",
-				"style": {}
-			},
-			{
-				"path": "depart/index",
-				"style": {}
-			},
-			{
-				"path": "depart/detail",
-				"style": {}
-			},
-			{
-				"path": "summarize/index",
-				"style": {}
-			},
-			{
-				"path": "knowledge/detail",
-				"style": {}
-			},
-			{
-				"path": "knowledge/index",
-				"style": {}
-			},
-			{
-				"path": "knowledge/record",
-				"style": {}
-			}
-		]
-	}],
+	"subPackages": [
+		{
+			"root": "subpackage",
+			"pages": [
+				{
+					"path": "record/index",
+					"style": {}
+				},
+				{
+					"path": "depart/index",
+					"style": {}
+				},
+				{
+					"path": "depart/detail",
+					"style": {}
+				},
+				{
+					"path": "summarize/index",
+					"style": {}
+				},
+				{
+					"path": "knowledge/detail",
+					"style": {}
+				},
+				{
+					"path": "knowledge/index",
+					"style": {}
+				},
+				{
+					"path": "knowledge/record",
+					"style": {}
+				},
+				{
+					"path": "dictCategory/index",
+					"style": {}
+				}
+			]
+		}
+	],
 	"globalStyle": {
 		"navigationStyle": "custom",
 		"usingComponents": {
