@@ -81,6 +81,7 @@
 </template>
 <script>
 import { getRecordList, delRecord } from "@/api/record.js";
+import { delSummarize } from "@/api/summarize";
 import moment from "moment";
 export default {
   data() {
@@ -92,7 +93,7 @@ export default {
       /* 显示操作弹窗 */
       showPop: false,
       /* 弹窗按钮列表 */
-      popButton: ["编辑总结", "编辑", "删除"],
+      popButton: ["编辑", "删除"],
       /* 弹窗定位样式 */
       popStyle: "",
       /* 选择的记录内容下标 */
@@ -153,11 +154,6 @@ export default {
     pickerMenu(item) {
       console.log(item);
       switch (item) {
-        case "编辑总结":
-          uni.navigateTo({
-            url: `/subpackage/summarize/index?recordId=${this.pickerRecordItem._id}`,
-          });
-          break;
         case "编辑":
           uni.navigateTo({
             url: `/subpackage/record/index?type=update&id=${this.pickerRecordItem._id}`,
@@ -165,7 +161,7 @@ export default {
           break;
         case "删除":
           this.dialogToggle();
-          this.dialogContent = `确定删除名为 '${this.pickerRecordItem.title}' 的记录？`;
+          this.dialogContent = `确定删除名为 '${this.pickerRecordItem.title}' 的记录？删除后不可恢复！`;
           break;
       }
     },
@@ -206,13 +202,16 @@ export default {
     },
     // 确认删除
     dialogConfirm() {
-      delRecord(this.pickerRecordItem._id).then((res) => {
+      let _this = this
+      delRecord(_this.pickerRecordItem._id).then((res) => {
         if (res.result.code === 0) {
-          uni.showToast({
-            title: "删除成功",
-            icon: "none",
+          delSummarize(_this.pickerRecordItem.summarizeId).then((cres) => {
+            uni.showToast({
+              title: "删除成功",
+              icon: "none",
+            });
+            _this.$refs.paging.refresh();
           });
-          this.$refs.paging.refresh();
         }
       });
     },

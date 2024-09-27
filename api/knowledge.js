@@ -23,7 +23,7 @@ export function getKnowledgePointList(data) {
 }
 
 // 查询记录详情
-export function  getKnowledgePoint(id) {
+export function getKnowledgePoint(id) {
   return request.doc(id).get()
 }
 

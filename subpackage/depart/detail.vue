@@ -49,7 +49,7 @@
 </template>
 <script>
 import { getRecord } from "@/api/record";
-import { summarizeRecordInfoById } from "@/api/summarize";
+import { getSummarize } from "@/api/summarize";
 export default {
   data() {
     return {
@@ -63,8 +63,8 @@ export default {
       const recordRes = await getRecord(option.id);
       this.recordData = recordRes.result.data[0];
 
-      // 根据记录ID查询并汇总信息
-      const summarizeRes = await summarizeRecordInfoById(this.recordData._id);
+      // 根据总结ID查询并汇总信息
+      const summarizeRes = await getSummarize(this.recordData.summarizeId);
 
       // 检查查询结果并更新汇总数据
       if (summarizeRes.result.data.length > 0) {

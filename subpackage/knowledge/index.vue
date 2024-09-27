@@ -8,7 +8,7 @@
         </cu-custom>
       </view>
 
-       <!-- <view class="cu-bar bg-red search">
+      <!-- <view class="cu-bar bg-red search">
         <view class="search-form radius">
           <text class="cuIcon-search"></text>
           <input @focus="InputFocus" @blur="InputBlur" :adjust-position="false" type="text" placeholder="搜索图片、文章、视频"
@@ -61,9 +61,9 @@
     <!-- 长按弹窗 -->
     <view class="shade" v-show="showShade" @tap="hidePop">
       <view class="pop" :style="popStyle" :class="{ show: showPop }">
-        <view v-for="item in popButton" :key="item" @tap="pickerMenu(item)">{{
-          item
-        }}</view>
+        <view v-for="item in popButton" :key="item" @tap="pickerMenu(item)">
+          {{ item }}
+        </view>
       </view>
     </view>
 
@@ -92,7 +92,7 @@ export default {
       /* 显示操作弹窗 */
       showPop: false,
       /* 弹窗按钮列表 */
-      popButton: [ "编辑", "删除"],
+      popButton: ["编辑", "删除"],
       /* 弹窗定位样式 */
       popStyle: "",
       /* 选择的记录内容下标 */

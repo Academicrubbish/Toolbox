@@ -15,9 +15,9 @@
 <script>
 import mdEditor from "../../component/md-editor/index.vue";
 import {
-  summarizeRecordInfoById,
   addSummarize,
   updateSummarize,
+  getSummarize
 } from "@/api/summarize";
 import debounce from "lodash/debounce";
 import moment from "moment";
@@ -27,24 +27,29 @@ export default {
   },
   data() {
     return {
+      summarizeId: '',
       status: "add",
       form: {},
       textareaData: "# 标题",
     };
   },
   onLoad(option) {
-    let _this = this;
-    this.recordId = option.recordId;
-    summarizeRecordInfoById(option.recordId).then((res) => {
-      console.log("res", res);
-      if (res.result.data.length > 0) {
-        this.status = "update";
-        this.form = res.result.data[0];
-        this.$nextTick(() => {
-          _this.textareaData = this.form.content;
-        });
-      }
-    });
+    console.log('111', option);
+    this.summarizeId = option.id;
+    // 修改操作
+    if (option.id) {
+      let _this = this;
+      getSummarize(option.id).then(res => {
+        console.log("res", res);
+        if (res.result.data.length > 0) {
+          this.status = "update";
+          this.form = res.result.data[0];
+          this.$nextTick(() => {
+            _this.textareaData = this.form.content;
+          });
+        }
+      })
+    }
   },
   methods: {
     submit: debounce(async function (e) {
@@ -54,19 +59,19 @@ export default {
         mask: true,
       });
       // 将富文本中的图片地址替换为云存储的路径
-      let richText = await _this.handleImg(e.textareaData);
+      let richText = await _this.replaceImageUrlsWithCloudPath(e.textareaData);
 
       if (e.textareaData.trim()) {
-        if (_this.form._id) {
+        if (this.status === "update") {
           // 修改操作，删除云存储中图片，重新添加
-          _this.deleteImg(_this.form.content);
+          _this.deleteImageFromCloudStorage(_this.form.content);
 
           let form = {
-            recordId: _this.form.recordId,
             content: richText,
             createTime: _this.form.createTime,
             updateTime: moment().format("YYYY-MM-DD HH:mm:ss"),
           };
+
           updateSummarize(_this.form._id, form)
             .then((res) => {
               if (res.result.code === 0) {
@@ -74,12 +79,12 @@ export default {
                   title: "修改成功",
                   icon: "none",
                   mask: true,
+                  success: () => {
+                    uni.navigateBack({
+                      delta: 1,
+                    });
+                  }
                 });
-                setTimeout(() => {
-                  uni.navigateBack({
-                    delta: 1,
-                  });
-                }, 1000);
               }
             })
             .catch((err) => {
@@ -88,26 +93,33 @@ export default {
                 icon: "none",
               });
             });
+
         } else {
+
           let form = {
-            recordId: _this.recordId,
             content: richText,
             createTime: moment().format("YYYY-MM-DD HH:mm:ss"),
             updateTime: moment().format("YYYY-MM-DD HH:mm:ss"),
           };
+
           addSummarize(form)
             .then((res) => {
               if (res.result.code === 0) {
+                // 添加成功后，将总结id缓存到store
+                _this.$store.dispatch("cacheSummary", {
+                  id: res.result.id,
+                  status: 'add'
+                });
                 uni.showToast({
                   title: "添加成功",
                   icon: "none",
                   mask: true,
+                  success: () => {
+                    uni.navigateBack({
+                      delta: 1,
+                    });
+                  }
                 });
-                setTimeout(() => {
-                  uni.navigateBack({
-                    delta: 1,
-                  });
-                }, 1000);
               }
             })
             .catch((err) => {
@@ -117,15 +129,18 @@ export default {
               });
             });
         }
+
       } else {
+
         uni.showToast({
           title: "内容不能为空",
           icon: "none",
         });
+
       }
     }, 500),
     // 修改操作删除之前的图片
-    deleteImg(htmlString) {
+    deleteImageFromCloudStorage(htmlString) {
       // 正则表达式匹配所有图片的 src 属性
       const regex = /<img.*?src=["'](.*?)["']/g;
 
@@ -145,8 +160,8 @@ export default {
         });
       }
     },
-    // 图片上传方法
-    async uploadImg(src) {
+    // 将图片上传至云存储，返回云存储图片地址
+    async uploadImageToCloudStorage(src) {
       let res = await uniCloud.uploadFile({
         cloudPath: "cloudstorage/recordImg/" + moment().unix() + ".png", // 上传至云端的路径
         filePath: src, // 小程序临时文件路径
@@ -156,7 +171,7 @@ export default {
       return res.fileID;
     },
     // 处理富文本中的图片地址，将富文本中的图片地址替换为云存储的路径
-    async handleImg(htmlString) {
+    async replaceImageUrlsWithCloudPath(htmlString) {
       // 使用正则表达式匹配所有的img标签
       const imgRegex = /<img[^>]*src="([^"]*)"[^>]*>/g;
 
@@ -171,7 +186,7 @@ export default {
         console.log("111", imgUrl);
 
         // 调用上传图片方法，获取永久地址
-        const permanentUrl = await this.uploadImg(imgUrl);
+        const permanentUrl = await this.uploadImageToCloudStorage(imgUrl);
 
         // 替换临时地址为永久地址
         richText = richText.replace(imgUrl, permanentUrl);

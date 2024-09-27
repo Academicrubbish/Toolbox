@@ -2,7 +2,7 @@
  * @Author: yuanchuang 1226377893@qq.com
  * @Date: 2024-09-03 16:31:36
  * @LastEditors: yuanchuang 1226377893@qq.com
- * @LastEditTime: 2024-09-03 16:39:36
+ * @LastEditTime: 2024-09-23 09:55:54
  * @FilePath: \Toolbox\subpackage\dictCategory\index.vue
  * @Description: 类别管理
  * 
@@ -13,6 +13,8 @@
       <block slot="backText">返回</block>
       <block slot="content">列表</block>
     </cu-custom>
+
+
     <view class="cu-bar bg-white solid-bottom margin-top">
       <view class="action">
         <text class="cuIcon-title text-orange "></text> 宫格列表
@@ -21,12 +23,14 @@
         <button class="cu-btn bg-green shadow" @tap="showModal" data-target="gridModal">设置</button>
       </view>
     </view>
-
-    <view class="cu-list grid" :class="['col-' + gridCol, gridBorder ? '' : 'no-border']">
-      <view class="cu-item" v-for="(item, index) in cuIconList" :key="index" v-if="index < gridCol * 2">
-        <text>{{ item.name }}</text>
+    <view class='cate-item padding-sm flex flex-wrap'>
+      <view class="padding-xs" v-for="(item, index) in ColorList" :key="index">
+        <view class='cu-tag' :class="item.isLight ? 'light bg-' + item.name : 'bg-' + item.name">
+          {{ item.title }}
+        </view>
       </view>
     </view>
+
 
     <view class="cu-modal" :class="modalName == 'gridModal' ? 'show' : ''" @tap="hideModal">
       <view class="cu-dialog" @tap.stop>
@@ -61,6 +65,165 @@
 export default {
   data() {
     return {
+      ColorList: [
+        {
+          title: '嫣红',
+          name: 'red',
+          color: '#e54d42',
+          isLight: false
+        },
+        {
+          title: '桔橙',
+          name: 'orange',
+          color: '#f37b1d',
+          isLight: false
+        },
+        {
+          title: '明黄',
+          name: 'yellow',
+          color: '#fbbd08',
+          isLight: false
+        },
+        {
+          title: '橄榄',
+          name: 'olive',
+          color: '#8dc63f',
+          isLight: false
+        },
+        {
+          title: '森绿',
+          name: 'green',
+          color: '#39b54a',
+          isLight: false
+        },
+        {
+          title: '天青',
+          name: 'cyan',
+          color: '#1cbbb4',
+          isLight: false
+        },
+        {
+          title: '海蓝',
+          name: 'blue',
+          color: '#0081ff',
+          isLight: false
+        },
+        {
+          title: '姹紫',
+          name: 'purple',
+          color: '#6739b6',
+          isLight: false
+        },
+        {
+          title: '木槿',
+          name: 'mauve',
+          color: '#9c26b0',
+          isLight: false
+        },
+        {
+          title: '桃粉',
+          name: 'pink',
+          color: '#e03997',
+          isLight: false
+        },
+        {
+          title: '棕褐',
+          name: 'brown',
+          color: '#a5673f',
+          isLight: false
+        },
+        {
+          title: '玄灰',
+          name: 'grey',
+          color: '#8799a3',
+          isLight: false
+        },
+        {
+          title: '草灰',
+          name: 'gray',
+          color: '#aaaaaa',
+          isLight: false
+        },
+        {
+          title: '墨黑',
+          name: 'black',
+          color: '#333333',
+          isLight: false
+        },
+
+        {
+          title: '嫣红',
+          name: 'red',
+          color: '#e54d42',
+          isLight: true
+        },
+        {
+          title: '桔橙',
+          name: 'orange',
+          color: '#f37b1d',
+          isLight: true
+        },
+        {
+          title: '明黄',
+          name: 'yellow',
+          color: '#fbbd08',
+          isLight: true
+        },
+        {
+          title: '橄榄',
+          name: 'olive',
+          color: '#8dc63f',
+          isLight: true
+        },
+        {
+          title: '森绿',
+          name: 'green',
+          color: '#39b54a',
+          isLight: true
+        },
+        {
+          title: '天青',
+          name: 'cyan',
+          color: '#1cbbb4',
+          isLight: true
+        },
+        {
+          title: '海蓝',
+          name: 'blue',
+          color: '#0081ff',
+          isLight: true
+        },
+        {
+          title: '姹紫',
+          name: 'purple',
+          color: '#6739b6',
+          isLight: true
+        },
+        {
+          title: '木槿',
+          name: 'mauve',
+          color: '#9c26b0',
+          isLight: true
+        },
+        {
+          title: '桃粉',
+          name: 'pink',
+          color: '#e03997',
+          isLight: true
+        },
+        {
+          title: '棕褐',
+          name: 'brown',
+          color: '#a5673f',
+          isLight: true
+        },
+        {
+          title: '玄灰',
+          name: 'grey',
+          color: '#8799a3',
+          isLight: true
+        }
+      ],
       cuIconList: [{
         cuIcon: 'cardboardfill',
         color: 'red',
@@ -173,6 +336,14 @@ export default {
 </script>
 
 <style>
+.cate-item {
+  background: #fff;
+}
+
+.cu-tag {
+  border-radius: 25rpx;
+}
+
 .page {
   height: 100Vh;
   width: 100vw;

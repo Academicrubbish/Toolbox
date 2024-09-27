@@ -6,32 +6,24 @@
     </cu-custom>
     <view class="record_content">
       <uni-section title="记录表单" type="line">
-        <uni-forms
-          ref="valiForm"
-          :modelValue="formData"
-          :rules="rules"
-          :label-width="78"
-        >
+        <uni-forms ref="valiForm" :modelValue="formData" :rules="rules" label-position="top" :label-width="78">
           <uni-forms-item name="title" label="标题" required>
-            <uni-easyinput
-              v-model="formData.title"
-              :maxlength="20"
-              placeholder="请填写知识点标题"
-            />
+            <uni-easyinput v-model="formData.title" :maxlength="20" placeholder="请填写知识点名称" />
           </uni-forms-item>
 
-          <uni-forms-item name="description" label="知识点描述" required>
-            <uni-easyinput
-              type="textarea"
-              v-model="formData.description"
-              placeholder="请输入简介"
-            />
+          <uni-forms-item name="description" label="简介" required>
+            <uni-easyinput type="textarea" v-model="formData.description" placeholder="请填写知识点简介" />
           </uni-forms-item>
 
-          <uni-forms-item name="content" label="知识点内容" required>
-            
+          <uni-forms-item name="content" label="内容" required>
+
             <!-- 富文本组件 -->
 
+          </uni-forms-item>
+
+          <uni-forms-item name="description" label="所属分类" required>
+            <easy-select ref="easySelect" size="small" :value="recordTypeLabel" @selectOne="selectRecordType"
+              :options="recordTypeOptions" />
           </uni-forms-item>
         </uni-forms>
       </uni-section>
@@ -42,7 +34,11 @@
 
 <script>
 import easySelect from "@/component/easy-select/easy-select.vue";
-import { addRecord, getRecord, updateRecord } from "@/api/record";
+import {
+  getKnowledgePoint,
+  addKnowledgePoint,
+  updateKnowledgePoint
+} from "@/api/knowledge";
 import debounce from "lodash/debounce";
 import moment from "moment";
 export default {
@@ -239,14 +235,17 @@ export default {
   display: flex !important;
   align-items: center !important;
 }
+
 .record {
   height: 100vh;
   overflow: auto;
   background-color: #fff;
 }
+
 ::v-deep .uni-section-header {
   padding: 12px 0 !important;
 }
+
 .record_content {
   padding: 0 20rpx;
 }
