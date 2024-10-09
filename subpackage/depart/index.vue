@@ -1,3 +1,13 @@
+<!--
+ * @Author: yuanchuang 1226377893@qq.com
+ * @Date: 2024-08-19 09:34:16
+ * @LastEditors: yuanchuang 1226377893@qq.com
+ * @LastEditTime: 2024-10-09 15:59:11
+ * @FilePath: \Toolbox\subpackage\depart\index.vue
+ * @Description: 学习/工作 记录
+ * 
+-->
+
 <template>
   <view class="depart">
     <z-paging ref="paging" v-model="recordList" @query="queryList">
@@ -143,7 +153,7 @@ export default {
     },
     addRecord() {
       uni.navigateTo({
-        url: "/subpackage/record/index?type=add",
+        url: "/subpackage/depart/form?type=add",
       });
     },
     goDetail(row) {
@@ -156,7 +166,7 @@ export default {
       switch (item) {
         case "编辑":
           uni.navigateTo({
-            url: `/subpackage/record/index?type=update&id=${this.pickerRecordItem._id}`,
+            url: `/subpackage/depart/form?type=update&id=${this.pickerRecordItem._id}`,
           });
           break;
         case "删除":

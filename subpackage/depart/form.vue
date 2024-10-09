@@ -2,17 +2,16 @@
  * @Author: yuanchuang 1226377893@qq.com
  * @Date: 2024-08-01 17:31:22
  * @LastEditors: yuanchuang 1226377893@qq.com
- * @LastEditTime: 2024-09-27 13:32:45
- * @FilePath: \Toolbox\subpackage\record\index.vue
- * @Description: record
+ * @LastEditTime: 2024-10-09 16:24:11
+ * @FilePath: \Toolbox\subpackage\depart\form.vue
+ * @Description: 记录模块表单页面
  * 
- * Copyright (c) 2024 by 坤智数联科技(宁波), All Rights Reserved. 
 -->
 <template>
   <view class="record">
     <cu-custom bgColor="bg-gradual-blue" :isBack="true">
       <block slot="backText">返回</block>
-      <block slot="content">表单</block>
+      <block slot="content">记录{{ type === 'add' ? '新增' : '修改' }}</block>
     </cu-custom>
     <view class="record_content">
       <uni-section title="记录表单" type="line">

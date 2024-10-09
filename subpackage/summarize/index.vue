@@ -1,10 +1,20 @@
+<!--
+ * @Author: yuanchuang 1226377893@qq.com
+ * @Date: 2024-08-26 09:21:50
+ * @LastEditors: yuanchuang 1226377893@qq.com
+ * @LastEditTime: 2024-10-09 15:51:49
+ * @FilePath: \Toolbox\subpackage\summarize\index.vue
+ * @Description: md富文本编辑页
+ * 
+-->
+
 <template>
   <view class="summarize">
     <cu-custom bgColor="bg-gradual-blue" :isBack="true">
       <block slot="backText">返回</block>
-      <block slot="content">{{
-        status == "add" ? "新增总结" : "修改总结"
-      }}</block>
+      <block slot="content">
+        {{ status == "add" ? "新增总结" : "修改总结" }}
+      </block>
     </cu-custom>
     <view :style="contentHeight">
       <md-editor :textareaDataProp="textareaData" @submit="submit" />

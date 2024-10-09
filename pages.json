@@ -1,9 +1,5 @@
 {
 	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
-		// {
-		// 	"path": "pages/open/test",
-		// 	"style": {}
-		// },
 		{
 			"path": "pages/open/index",
 			"style": {}
@@ -18,7 +14,7 @@
 			"root": "subpackage",
 			"pages": [
 				{
-					"path": "record/index",
+					"path": "summarize/index",
 					"style": {}
 				},
 				{
@@ -26,11 +22,11 @@
 					"style": {}
 				},
 				{
-					"path": "depart/detail",
+					"path": "depart/form",
 					"style": {}
 				},
 				{
-					"path": "summarize/index",
+					"path": "depart/detail",
 					"style": {}
 				},
 				{
@@ -42,7 +38,7 @@
 					"style": {}
 				},
 				{
-					"path": "knowledge/record",
+					"path": "knowledge/form",
 					"style": {}
 				},
 				{

@@ -1,10 +1,20 @@
+<!--
+ * @Author: yuanchuang 1226377893@qq.com
+ * @Date: 2024-08-19 09:34:16
+ * @LastEditors: yuanchuang 1226377893@qq.com
+ * @LastEditTime: 2024-10-09 17:23:44
+ * @FilePath: \Toolbox\subpackage\knowledge\index.vue
+ * @Description: 知识点
+ * 
+-->
+
 <template>
   <view class="depart">
     <z-paging ref="paging" v-model="KnowledgePointList" @query="queryList">
       <view slot="top">
         <cu-custom bgColor="bg-gradual-blue" :isBack="true">
           <block slot="backText">返回</block>
-          <block slot="content">在路上</block>
+          <block slot="content">知识点列表</block>
         </cu-custom>
       </view>
 
@@ -21,37 +31,23 @@
       </view> -->
 
       <!-- 记录列表 -->
-      <view v-for="item in KnowledgePointList" :key="item.date" class="padding-lr-sm">
+      <view v-for="item in KnowledgePointList" :key="item._id" class="padding-lr-sm">
         <view class="cu-bar bg-white solid-bottom margin-top">
           <view class="action">
-            <text class="text-gray text-sm">{{ item.date }}</text>
-          </view>
-          <view class="action">
-            <text class="text-gray text-sm">用时：{{
-              (
-                item.children.reduce((acc, task) => acc + task.timeSpent, 0) /
-                60
-              ).toFixed(2)
-            }}h</text>
+            <text class="text-gray text-sm">{{ item.categories }}</text>
           </view>
         </view>
         <view class="cu-list menu sm-border">
-          <view class="cu-item" v-for="citem in item.children" :key="citem._id" @longpress="onLongPress($event, citem)"
-            @tap="goDetail(citem)">
+          <view class="cu-item" @longpress="onLongPress($event, item)" @tap="goDetail(item)">
             <view class="content padding-tb-sm">
               <view>
                 <text class="cuIcon-creativefill text-orange margin-right-xs" />
-                {{ citem.title }}
+                {{ item.title }}
               </view>
               <view class="text-sm">
                 <text class="cuIcon-activityfill text-blue margin-right-xs" />
-                <text>{{ citem.summary }}</text>
+                <text>{{ item.description }}</text>
               </view>
-            </view>
-            <view class="action">
-              <text class="text-grey text-sm">{{
-                citem.completionPeriod[1].split(" ")[1]
-              }}</text>
             </view>
           </view>
         </view>
@@ -81,7 +77,7 @@
 </template>
 <script>
 import { getKnowledgePointList, delKnowledgePoint } from "@/api/knowledge.js";
-import moment from "moment";
+import { delSummarize } from "@/api/summarize";
 export default {
   data() {
     return {
@@ -111,30 +107,8 @@ export default {
       })
         .then((res) => {
           let list = res.result.data;
-          let groupedKnowledgePoints = [];
-          list.forEach((element) => {
-            let groupDate = moment(element.completionPeriod[0]).format(
-              "YYYY-MM-DD"
-            );
-
-            // 查找是否已存在该日期分组
-            let existingGroup = groupedKnowledgePoints.find(
-              (group) => group.date === groupDate
-            );
-
-            if (existingGroup) {
-              // 如果已存在该日期分组，则将当前元素添加到该分组的children中
-              existingGroup.children.push(element);
-            } else {
-              // 如果不存在该日期分组，则创建新的分组对象并添加到groupedKnowledgePoints中
-              groupedKnowledgePoints.push({
-                date: groupDate,
-                children: [element],
-              });
-            }
-          });
           // 调用 z-paing 组件的 complete 方法，将数据传入组件，并完成分页显示
-          this.$refs.paging.complete(groupedKnowledgePoints);
+          this.$refs.paging.complete(list);
         })
         .catch((err) => {
           this.$refs.paging.complete(false);
@@ -142,7 +116,7 @@ export default {
     },
     addKnowledgePoint() {
       uni.navigateTo({
-        url: "/subpackage/knowledge/record?type=add",
+        url: "/subpackage/knowledge/form?type=add",
       });
     },
     goDetail(row) {
@@ -155,7 +129,7 @@ export default {
       switch (item) {
         case "编辑":
           uni.navigateTo({
-            url: `/subpackage/knowledge/record?type=update&id=${this.pickerKnowledgePointItem._id}`,
+            url: `/subpackage/knowledge/form?type=update&id=${this.pickerKnowledgePointItem._id}`,
           });
           break;
         case "删除":
@@ -203,11 +177,13 @@ export default {
     dialogConfirm() {
       delKnowledgePoint(this.pickerKnowledgePointItem._id).then((res) => {
         if (res.result.code === 0) {
-          uni.showToast({
-            title: "删除成功",
-            icon: "none",
+          delSummarize(this.pickerKnowledgePointItem.content).then((cres) => {
+            uni.showToast({
+              title: "删除成功",
+              icon: "none",
+            });
+            _this.$refs.paging.refresh();
           });
-          this.$refs.paging.refresh();
         }
       });
     },

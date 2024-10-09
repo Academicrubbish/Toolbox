@@ -34,7 +34,7 @@ export function addKnowledgePoint(data) {
 
 
 // 更新记录
-export function updateKnowledgePoint(id,data) {
+export function updateKnowledgePoint(id, data) {
   return request.doc(id).update(data)
 }
 
