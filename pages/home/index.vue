@@ -21,7 +21,7 @@
       <view class="cu-item arrow"  @tap="goDictCategory">
         <view class="content">
           <text class="cuIcon-tagfill text-red margin-right-xs"></text>
-          <text class="text-grey">分类管理</text>
+          <text class="text-grey">标签管理</text>
         </view>
         <view class="action">
           <view class="cu-tag round bg-orange light">音乐</view>

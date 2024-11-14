@@ -32,11 +32,44 @@
           </uni-forms-item>
 
           <uni-forms-item name="categories" label="标签" required>
-            <uni-easyinput type="textarea" v-model="formData.categories" placeholder="请输入标签" />
+            <view class="categories-box" @tap="showModal" data-target="bottomModal">
+              <view class='cate-item flex flex-wrap'>
+                <view class="padding-xs" v-for="(item, index) in formData.categories" :key="index">
+                  <view class='cu-tag bg-blue'>
+                    {{ dictList.find(obj => obj._id === item).name }}
+                  </view>
+                </view>
+              </view>
+            </view>
+            <!-- <uni-easyinput type="textarea" v-model="formData.categories" placeholder="请输入标签" /> -->
           </uni-forms-item>
         </uni-forms>
       </uni-section>
       <button type="primary" @click="submit('valiForm')">提交</button>
+    </view>
+
+    <view class="cu-modal bottom-modal" :class="modalName == 'bottomModal' ? 'show' : ''">
+      <view class="cu-dialog">
+        <view class="cu-bar bg-white">
+          <view class="content">选择标签</view>
+          <view class="action text-blue" @tap="hideModal">取消</view>
+        </view>
+        <view class="padding-sm" style="height: 70vh;">
+          <view class='cate-item padding-sm flex flex-wrap'>
+            <view class="padding-xs" v-for="(item, index) in dictList" :key="index">
+              <view :class="formData.categories.indexOf(item._id) !== -1 ? 'bg-blue' : ''" class='cu-tag'
+                @tap="handleDictItem(item)">
+                {{ item.name }}
+              </view>
+            </view>
+            <view class="padding-xs">
+              <view class="cu-tag" @tap="showModal" data-target="Modal">
+                添加
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
     </view>
   </view>
 </template>
@@ -44,6 +77,7 @@
 <script>
 import easySelect from "@/component/easy-select/easy-select.vue";
 import { addKnowledgePoint, getKnowledgePoint, updateKnowledgePoint } from "@/api/knowledge";
+import { getDictList } from "@/api/dict.js";
 import debounce from "lodash/debounce";
 import moment from "moment";
 export default {
@@ -68,7 +102,7 @@ export default {
         title: null,
         description: null,
         content: '',
-        categories: null,
+        categories: [],
       },
       // 校验规则
       rules: {
@@ -97,10 +131,15 @@ export default {
           ],
         },
       },
+      dictList: [],
+      modalName: ''
     };
   },
   onLoad(option) {
     console.log(option);
+    getDictList().then(res => {
+      this.dictList = res.result.data
+    })
     if (option.type === "update") {
       this.type = "update";
       getKnowledgePoint(option.id).then(res => {
@@ -132,11 +171,11 @@ export default {
             title: res.title,
             description: res.description,
             content: res.content,
-            categories: [0,1],
+            categories: res.categories,
             createTime: moment().format("YYYY-MM-DD HH:mm:ss"),
             updateTime: moment().format("YYYY-MM-DD HH:mm:ss"),
             createBy: this.$store.state.user.openid,
-            
+
           };
 
           if (this.type === "add") {
@@ -178,6 +217,26 @@ export default {
           console.log("表单错误信息：", err);
         });
     }, 500),
+    handleDictItem(item) {
+      console.log('item', item);
+
+      // 查找 id 是否存在于数组中
+      const index = this.formData.categories.indexOf(item._id);
+
+      if (index === -1) {
+        // 如果 id 不存在，则添加到数组
+        this.formData.categories.push(item._id);
+      } else {
+        // 如果 id 已存在，则从数组中删除
+        this.formData.categories.splice(index, 1);
+      }
+    },
+    showModal(e) {
+      this.modalName = e.currentTarget.dataset.target
+    },
+    hideModal(e) {
+      this.modalName = null
+    },
   },
 };
 </script>
@@ -200,5 +259,20 @@ export default {
 
 .record_content {
   padding: 0 20rpx;
+}
+
+.categories-box {
+  display: flex;
+  box-sizing: content-box;
+  flex-direction: row;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  padding: 6px 6px 6px 10px;
+  height: 80px;
+  width: 100%;
+}
+
+.cu-tag {
+  border-radius: 25rpx;
 }
 </style>
