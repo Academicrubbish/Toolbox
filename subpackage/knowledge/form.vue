@@ -62,11 +62,6 @@
                 {{ item.name }}
               </view>
             </view>
-            <view class="padding-xs">
-              <view class="cu-tag" @tap="showModal" data-target="Modal">
-                添加
-              </view>
-            </view>
           </view>
         </view>
       </view>
