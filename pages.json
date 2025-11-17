@@ -44,6 +44,10 @@
 				{
 					"path": "dictCategory/index",
 					"style": {}
+				},
+				{
+					"path": "dictCategory/form",
+					"style": {}
 				}
 			]
 		}

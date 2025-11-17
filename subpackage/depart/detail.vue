@@ -1,114 +1,382 @@
+<!--
+ * @Author: yuanchuang 1226377893@qq.com
+ * @Date: 2024-08-19 09:34:16
+ * @LastEditors: yuanchuang 1226377893@qq.com
+ * @LastEditTime: 2025-11-17 23:14:56
+ * @FilePath: \Toolbox\subpackage\depart\detail.vue
+ * @Description: 记录详情页面（简化版）
+ * 
+-->
 <template>
-  <view style="height: 100vh; background-color: #fff">
+  <view class="detail-container">
     <cu-custom bgColor="bg-gradual-blue" :isBack="true">
       <block slot="backText">返回</block>
       <block slot="content">记录详情</block>
     </cu-custom>
-    <uni-section :title="recordData.title" type="line">
-      <template v-slot:right>
-        <view
-          v-if="recordData.recordType === 1"
-          class="cu-tag round bg-orange light"
-          >工作</view
-        >
-        <view
-          v-if="recordData.recordType === 0"
-          class="cu-tag round bg-olive light"
-          >学习</view
-        >
-        <view
-          v-if="recordData.recordType === 2"
-          class="cu-tag round bg-blue light"
-          >其他</view
-        >
-      </template>
-      <view class="record-info">
-        <view class="item">
-          <text class="cuIcon-timefill text-olive">时间：</text>
-          <text class="text-grey"
-            >{{
-              recordData.completionPeriod[0] +
-              " ~ " +
-              recordData.completionPeriod[1]
-            }}
-          </text>
-        </view>
-        <view class="item">
-          <text class="cuIcon-commentfill text-green">简介：</text>
-          <text class="text-grey">{{ recordData.summary }}</text>
-        </view>
-        <view class="item">
-          <text class="cuIcon-countdownfill text-cyan">耗时：</text>
-          <text class="text-grey">{{ recordData.timeSpent }}min</text>
+
+    <view class="detail-wrapper">
+      <!-- 记录信息卡片 -->
+      <view class="detail-card shadow-warp" v-if="recordData">
+        <view class="detail-header">
+          <view class="detail-icon">
+            <text class="cuIcon-creativefill text-blue"></text>
+          </view>
+          <view class="detail-title-wrapper">
+            <text class="detail-title text-lg text-bold">{{ recordData.title }}</text>
+            <view class="detail-meta">
+              <text class="cuIcon-timefill text-gray text-xs margin-right-xs"></text>
+              <text class="text-gray text-xs">{{ formatTime(recordData.createTime) }}</text>
+            </view>
+          </view>
         </view>
 
-        <towxml :nodes="towxmlData" />
+        <!-- 标签区域 -->
+        <view v-if="recordData.tags && recordData.tags.length > 0" class="detail-tags">
+          <view 
+            v-for="(tagId, index) in recordData.tags" 
+            :key="tagId"
+            class="detail-tag"
+            :class="getTagColorClass(index)"
+          >
+            <text>{{ getTagName(tagId) }}</text>
+          </view>
+        </view>
       </view>
-    </uni-section>
+
+      <!-- 总结内容卡片 -->
+      <view class="summary-card shadow-warp">
+        <view class="summary-header">
+          <view class="summary-icon">
+            <text class="cuIcon-commentfill text-blue"></text>
+          </view>
+          <view class="summary-title">
+            <text class="text-lg text-bold">总结内容</text>
+          </view>
+        </view>
+        <view class="summary-content">
+          <view v-if="towxmlData" class="towxml-wrapper">
+            <towxml :nodes="towxmlData" />
+          </view>
+          <view v-else class="summary-empty">
+            <text class="text-gray text-sm">暂无总结内容</text>
+          </view>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
+
 <script>
 import { getRecord } from "@/api/record";
 import { getSummarize } from "@/api/summarize";
+import { getDictCategoryList } from "@/api/dictCategory.js";
+import moment from "moment";
+
 export default {
   data() {
     return {
       recordData: null,
       towxmlData: "",
+      tagMap: {}, // 标签ID到标签信息的映射
     };
   },
-  async onLoad(option) {
-    try {
-      // 获取记录数据
-      const recordRes = await getRecord(option.id);
-      this.recordData = recordRes.result.data[0];
-
-      // 根据总结ID查询并汇总信息
-      const summarizeRes = await getSummarize(this.recordData.summarizeId);
-
-      // 检查查询结果并更新汇总数据
-      if (summarizeRes.result.data.length > 0) {
-        let summarizeData = summarizeRes.result.data[0];
-        this.towxmlData = this.towxml(summarizeData.content, "markdown", {
-          // theme: "dark",
-          events: {
-            tap: (e) => {
-              console.log("tap", e);
-            },
-          },
+  onLoad(option) {
+    this.loadTagList();
+    this.loadRecordDetail(option.id);
+  },
+  methods: {
+    // 加载标签列表
+    loadTagList() {
+      getDictCategoryList()
+        .then((res) => {
+          if (res && res.result && res.result.data) {
+            const tags = Array.isArray(res.result.data) ? res.result.data : [];
+            // 构建标签映射
+            this.tagMap = {};
+            tags.forEach(tag => {
+              this.tagMap[tag._id] = tag;
+            });
+          }
+        })
+        .catch((err) => {
+          console.error("加载标签列表失败：", err);
         });
-      } else {
-        // 表示没有找到汇总数据
-        this.towxmlData = this.towxml("", "markdown");
+    },
+    // 获取标签名称
+    getTagName(tagId) {
+      return this.tagMap[tagId] ? this.tagMap[tagId].name : '未知标签';
+    },
+    // 获取标签颜色类
+    getTagColorClass(index) {
+      const colors = [
+        "bg-red light",
+        "bg-orange light",
+        "bg-yellow light",
+        "bg-olive light",
+        "bg-green light",
+        "bg-cyan light",
+        "bg-blue light",
+        "bg-purple light",
+        "bg-mauve light",
+        "bg-pink light",
+        "bg-brown light",
+        "bg-grey light",
+      ];
+      const idx = typeof index === 'number' && !isNaN(index) ? index : 0;
+      return colors[Math.abs(idx) % colors.length] || colors[0];
+    },
+    // 格式化时间
+    formatTime(timeStr) {
+      if (!timeStr) return '';
+      return moment(timeStr).format('YYYY-MM-DD HH:mm');
+    },
+    // 加载记录详情
+    async loadRecordDetail(id) {
+      try {
+        // 获取记录数据
+        const recordRes = await getRecord(id);
+        if (recordRes.result && recordRes.result.data && recordRes.result.data.length > 0) {
+          this.recordData = recordRes.result.data[0];
+
+          // 根据总结ID查询并汇总信息
+          if (this.recordData.summarizeId) {
+            const summarizeRes = await getSummarize(this.recordData.summarizeId);
+
+            // 检查查询结果并更新汇总数据
+            if (summarizeRes.result && summarizeRes.result.data && summarizeRes.result.data.length > 0) {
+              let summarizeData = summarizeRes.result.data[0];
+              this.towxmlData = this.towxml(summarizeData.content, "markdown", {
+                events: {
+                  tap: (e) => {
+                    console.log("tap", e);
+                  },
+                },
+              });
+            } else {
+              // 表示没有找到汇总数据
+              this.towxmlData = this.towxml("", "markdown");
+            }
+          } else {
+            // 没有总结ID
+            this.towxmlData = "";
+          }
+        } else {
+          uni.showToast({
+            title: "记录不存在",
+            icon: "none",
+          });
+          setTimeout(() => {
+            uni.navigateBack();
+          }, 1500);
+        }
+      } catch (error) {
+        console.error("Error in loadRecordDetail:", error);
+        uni.showToast({
+          title: "加载失败，请稍后重试",
+          icon: "none",
+        });
+        setTimeout(() => {
+          uni.navigateBack();
+        }, 1500);
       }
-    } catch (error) {
-      console.error("Error in onLoad:", error);
-      // 处理错误，可以根据实际情况进行适当的处理，例如提示用户或者进行其他操作
-      uni.showToast({
-        title: "出现问题啦，请稍后重试",
-        icon: "none",
-      });
-    }
+    },
   },
 };
 </script>
 
-<style>
-.uni-section-header__decoration {
-  height: 18px !important;
+<style lang="scss" scoped>
+.detail-container {
+  min-height: 100vh;
+  background: linear-gradient(to bottom, #f5f7fa 0%, #f1f1f1 100%);
+  padding-bottom: 40rpx;
 }
 
-.uni-section-header__content {
-  font-size: 16px !important;
-  font-weight: bold !important;
+.detail-wrapper {
+  padding: 30rpx;
 }
 
-.record-info {
-  padding: 0 20rpx;
-  font-size: 28rpx;
+/* 详情卡片 */
+.detail-card {
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 30rpx;
 }
 
-.record-info .item {
-  line-height: 50rpx;
+/* 详情头部 */
+.detail-header {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 24rpx;
+  
+  .detail-icon {
+    width: 80rpx;
+    height: 80rpx;
+    border-radius: 16rpx;
+    background: linear-gradient(135deg, rgba(0, 129, 255, 0.1) 0%, rgba(28, 187, 180, 0.1) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 24rpx;
+    flex-shrink: 0;
+    
+    .cuIcon-creativefill {
+      font-size: 40rpx;
+    }
+  }
+  
+  .detail-title-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    
+    .detail-title {
+      margin-bottom: 12rpx;
+      color: #333;
+      word-break: break-all;
+    }
+    
+    .detail-meta {
+      display: flex;
+      align-items: center;
+      opacity: 0.7;
+    }
+  }
+}
+
+/* 标签区域 */
+.detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid rgba(0, 0, 0, 0.05);
+  
+  .detail-tag {
+    display: inline-block;
+    padding: 8rpx 16rpx;
+    border-radius: 20rpx;
+    font-size: 24rpx;
+    font-weight: 500;
+    box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.08);
+  }
+}
+
+/* 总结卡片 */
+.summary-card {
+  background: #ffffff;
+  border-radius: 24rpx;
+  overflow: hidden;
+}
+
+/* 总结头部 */
+.summary-header {
+  display: flex;
+  align-items: center;
+  padding: 32rpx 32rpx 24rpx;
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+  
+  .summary-icon {
+    width: 48rpx;
+    height: 48rpx;
+    border-radius: 12rpx;
+    background: linear-gradient(135deg, rgba(0, 129, 255, 0.1) 0%, rgba(28, 187, 180, 0.1) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16rpx;
+    
+    .cuIcon-commentfill {
+      font-size: 28rpx;
+    }
+  }
+  
+  .summary-title {
+    flex: 1;
+  }
+}
+
+/* 总结内容 */
+.summary-content {
+  padding: 32rpx;
+  min-height: 200rpx;
+  
+  .towxml-wrapper {
+    font-size: 28rpx;
+    line-height: 1.8;
+    color: #333;
+    
+    // 优化 towxml 渲染样式
+    ::v-deep img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8rpx;
+    }
+    
+    ::v-deep pre {
+      background: #f5f5f5;
+      padding: 20rpx;
+      border-radius: 8rpx;
+      overflow-x: auto;
+    }
+    
+    ::v-deep code {
+      background: #f5f5f5;
+      padding: 4rpx 8rpx;
+      border-radius: 4rpx;
+      font-size: 24rpx;
+    }
+    
+    ::v-deep p {
+      margin-bottom: 16rpx;
+    }
+    
+    ::v-deep h1,
+    ::v-deep h2,
+    ::v-deep h3,
+    ::v-deep h4,
+    ::v-deep h5,
+    ::v-deep h6 {
+      margin-top: 32rpx;
+      margin-bottom: 16rpx;
+      font-weight: bold;
+    }
+  }
+  
+  .summary-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 80rpx 0;
+    text-align: center;
+  }
+}
+
+/* 响应式优化 */
+@media screen and (max-width: 750rpx) {
+  .detail-wrapper {
+    padding: 20rpx;
+  }
+  
+  .detail-card,
+  .summary-card {
+    border-radius: 20rpx;
+  }
+  
+  .detail-header {
+    .detail-icon {
+      width: 64rpx;
+      height: 64rpx;
+      margin-right: 20rpx;
+      
+      .cuIcon-creativefill {
+        font-size: 32rpx;
+      }
+    }
+  }
+  
+  .summary-content {
+    padding: 24rpx;
+  }
 }
 </style>

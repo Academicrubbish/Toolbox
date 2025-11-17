@@ -2,157 +2,142 @@
  * @Author: yuanchuang 1226377893@qq.com
  * @Date: 2024-08-01 17:31:22
  * @LastEditors: yuanchuang 1226377893@qq.com
- * @LastEditTime: 2024-10-09 16:24:11
+ * @LastEditTime: 2025-11-17 22:38:08
  * @FilePath: \Toolbox\subpackage\depart\form.vue
- * @Description: 记录模块表单页面
+ * @Description: 记录模块表单页面（简化版）
  * 
 -->
 <template>
-  <view class="record">
+  <view class="form-container">
     <cu-custom bgColor="bg-gradual-blue" :isBack="true">
       <block slot="backText">返回</block>
       <block slot="content">记录{{ type === 'add' ? '新增' : '修改' }}</block>
     </cu-custom>
-    <view class="record_content">
-      <uni-section title="记录表单" type="line">
-        <uni-forms ref="valiForm" :modelValue="formData" :rules="rules" :label-width="78">
-          <uni-forms-item name="recordType" label="记录类型" required>
-            <easy-select ref="easySelect" size="small" :value="recordTypeLabel" @selectOne="selectRecordType"
-              :options="recordTypeOptions" />
-          </uni-forms-item>
-          <uni-forms-item name="title" label="标题" required>
-            <uni-easyinput v-model="formData.title" :maxlength="20" placeholder="请填写事件标题" />
-          </uni-forms-item>
 
-          <uni-forms-item name="summary" label="事件简介" required>
-            <uni-easyinput type="textarea" v-model="formData.summary" placeholder="请输入简介" />
-          </uni-forms-item>
+    <view class="form-wrapper">
+      <!-- 表单卡片 -->
+      <view class="form-card shadow-warp">
+        <view class="form-header">
+          <view class="form-icon">
+            <text class="cuIcon-creativefill text-blue"></text>
+          </view>
+          <view class="form-title">
+            <text class="text-lg text-bold">记录信息</text>
+            <text class="text-sm text-gray margin-top-xs">填写记录的基本信息</text>
+          </view>
+        </view>
 
-          <uni-forms-item name="summarizeId" label="总结" required>
-            <view style="width: 100%;line-height:18px;" @click="goSummarize()">
-              <text>{{ formData.summarizeId ? '查看总结' : '添加富文本总结' }}</text>
-              <text style="float: right;" class="cuIcon-right text-grey"></text>
+        <view class="form-body">
+          <uni-forms ref="valiForm" :modelValue="formData" :rules="rules" :label-width="0">
+            <!-- 标题 -->
+            <view class="form-item">
+              <view class="form-item-label">
+                <text class="text-bold">标题</text>
+                <text class="text-red margin-left-xs">*</text>
+              </view>
+              <view class="form-item-content">
+                <uni-easyinput v-model="formData.title" :maxlength="50" placeholder="请输入记录标题" :inputBorder="true"
+                  :styles="inputStyles" />
+                <view class="char-count">
+                  <text class="text-xs text-gray">{{ (formData.title || '').length }}/50</text>
+                </view>
+              </view>
             </view>
-          </uni-forms-item>
 
-          <uni-forms-item name="completionType" label="完成方式" required>
-            <uni-data-checkbox v-model="formData.completionType" :localdata="completionTypeOptions" />
-          </uni-forms-item>
+            <!-- 标签选择 -->
+            <view class="form-item">
+              <view class="form-item-label">
+                <text class="text-bold">标签</text>
+                <text class="text-gray text-xs margin-left-xs">（可选，可多选）</text>
+              </view>
+              <view class="form-item-content">
+                <view v-if="tagList.length === 0" class="tag-empty-tip">
+                  <text class="text-gray text-sm">暂无标签，</text>
+                  <text class="text-blue text-sm" @tap="goToTagManage">去创建标签</text>
+                </view>
+                <view v-else class="tag-select-wrapper">
+                  <view v-for="tag in tagList" :key="tag._id" class="tag-option"
+                    :class="isTagSelected(tag._id) ? 'tag-selected' : ''" @tap="toggleTag(tag._id)">
+                    <view class="tag-option-badge" :class="getTagColorClass(tagList.indexOf(tag))">
+                      <text class="tag-option-name">{{ tag.name }}</text>
+                    </view>
+                    <view v-if="isTagSelected(tag._id)" class="tag-check-icon">
+                      <text class="cuIcon-check text-white"></text>
+                    </view>
+                  </view>
+                </view>
+              </view>
+            </view>
 
-          <uni-forms-item name="completionPeriodStart" label="开始时间" required>
-            <uni-datetime-picker type="datetime" v-model="formData.completionPeriodStart" />
-          </uni-forms-item>
+            <!-- 富文本总结 -->
+            <view class="form-item">
+              <view class="form-item-label">
+                <text class="text-bold">总结</text>
+                <text class="text-red margin-left-xs">*</text>
+              </view>
+              <view class="form-item-content">
+                <view class="rich-text-entry" @tap="goSummarize">
+                  <view class="rich-text-content">
+                    <text v-if="formData.summarizeId" class="text-gray">查看/编辑总结内容</text>
+                    <text v-else class="text-gray">点击添加富文本总结</text>
+                  </view>
+                  <view class="rich-text-icon">
+                    <text class="cuIcon-right text-gray"></text>
+                  </view>
+                </view>
+              </view>
+            </view>
+          </uni-forms>
+        </view>
+      </view>
 
-          <uni-forms-item name="completionPeriodEnd" label="结束时间" required>
-            <uni-datetime-picker type="datetime" v-model="formData.completionPeriodEnd" />
-          </uni-forms-item>
-
-          <uni-forms-item name="timeSpent" label="耗时(min)" required>
-            <uni-easyinput v-model="formData.timeSpent" :maxlength="20" placeholder="耗时" />
-          </uni-forms-item>
-        </uni-forms>
-      </uni-section>
-      <button type="primary" @click="submit('valiForm')">提交</button>
+      <!-- 提交按钮 -->
+      <view class="form-footer">
+        <button class="submit-btn bg-gradual-blue shadow-lg" @click="submit('valiForm')">
+          <text class="cuIcon-check text-white margin-right-xs"></text>
+          <text class="text-white text-bold">提交</text>
+        </button>
+      </view>
     </view>
   </view>
 </template>
 
 <script>
-import easySelect from "@/component/easy-select/easy-select.vue";
 import { addRecord, getRecord, updateRecord } from "@/api/record";
+import { getDictCategoryList } from "@/api/dictCategory";
 import debounce from "lodash/debounce";
 import moment from "moment";
+
 export default {
-  components: {
-    "easy-select": easySelect,
-  },
   data() {
     return {
       type: "add",
-      recordType: 0, //默认为小学-高中
-      recordTypeLabel: "学习", //默认为学习
-      recordTypeOptions: [
-        { label: "学习", value: 0 },
-        { label: "工作", value: 1 },
-        { label: "其他", value: 2 },
-      ],
-      // 单选数据源
-      completionTypeOptions: [
-        {
-          text: "碎片完成",
-          value: 0,
-        },
-        {
-          text: "整段完成",
-          value: 1,
-        },
-      ],
+      recordId: null,
+      tagList: [],
       formData: {
-        recordType: 0,
         title: null,
-        summary: null,
+        tags: [],
         summarizeId: '',
-        completionType: null,
-        completionPeriod: null,
-        completionPeriodStart: null,
-        completionPeriodEnd: null,
-        timeSpent: null,
+      },
+      // 输入框样式配置
+      inputStyles: {
+        borderColor: '#e5e5e5',
+        backgroundColor: '#ffffff',
+        color: '#333333',
+        disableColor: '#f5f5f5'
       },
       // 校验规则
       rules: {
-        recordType: {
-          rules: [
-            {
-              required: true,
-              errorMessage: "不能为空",
-            },
-          ],
-        },
         title: {
           rules: [
             {
               required: true,
-              errorMessage: "不能为空",
+              errorMessage: "标题不能为空",
             },
-          ],
-        },
-        summary: {
-          rules: [
             {
-              required: true,
-              errorMessage: "不能为空",
-            },
-          ],
-        },
-        completionType: {
-          rules: [
-            {
-              required: true,
-              errorMessage: "不能为空",
-            },
-          ],
-        },
-        completionPeriodStart: {
-          rules: [
-            {
-              required: true,
-              errorMessage: "不能为空",
-            },
-          ],
-        },
-        completionPeriodEnd: {
-          rules: [
-            {
-              required: true,
-              errorMessage: "不能为空",
-            },
-          ],
-        },
-        timeSpent: {
-          rules: [
-            {
-              required: true,
-              errorMessage: "不能为空",
+              minLength: 1,
+              maxLength: 50,
+              errorMessage: "标题长度为1-50个字符",
             },
           ],
         },
@@ -160,132 +145,496 @@ export default {
     };
   },
   onLoad(option) {
-    console.log(option);
-    if (option.type === "update") {
+    if (option.type === "update" && option.id) {
       this.type = "update";
-      getRecord(option.id).then((res) => {
-        let data = res.result.data[0];
-        this.formData = data;
-        this.formData.completionPeriodStart = data.completionPeriod[0];
-        this.formData.completionPeriodEnd = data.completionPeriod[1];
-      });
+      this.recordId = option.id;
+      this.loadRecordDetail(option.id);
     }
+    this.loadTagList();
   },
   onShow() {
-    console.log('1111');
-    let id = this.$store.state.summarize.summarizeId
-
-    if (id && !this.formData.summarizeId) {
-      this.formData.summarizeId = id;
+    // 从富文本编辑页面返回时，检查是否有新的 summarizeId
+    let summarizeId = this.$store.state.summarize.summarizeId;
+    if (summarizeId && !this.formData.summarizeId) {
+      this.formData.summarizeId = summarizeId;
       this.$store.dispatch("deleteSummary");
     }
   },
+  computed: {
+    // 标签颜色类数组
+    tagColorClasses() {
+      return [
+        "bg-red light",
+        "bg-orange light",
+        "bg-yellow light",
+        "bg-olive light",
+        "bg-green light",
+        "bg-cyan light",
+        "bg-blue light",
+        "bg-purple light",
+        "bg-mauve light",
+        "bg-pink light",
+        "bg-brown light",
+        "bg-grey light",
+      ];
+    },
+  },
   methods: {
-    goSummarize() {
+    // 加载标签列表
+    loadTagList() {
+      getDictCategoryList()
+        .then((res) => {
+          if (res && res.result && res.result.data) {
+            this.tagList = Array.isArray(res.result.data) ? res.result.data : [];
+          } else {
+            this.tagList = [];
+          }
+        })
+        .catch((err) => {
+          console.error("加载标签列表失败：", err);
+          this.tagList = [];
+        });
+    },
+    // 加载记录详情
+    loadRecordDetail(id) {
+      getRecord(id)
+        .then((res) => {
+          if (res.result && res.result.data && res.result.data.length > 0) {
+            let data = res.result.data[0];
+            this.formData = {
+              title: data.title || "",
+              tags: data.tags || [],
+              summarizeId: data.summarizeId || "",
+            };
+          } else {
+            uni.showToast({
+              title: "加载失败",
+              icon: "none",
+            });
+            setTimeout(() => {
+              uni.navigateBack();
+            }, 1500);
+          }
+        })
+        .catch((err) => {
+          console.error("加载记录详情失败：", err);
+          uni.showToast({
+            title: "加载失败",
+            icon: "none",
+          });
+          setTimeout(() => {
+            uni.navigateBack();
+          }, 1500);
+        });
+    },
+    // 跳转到标签管理
+    goToTagManage() {
       uni.navigateTo({
-        url: `/subpackage/summarize/index?id=${this.formData.summarizeId}`,
+        url: "/subpackage/dictCategory/index",
       });
     },
-    selectRecordType(options) {
-      this.recordType = options.value;
-      this.recordTypeLabel = options.label;
+    // 跳转到富文本编辑
+    goSummarize() {
+      uni.navigateTo({
+        url: `/subpackage/summarize/index?id=${this.formData.summarizeId || ''}`,
+      });
     },
+    // 切换标签选择
+    toggleTag(tagId) {
+      const index = this.formData.tags.indexOf(tagId);
+      if (index > -1) {
+        // 已选中，取消选择
+        this.formData.tags.splice(index, 1);
+      } else {
+        // 未选中，添加选择
+        this.formData.tags.push(tagId);
+      }
+      // 触发响应式更新
+      this.$set(this.formData, 'tags', [...this.formData.tags]);
+    },
+    // 判断标签是否已选中
+    isTagSelected(tagId) {
+      return this.formData.tags.indexOf(tagId) > -1;
+    },
+    // 获取标签颜色类
+    getTagColorClass(index) {
+      const idx = typeof index === 'number' && !isNaN(index) ? index : 0;
+      return this.tagColorClasses[Math.abs(idx) % this.tagColorClasses.length] || this.tagColorClasses[0];
+    },
+    // 提交表单
     submit: debounce(function (form) {
       this.$refs[form]
         .validate()
         .then((res) => {
+          // 验证富文本是否已填写
+          if (!this.formData.summarizeId) {
+            uni.showToast({
+              title: "请添加总结内容",
+              icon: "none",
+            });
+            return;
+          }
+
           let data = {
-            recordType: res.recordType,
-            title: res.title,
-            summary: res.summary,
-            completionType: res.completionType,
-            completionPeriod: [
-              res.completionPeriodStart,
-              res.completionPeriodEnd,
-            ],
-            timeSpent: Number(res.timeSpent),
-            createTime: moment().format("YYYY-MM-DD HH:mm:ss"),
+            title: res.title.trim(),
+            tags: this.formData.tags || [],
+            summarizeId: this.formData.summarizeId,
+            createTime: this.type === "add"
+              ? moment().format("YYYY-MM-DD HH:mm:ss")
+              : this.formData.createTime,
             updateTime: moment().format("YYYY-MM-DD HH:mm:ss"),
             createBy: this.$store.state.user.openid,
-            summarizeId: res.summarizeId
           };
 
           if (this.type === "add") {
-            addRecord(data).then((res) => {
-              if (res.result.code === 0) {
-                uni.showToast({
-                  title: "添加成功",
-                  icon: "none",
-                  mask: true,
-                });
-                setTimeout(() => {
-                  uni.navigateBack({
-                    delta: 1,
+            addRecord(data)
+              .then((res) => {
+                if (res.result && (res.result.code === 0 || res.result.code === undefined)) {
+                  uni.showToast({
+                    title: "添加成功",
+                    icon: "success",
+                    mask: true,
                   });
-                }, 1000);
-              }
-            });
+                  setTimeout(() => {
+                    uni.navigateBack({
+                      delta: 1,
+                    });
+                  }, 1000);
+                } else {
+                  uni.showToast({
+                    title: res.result?.msg || "添加失败",
+                    icon: "none",
+                  });
+                }
+              })
+              .catch((err) => {
+                console.error("添加失败：", err);
+                uni.showToast({
+                  title: "添加失败",
+                  icon: "none",
+                });
+              });
           } else {
-            data.createTime = this.formData.createTime;
-            console.log('213', data);
-
-            updateRecord(this.formData._id, data).then((res) => {
-              if (res.result.code === 0) {
-                uni.showToast({
-                  title: "修改成功",
-                  icon: "none",
-                  mask: true,
-                });
-                setTimeout(() => {
-                  uni.navigateBack({
-                    delta: 1,
+            // 更新时保留原始创建时间
+            updateRecord(this.recordId, data)
+              .then((res) => {
+                if (res.result && (res.result.code === 0 || res.result.code === undefined)) {
+                  uni.showToast({
+                    title: "修改成功",
+                    icon: "success",
+                    mask: true,
                   });
-                }, 1000);
-              }
-            });
+                  setTimeout(() => {
+                    uni.navigateBack({
+                      delta: 1,
+                    });
+                  }, 1000);
+                } else {
+                  uni.showToast({
+                    title: res.result?.msg || "修改失败",
+                    icon: "none",
+                  });
+                }
+              })
+              .catch((err) => {
+                console.error("修改失败：", err);
+                uni.showToast({
+                  title: "修改失败",
+                  icon: "none",
+                });
+              });
           }
         })
         .catch((err) => {
           console.log("表单错误信息：", err);
         });
     }, 500),
-    calculateTimeSpent() {
-      const start = moment(this.formData.completionPeriodStart);
-      const end = moment(this.formData.completionPeriodEnd);
-
-      if (start.isValid() && end.isValid()) {
-        const duration = moment.duration(end.diff(start));
-        const minutes = duration.asMinutes();
-        this.formData.timeSpent = minutes.toFixed(2); // 设置耗时，保留两位小数
-      } else {
-        this.formData.timeSpent = ""; // 如果开始时间或结束时间无效，清空耗时字段
-      }
-    },
-  },
-  watch: {
-    "formData.completionPeriodStart": "calculateTimeSpent",
-    "formData.completionPeriodEnd": "calculateTimeSpent",
   },
 };
 </script>
 
 <style lang="scss" scoped>
+.form-container {
+  min-height: 100vh;
+  background: linear-gradient(to bottom, #f5f7fa 0%, #f1f1f1 100%);
+  padding-bottom: 40rpx;
+}
+
+.form-wrapper {
+  padding: 30rpx;
+}
+
+/* 表单卡片 */
+.form-card {
+  background: #ffffff;
+  border-radius: 24rpx;
+  overflow: hidden;
+  margin-bottom: 30rpx;
+}
+
+/* 表单头部 */
+.form-header {
+  display: flex;
+  align-items: center;
+  padding: 40rpx 32rpx 32rpx;
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+  
+  .form-icon {
+    width: 80rpx;
+    height: 80rpx;
+    border-radius: 16rpx;
+    background: linear-gradient(135deg, rgba(0, 129, 255, 0.1) 0%, rgba(28, 187, 180, 0.1) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 24rpx;
+    
+    .cuIcon-creativefill {
+      font-size: 40rpx;
+    }
+  }
+  
+  .form-title {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* 表单主体 */
+.form-body {
+  padding: 32rpx;
+}
+
+/* 表单项 */
+.form-item {
+  margin-bottom: 40rpx;
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+  
+  .form-item-label {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16rpx;
+    font-size: 28rpx;
+    color: #333;
+  }
+  
+  .form-item-content {
+    position: relative;
+    width: 100%;
+  }
+}
+
+/* 字符计数 */
+.char-count {
+  position: absolute;
+  right: 20rpx;
+  bottom: 20rpx;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 6rpx 12rpx;
+  border-radius: 8rpx;
+  backdrop-filter: blur(4rpx);
+}
+
+/* 标签选择区域 */
+.tag-empty-tip {
+  padding: 40rpx 0;
+  text-align: center;
+  
+  .text-blue {
+    text-decoration: underline;
+  }
+}
+
+.tag-select-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 -8rpx;
+}
+
+.tag-option {
+  position: relative;
+  margin: 0 8rpx 16rpx;
+  transition: all 0.3s ease;
+  
+  &.tag-selected {
+    .tag-option-badge {
+      transform: scale(1.05);
+      box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.15);
+    }
+    
+    .tag-check-icon {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  .tag-option-badge {
+    display: inline-block;
+    padding: 12rpx 24rpx;
+    border-radius: 40rpx;
+    font-size: 26rpx;
+    font-weight: 500;
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    position: relative;
+    
+    .tag-option-name {
+      font-weight: 600;
+    }
+  }
+  
+  .tag-check-icon {
+    position: absolute;
+    top: -8rpx;
+    right: -8rpx;
+    width: 32rpx;
+    height: 32rpx;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #39b54a 0%, #8dc63f 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2rpx 8rpx rgba(57, 181, 74, 0.4);
+    opacity: 0;
+    transform: scale(0);
+    transition: all 0.3s ease;
+    
+    .cuIcon-check {
+      font-size: 20rpx;
+    }
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+/* 富文本入口 */
+.rich-text-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx;
+  background: #fafafa;
+  border: 2rpx solid #e5e5e5;
+  border-radius: 16rpx;
+  transition: all 0.3s ease;
+  
+  &:active {
+    background: #f0f0f0;
+    border-color: #39b54a;
+  }
+  
+  .rich-text-content {
+    flex: 1;
+    font-size: 28rpx;
+  }
+  
+  .rich-text-icon {
+    margin-left: 16rpx;
+    font-size: 32rpx;
+  }
+}
+
+/* 输入框样式优化 */
+::v-deep .uni-forms-item {
+  margin-bottom: 0 !important;
+}
+
 ::v-deep .uni-forms-item__content {
   display: flex !important;
-  align-items: center !important;
+  align-items: flex-start !important;
+  flex-direction: column !important;
 }
 
-.record {
-  height: 100vh;
-  overflow: auto;
-  background-color: #fff;
+::v-deep .uni-easyinput {
+  width: 100%;
+  margin-bottom: 0;
 }
 
-::v-deep .uni-section-header {
-  padding: 12px 0 !important;
+::v-deep .uni-easyinput__content {
+  border-radius: 16rpx !important;
+  border: 2rpx solid #e5e5e5 !important;
+  transition: all 0.3s ease;
+  background: #fafafa !important;
+  
+  &:focus-within,
+  &.is-focused {
+    border-color: #0081ff !important;
+    background: #ffffff !important;
+    box-shadow: 0 0 0 4rpx rgba(0, 129, 255, 0.1);
+  }
 }
 
-.record_content {
-  padding: 0 20rpx;
+::v-deep .uni-easyinput__content-input {
+  font-size: 28rpx !important;
+  color: #333 !important;
+  padding: 20rpx 24rpx !important;
+  line-height: 1.6 !important;
+}
+
+::v-deep .uni-easyinput__placeholder-class {
+  color: #999 !important;
+  font-size: 28rpx !important;
+}
+
+::v-deep .is-input-error-border {
+  border-color: #e43d33 !important;
+  background: #fff5f5 !important;
+}
+
+/* 表单底部 */
+.form-footer {
+  padding: 0 30rpx;
+}
+
+/* 提交按钮 */
+.submit-btn {
+  width: 100%;
+  height: 96rpx;
+  border-radius: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  border: none;
+  transition: all 0.3s ease;
+  
+  &:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+  
+  &::after {
+    border: none;
+  }
+  
+  .cuIcon-check {
+    font-size: 36rpx;
+  }
+}
+
+/* 响应式优化 */
+@media screen and (max-width: 750rpx) {
+  .form-wrapper {
+    padding: 20rpx;
+  }
+  
+  .form-card {
+    border-radius: 20rpx;
+  }
+  
+  .form-header {
+    padding: 32rpx 24rpx 24rpx;
+  }
+  
+  .form-body {
+    padding: 24rpx;
+  }
 }
 </style>
