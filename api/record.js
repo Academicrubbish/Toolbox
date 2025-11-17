@@ -23,7 +23,7 @@ export function getRecordList(data) {
 }
 
 // 查询记录详情
-export function  getRecord(id) {
+export function getRecord(id) {
   return request.doc(id).get()
 }
 

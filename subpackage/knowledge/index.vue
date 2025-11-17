@@ -34,7 +34,13 @@
       <view v-for="item in KnowledgePointList" :key="item._id" class="padding-lr-sm">
         <view class="cu-bar bg-white solid-bottom margin-top">
           <view class="action">
-            <text class="text-gray text-sm">{{ item.categories }}</text>
+            <view class='cate-item flex flex-wrap'>
+              <view class="padding-xs" v-for="(citem, cindex) in item.categories" :key="cindex">
+                <view class='cu-tag bg-blue'>
+                  {{ dictList.find(obj => obj._id === citem).name }}
+                </view>
+              </view>
+            </view>
           </view>
         </view>
         <view class="cu-list menu sm-border">
@@ -77,6 +83,7 @@
 </template>
 <script>
 import { getKnowledgePointList, delKnowledgePoint } from "@/api/knowledge.js";
+import { getDictList } from "@/api/dict.js";
 import { delSummarize } from "@/api/summarize";
 export default {
   data() {
@@ -95,7 +102,13 @@ export default {
       pickerKnowledgePointItem: null,
       /* 删除提醒文本 */
       dialogContent: "",
+      dictList: []
     };
+  },
+  onLoad() {
+    getDictList().then(res => {
+      this.dictList = res.result.data
+    })
   },
   methods: {
     InputFocus() { },
@@ -175,6 +188,7 @@ export default {
     },
     // 确认删除
     dialogConfirm() {
+      let _this = this;
       delKnowledgePoint(this.pickerKnowledgePointItem._id).then((res) => {
         if (res.result.code === 0) {
           delSummarize(this.pickerKnowledgePointItem.content).then((cres) => {
@@ -250,5 +264,9 @@ export default {
       }
     }
   }
+}
+
+.cu-tag {
+  border-radius: 25rpx;
 }
 </style>
