@@ -2,7 +2,7 @@
  * @Author: yuanchuang 1226377893@qq.com
  * @Date: 2024-12-XX XX:XX:XX
  * @LastEditors: yuanchuang 1226377893@qq.com
- * @LastEditTime: 2024-12-XX XX:XX:XX
+ * @LastEditTime: 2025-11-18 13:03:50
  * @FilePath: \Toolbox\subpackage\dictCategory\form.vue
  * @Description: 标签编辑表单页面
  * 
@@ -178,7 +178,7 @@ export default {
         .validate()
         .then((res) => {
           let data = {
-            name: res.name.trim(),
+            name: (res.name || this.formData.name || '').trim(),
             description: res.description ? res.description.trim() : "",
             createTime: this.type === "add" 
               ? moment().format("YYYY-MM-DD HH:mm:ss") 

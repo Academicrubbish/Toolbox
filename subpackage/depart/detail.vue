@@ -36,7 +36,7 @@
             v-for="(tagId, index) in recordData.tags" 
             :key="tagId"
             class="detail-tag"
-            :class="getTagColorClass(index)"
+            :class="tagColorClasses[index % 12]"
           >
             <text>{{ getTagName(tagId) }}</text>
           </view>
@@ -70,6 +70,8 @@
 import { getRecord } from "@/api/record";
 import { getSummarize } from "@/api/summarize";
 import { getDictCategoryList } from "@/api/dictCategory.js";
+import { tagColorClasses } from "@/utils/tagColors";
+import { parseMarkdown } from "@/api/markdown";
 import moment from "moment";
 
 export default {
@@ -78,6 +80,7 @@ export default {
       recordData: null,
       towxmlData: "",
       tagMap: {}, // 标签ID到标签信息的映射
+      tagColorClasses, // 从公共工具文件导入
     };
   },
   onLoad(option) {
@@ -106,25 +109,6 @@ export default {
     getTagName(tagId) {
       return this.tagMap[tagId] ? this.tagMap[tagId].name : '未知标签';
     },
-    // 获取标签颜色类
-    getTagColorClass(index) {
-      const colors = [
-        "bg-red light",
-        "bg-orange light",
-        "bg-yellow light",
-        "bg-olive light",
-        "bg-green light",
-        "bg-cyan light",
-        "bg-blue light",
-        "bg-purple light",
-        "bg-mauve light",
-        "bg-pink light",
-        "bg-brown light",
-        "bg-grey light",
-      ];
-      const idx = typeof index === 'number' && !isNaN(index) ? index : 0;
-      return colors[Math.abs(idx) % colors.length] || colors[0];
-    },
     // 格式化时间
     formatTime(timeStr) {
       if (!timeStr) return '';
@@ -145,13 +129,28 @@ export default {
             // 检查查询结果并更新汇总数据
             if (summarizeRes.result && summarizeRes.result.data && summarizeRes.result.data.length > 0) {
               let summarizeData = summarizeRes.result.data[0];
-              this.towxmlData = this.towxml(summarizeData.content, "markdown", {
-                events: {
-                  tap: (e) => {
-                    console.log("tap", e);
+              
+              // 使用云函数解析 Markdown
+              try {
+                const html = await parseMarkdown(summarizeData.content, "markdown");
+                this.towxmlData = this.towxml(html, "html", {
+                  events: {
+                    tap: (e) => {
+                      console.log("tap", e);
+                    },
                   },
-                },
-              });
+                });
+              } catch (error) {
+                console.error("Markdown 解析失败，使用本地解析：", error);
+                // 降级到本地解析
+                this.towxmlData = this.towxml(summarizeData.content, "markdown", {
+                  events: {
+                    tap: (e) => {
+                      console.log("tap", e);
+                    },
+                  },
+                });
+              }
             } else {
               // 表示没有找到汇总数据
               this.towxmlData = this.towxml("", "markdown");

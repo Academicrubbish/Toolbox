@@ -53,7 +53,7 @@
                 v-for="(tagId, index) in record.tags" 
                 :key="tagId"
                 class="record-tag"
-                :class="getTagColorClass(index)"
+                :class="tagColorClasses[index % 12]"
               >
                 <text>{{ getTagName(tagId) }}</text>
               </view>
@@ -104,6 +104,7 @@
 import { getRecordList, delRecord } from "@/api/record.js";
 import { getDictCategoryList } from "@/api/dictCategory.js";
 import { delSummarize } from "@/api/summarize";
+import { tagColorClasses } from "@/utils/tagColors";
 import moment from "moment";
 
 export default {
@@ -111,6 +112,7 @@ export default {
     return {
       recordList: [],
       tagMap: {}, // 标签ID到标签信息的映射
+      tagColorClasses, // 从公共工具文件导入
       /* 显示遮罩 */
       showShade: false,
       /* 显示操作弹窗 */
@@ -149,25 +151,6 @@ export default {
     // 获取标签名称
     getTagName(tagId) {
       return this.tagMap[tagId] ? this.tagMap[tagId].name : '未知标签';
-    },
-    // 获取标签颜色类
-    getTagColorClass(index) {
-      const colors = [
-        "bg-red light",
-        "bg-orange light",
-        "bg-yellow light",
-        "bg-olive light",
-        "bg-green light",
-        "bg-cyan light",
-        "bg-blue light",
-        "bg-purple light",
-        "bg-mauve light",
-        "bg-pink light",
-        "bg-brown light",
-        "bg-grey light",
-      ];
-      const idx = typeof index === 'number' && !isNaN(index) ? index : 0;
-      return colors[Math.abs(idx) % colors.length] || colors[0];
     },
     // 格式化时间
     formatTime(timeStr) {

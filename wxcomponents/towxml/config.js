@@ -12,36 +12,23 @@ module.exports = {
     },
 
     // markdown解析配置，保留需要的选项即可
+    // 已优化：只保留常用功能，减少代码包体积
     markdown:[
-        'sub',                      // 下标支持
-        'sup',                      // 上标支持
-        'ins',                      // 文本删除线支持
-        'mark',                     // 文本高亮支持
+        'todo',                     // todo支持（任务列表）
         'emoji',                    // emoji表情支持
-        'todo'                      // todo支持
+        // 已移除：sub（下标）、sup（上标）、ins（删除线）、mark（高亮）
+        // 如需这些功能，可取消注释添加
     ],
 
     // 代码高亮配置，保留需要的选项即可（尽量越少越好，不要随意调整顺序。部分高亮有顺序依赖）
+    // 已优化：只保留最常用的语言，减少代码包体积
     highlight:[
-        'c-like',
-        'c',
-        'bash',
-        'css',
-        'dart',
-        'go',
-        'java',
-        'javascript',
-        'json',
-        'less',
-        'scss',
-        'shell',
-        'xml',
-        'htmlbars',
-        'nginx',
-        'php',
-        'python',
-        'python-repl',
-        'typescript',
+        'javascript',  // JavaScript（必需）
+        'json',        // JSON（常用）
+        'css',         // CSS（常用）
+        'bash',        // Shell脚本（可选，如果不需要可删除）
+        // 已移除：c-like, c, dart, go, java, less, scss, shell, xml, htmlbars, nginx, php, python, python-repl, typescript
+        // 如需其他语言，可取消注释添加
         
         // 'csharp',
         // 'http',
@@ -252,12 +239,13 @@ module.exports = {
     ],
 
     // 自定义组件
+    // 已优化：移除不常用的组件，减少代码包体积
     components:[
-        'latex',                    // 数学公式支持
         'table',                    // 表格支持
         'todogroup',                // todo支持
-        'yuml',                     // yuml图表支持
-        'img'                       // 图片解析组件
+        'img',                      // 图片解析组件（必需）
+        // 已移除：latex（数学公式）、yuml（图表）
+        // 如需这些功能，可取消注释添加
     ],
 
     // 保留原本的元素属性（建议不要变动）

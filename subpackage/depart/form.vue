@@ -39,7 +39,7 @@
                 <uni-easyinput v-model="formData.title" :maxlength="50" placeholder="请输入记录标题" :inputBorder="true"
                   :styles="inputStyles" />
                 <view class="char-count">
-                  <text class="text-xs text-gray">{{ (formData.title || '').length }}/50</text>
+                  <text class="text-xs text-gray">{{ getTitleLength }}/50</text>
                 </view>
               </view>
             </view>
@@ -56,9 +56,9 @@
                   <text class="text-blue text-sm" @tap="goToTagManage">去创建标签</text>
                 </view>
                 <view v-else class="tag-select-wrapper">
-                  <view v-for="tag in tagList" :key="tag._id" class="tag-option"
+                  <view v-for="(tag, index) in tagList" :key="tag._id" class="tag-option"
                     :class="isTagSelected(tag._id) ? 'tag-selected' : ''" @tap="toggleTag(tag._id)">
-                    <view class="tag-option-badge" :class="getTagColorClass(tagList.indexOf(tag))">
+                    <view class="tag-option-badge" :class="tagColorClasses[index % 12]">
                       <text class="tag-option-name">{{ tag.name }}</text>
                     </view>
                     <view v-if="isTagSelected(tag._id)" class="tag-check-icon">
@@ -105,6 +105,7 @@
 <script>
 import { addRecord, getRecord, updateRecord } from "@/api/record";
 import { getDictCategoryList } from "@/api/dictCategory";
+import { tagColorClasses } from "@/utils/tagColors";
 import debounce from "lodash/debounce";
 import moment from "moment";
 
@@ -114,10 +115,12 @@ export default {
       type: "add",
       recordId: null,
       tagList: [],
+      tagColorClasses, // 从公共工具文件导入
       formData: {
-        title: null,
+        title: '', // 初始化为空字符串，避免显示 undefined
         tags: [],
         summarizeId: '',
+        createTime: '', // 用于保存原始创建时间
       },
       // 输入框样式配置
       inputStyles: {
@@ -155,28 +158,22 @@ export default {
   onShow() {
     // 从富文本编辑页面返回时，检查是否有新的 summarizeId
     let summarizeId = this.$store.state.summarize.summarizeId;
-    if (summarizeId && !this.formData.summarizeId) {
+    if (summarizeId) {
+      // 如果有新的 summarizeId，更新表单数据（新增或编辑都适用）
       this.formData.summarizeId = summarizeId;
       this.$store.dispatch("deleteSummary");
     }
+    // 从标签管理页面返回时，刷新标签列表
+    this.loadTagList();
   },
   computed: {
-    // 标签颜色类数组
-    tagColorClasses() {
-      return [
-        "bg-red light",
-        "bg-orange light",
-        "bg-yellow light",
-        "bg-olive light",
-        "bg-green light",
-        "bg-cyan light",
-        "bg-blue light",
-        "bg-purple light",
-        "bg-mauve light",
-        "bg-pink light",
-        "bg-brown light",
-        "bg-grey light",
-      ];
+    // 获取标题长度（安全处理 null/undefined）
+    getTitleLength() {
+      const title = this.formData.title;
+      if (title === null || title === undefined) {
+        return 0;
+      }
+      return String(title).length;
     },
   },
   methods: {
@@ -184,14 +181,29 @@ export default {
     loadTagList() {
       getDictCategoryList()
         .then((res) => {
-          if (res && res.result && res.result.data) {
-            this.tagList = Array.isArray(res.result.data) ? res.result.data : [];
+          console.log("标签列表API返回：", res);
+          if (res && res.result) {
+            // uniCloud 返回格式：{ result: { data: [...] } }
+            const data = res.result.data;
+            if (Array.isArray(data)) {
+              this.tagList = data;
+              console.log("标签列表加载成功，共", data.length, "个标签");
+            } else {
+              console.warn("标签数据格式不正确：", data);
+              this.tagList = [];
+            }
           } else {
+            console.warn("标签列表返回数据格式异常：", res);
             this.tagList = [];
           }
         })
         .catch((err) => {
           console.error("加载标签列表失败：", err);
+          uni.showToast({
+            title: "加载标签失败",
+            icon: "none",
+            duration: 2000,
+          });
           this.tagList = [];
         });
     },
@@ -205,6 +217,7 @@ export default {
               title: data.title || "",
               tags: data.tags || [],
               summarizeId: data.summarizeId || "",
+              createTime: data.createTime || "", // 保存原始创建时间，用于更新时保留
             };
           } else {
             uni.showToast({
@@ -256,11 +269,6 @@ export default {
     isTagSelected(tagId) {
       return this.formData.tags.indexOf(tagId) > -1;
     },
-    // 获取标签颜色类
-    getTagColorClass(index) {
-      const idx = typeof index === 'number' && !isNaN(index) ? index : 0;
-      return this.tagColorClasses[Math.abs(idx) % this.tagColorClasses.length] || this.tagColorClasses[0];
-    },
     // 提交表单
     submit: debounce(function (form) {
       this.$refs[form]
@@ -276,7 +284,7 @@ export default {
           }
 
           let data = {
-            title: res.title.trim(),
+            title: (res.title || this.formData.title || '').trim(),
             tags: this.formData.tags || [],
             summarizeId: this.formData.summarizeId,
             createTime: this.type === "add"

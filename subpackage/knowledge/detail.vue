@@ -20,6 +20,7 @@
 <script>
 import { getKnowledgePoint } from "@/api/knowledge";
 import { getSummarize } from "@/api/summarize";
+import { parseMarkdown } from "@/api/markdown";
 export default {
   data() {
     return {
@@ -39,14 +40,28 @@ export default {
       // 检查查询结果并更新汇总数据
       if (summarizeRes.result.data.length > 0) {
         let summarizeData = summarizeRes.result.data[0];
-        this.towxmlData = this.towxml(summarizeData.content, "markdown", {
-          // theme: "dark",
-          events: {
-            tap: (e) => {
-              console.log("tap", e);
+        
+        // 使用云函数解析 Markdown
+        try {
+          const html = await parseMarkdown(summarizeData.content, "markdown");
+          this.towxmlData = this.towxml(html, "html", {
+            events: {
+              tap: (e) => {
+                console.log("tap", e);
+              },
             },
-          },
-        });
+          });
+        } catch (error) {
+          console.error("Markdown 解析失败，使用本地解析：", error);
+          // 降级到本地解析
+          this.towxmlData = this.towxml(summarizeData.content, "markdown", {
+            events: {
+              tap: (e) => {
+                console.log("tap", e);
+              },
+            },
+          });
+        }
       } else {
         // 表示没有找到汇总数据
         this.towxmlData = this.towxml("", "markdown");

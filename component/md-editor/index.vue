@@ -4,7 +4,8 @@
       <view class="iconfont icon-bold" @click="toolBarClick('bold')" />
       <view class="iconfont icon-italic" @click="toolBarClick('italic')" />
       <view class="iconfont icon-title" @click="toolBarClick('header')" />
-      <view
+      <!-- 已隐藏：下划线、删除线、上标、下标（towxml配置中已移除这些功能） -->
+      <!-- <view
         class="iconfont icon-underline"
         @click="toolBarClick('underline')"
       />
@@ -12,6 +13,8 @@
         class="iconfont icon-strikeThrough"
         @click="toolBarClick('strike')"
       />
+      <view class="iconfont icon-superscript" @click="toolBarClick('sup')" />
+      <view class="iconfont icon-subscript" @click="toolBarClick('sub')" /> -->
       <view
         class="iconfont icon-inIndentation"
         @click="toolBarClick('inIndentation')"
@@ -20,8 +23,6 @@
         class="iconfont icon-reIndentation"
         @click="toolBarClick('reIndentation')"
       />
-      <view class="iconfont icon-superscript" @click="toolBarClick('sup')" />
-      <view class="iconfont icon-subscript" @click="toolBarClick('sub')" />
       <view class="iconfont icon-ul" @click="toolBarClick('ul')" />
       <view class="iconfont icon-ol" @click="toolBarClick('ol')" />
       <view
@@ -46,12 +47,17 @@
     </view>
     <view class="input-content">
       <textarea v-if="status" maxlength="-1" v-model="textareaData"></textarea>
-      <towxml v-if="!status" :nodes="towxmlData" />
+      <view v-if="!status && loading" class="loading-wrapper">
+        <text class="text-gray">正在解析...</text>
+      </view>
+      <towxml v-if="!status && !loading" :nodes="towxmlData" />
     </view>
   </view>
 </template>
 
 <script>
+import { parseMarkdown } from "@/api/markdown";
+
 export default {
   name: "mdEditor",
   data() {
@@ -59,6 +65,7 @@ export default {
       textareaData: "",
       towxmlData: "",
       status: true,
+      loading: false, // 加载状态
     };
   },
   props: {
@@ -74,16 +81,43 @@ export default {
         towxmlData: this.towxmlData,
       });
     },
-    toolBarClick(type) {
-      const updateTextareaContent = () => {
-        this.towxmlData = this.towxml(this.textareaData, "markdown", {
-          // theme: "dark",
+    // 使用云函数解析 Markdown
+    async updateTextareaContent() {
+      if (!this.textareaData || !this.textareaData.trim()) {
+        this.towxmlData = "";
+        return;
+      }
+
+      this.loading = true;
+      try {
+        // 调用云函数解析 Markdown
+        const html = await parseMarkdown(this.textareaData, "markdown");
+        
+        // 使用 towxml 的 HTML 模式渲染
+        this.towxmlData = this.towxml(html, "html", {
           events: {
             tap: (e) => {
               console.log("tap", e);
             },
           },
         });
+      } catch (error) {
+        console.error("Markdown 解析失败，使用本地解析：", error);
+        // 降级到本地解析
+        this.towxmlData = this.towxml(this.textareaData, "markdown", {
+          events: {
+            tap: (e) => {
+              console.log("tap", e);
+            },
+          },
+        });
+      } finally {
+        this.loading = false;
+      }
+    },
+    toolBarClick(type) {
+      const updateTextareaContent = () => {
+        this.updateTextareaContent();
       };
       const adjustIndentation = (increase) => {
         const lines = this.textareaData.split("\n");
@@ -119,18 +153,19 @@ export default {
               ),
           });
           break;
-        case "underline":
-          appendText("++下划线++ ");
-          break;
-        case "strike":
-          appendText("~~删除线~~ ");
-          break;
-        case "sup":
-          appendText("^上角标^ ");
-          break;
-        case "sub":
-          appendText("~下角标~ ");
-          break;
+        // 已移除：下划线、删除线、上标、下标（towxml配置中已移除这些功能）
+        // case "underline":
+        //   appendText("++下划线++ ");
+        //   break;
+        // case "strike":
+        //   appendText("~~删除线~~ ");
+        //   break;
+        // case "sup":
+        //   appendText("^上角标^ ");
+        //   break;
+        // case "sub":
+        //   appendText("~下角标~ ");
+        //   break;
         case "link":
           appendText("[在此输入网址描述](在此输入网址) ");
           break;
@@ -267,5 +302,13 @@ export default {
   box-sizing: border-box;
   font-size: 32rpx;
   line-height: 1.5;
+}
+
+.loading-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx;
+  font-size: 28rpx;
 }
 </style>

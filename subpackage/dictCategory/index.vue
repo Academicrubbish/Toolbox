@@ -2,7 +2,7 @@
  * @Author: yuanchuang 1226377893@qq.com
  * @Date: 2024-09-03 16:31:36
  * @LastEditors: yuanchuang 1226377893@qq.com
- * @LastEditTime: 2025-11-17 23:40:21
+ * @LastEditTime: 2025-11-18 13:01:26
  * @FilePath: \Toolbox\subpackage\dictCategory\index.vue
  * @Description: 标签管理
  * 
@@ -33,19 +33,22 @@
           v-for="(item, index) in tagList" 
           :key="item._id" 
           class="tag-card shadow-warp"
-          @tap="editTag(item)"
-          @longpress="onLongPress($event, item)"
+          :class="{ 'tag-card-public': isPublicTag(item) }"
+          @tap="handleTagClick(item)"
+          @longpress="handleLongPress($event, item)"
         >
           <view class="tag-card-header">
             <view class="tag-badge" :class="tagColorClasses[index % tagColorClasses.length]">
               <text class="tag-name">{{ item.name }}</text>
+              <text v-if="isPublicTag(item)" class="tag-public-badge">公共</text>
             </view>
           </view>
           <view v-if="item.description" class="tag-card-body">
             <text class="tag-desc text-gray text-sm">{{ item.description }}</text>
           </view>
           <view class="tag-card-footer">
-            <text class="text-gray text-xs">点击编辑 · 长按删除</text>
+            <text v-if="isPublicTag(item)" class="text-gray text-xs">公共标签，不可操作</text>
+            <text v-else class="text-gray text-xs">点击编辑 · 长按删除</text>
           </view>
         </view>
       </view>
@@ -84,6 +87,7 @@
 
 <script>
 import { getDictCategoryList, delDictCategory } from "@/api/dictCategory.js";
+import { tagColorClasses } from "@/utils/tagColors";
 
 export default {
   data() {
@@ -111,22 +115,9 @@ export default {
     isTagListArray() {
       return Array.isArray(this.tagList);
     },
-    // 标签颜色类数组
+    // 标签颜色类数组（从公共工具文件导入）
     tagColorClasses() {
-      return [
-        "bg-red light",
-        "bg-orange light",
-        "bg-yellow light",
-        "bg-olive light",
-        "bg-green light",
-        "bg-cyan light",
-        "bg-blue light",
-        "bg-purple light",
-        "bg-mauve light",
-        "bg-pink light",
-        "bg-brown light",
-        "bg-grey light",
-      ];
+      return tagColorClasses;
     },
   },
   onLoad() {
@@ -177,11 +168,41 @@ export default {
         url: "/subpackage/dictCategory/form?type=add",
       });
     },
+    // 判断是否为公共标签（openid为空字符串）
+    isPublicTag(item) {
+      return item && (item.createBy === '' || item.createBy === null || item.createBy === undefined);
+    },
+    // 处理标签点击
+    handleTagClick(item) {
+      // 公共标签不允许编辑
+      if (this.isPublicTag(item)) {
+        uni.showToast({
+          title: "公共标签不可编辑",
+          icon: "none",
+          duration: 2000,
+        });
+        return;
+      }
+      this.editTag(item);
+    },
     // 编辑标签
     editTag(item) {
       uni.navigateTo({
         url: `/subpackage/dictCategory/form?type=update&id=${item._id}`,
       });
+    },
+    // 处理长按
+    handleLongPress(e, row) {
+      // 公共标签不允许操作
+      if (this.isPublicTag(row)) {
+        uni.showToast({
+          title: "公共标签不可操作",
+          icon: "none",
+          duration: 2000,
+        });
+        return;
+      }
+      this.onLongPress(e, row);
     },
     // 长按监听
     onLongPress(e, row) {
@@ -209,6 +230,15 @@ export default {
     // 弹窗菜单选择
     pickerMenu(item) {
       this.hidePop();
+      // 再次检查是否为公共标签（防止绕过）
+      if (this.isPublicTag(this.pickerTagItem)) {
+        uni.showToast({
+          title: "公共标签不可操作",
+          icon: "none",
+          duration: 2000,
+        });
+        return;
+      }
       switch (item) {
         case "编辑":
           this.editTag(this.pickerTagItem);
@@ -225,6 +255,15 @@ export default {
     },
     // 确认删除
     dialogConfirm() {
+      // 再次检查是否为公共标签（防止绕过）
+      if (this.isPublicTag(this.pickerTagItem)) {
+        uni.showToast({
+          title: "公共标签不可删除",
+          icon: "none",
+          duration: 2000,
+        });
+        return;
+      }
       delDictCategory(this.pickerTagItem._id)
         .then((res) => {
           // uniCloud 删除操作成功时通常返回 { result: { ... } }
@@ -250,29 +289,6 @@ export default {
         });
     },
     dialogClose() {},
-    // 获取标签颜色类（循环使用不同颜色）
-    getTagColorClass(index) {
-      // 确保 index 是有效数字
-      if (typeof index !== 'number' || isNaN(index)) {
-        index = 0;
-      }
-      const colors = [
-        "bg-red light",
-        "bg-orange light",
-        "bg-yellow light",
-        "bg-olive light",
-        "bg-green light",
-        "bg-cyan light",
-        "bg-blue light",
-        "bg-purple light",
-        "bg-mauve light",
-        "bg-pink light",
-        "bg-brown light",
-        "bg-grey light",
-      ];
-      const colorIndex = Math.abs(index) % colors.length;
-      return colors[colorIndex] || colors[0];
-    },
   },
 };
 </script>
@@ -355,20 +371,42 @@ export default {
     box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
   }
   
+  /* 公共标签样式 */
+  &.tag-card-public {
+    background: #fafafa;
+    
+    &:active {
+      transform: none;
+    }
+  }
+  
   /* 卡片头部 */
   .tag-card-header {
     margin-bottom: 20rpx;
     
     .tag-badge {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      gap: 8rpx;
       padding: 12rpx 24rpx;
       border-radius: 40rpx;
       font-size: 28rpx;
       font-weight: 500;
       box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+      position: relative;
       
       .tag-name {
         font-weight: 600;
+      }
+      
+      .tag-public-badge {
+        font-size: 20rpx;
+        padding: 2rpx 8rpx;
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 8rpx;
+        color: #666;
+        font-weight: 400;
+        margin-left: 4rpx;
       }
     }
   }
