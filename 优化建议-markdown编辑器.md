@@ -13,7 +13,6 @@
 ### 使用场景
 - `component/md-editor/index.vue` - 编辑器预览模式
 - `subpackage/depart/detail.vue` - 记录详情展示
-- `subpackage/knowledge/detail.vue` - 知识点详情展示
 
 ## 🎯 优化建议
 

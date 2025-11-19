@@ -2,7 +2,7 @@
  * @Author: yuanchuang 1226377893@qq.com
  * @Date: 2024-09-03 16:31:36
  * @LastEditors: yuanchuang 1226377893@qq.com
- * @LastEditTime: 2025-11-18 13:01:26
+ * @LastEditTime: 2025-11-19 21:00:59
  * @FilePath: \Toolbox\subpackage\dictCategory\index.vue
  * @Description: 标签管理
  * 
@@ -367,7 +367,6 @@ export default {
   
   /* 点击效果 */
   &:active {
-    transform: scale(0.98);
     box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
   }
   
@@ -450,11 +449,6 @@ export default {
   justify-content: center;
   z-index: 99;
   transition: all 0.3s ease;
-  
-  &:active {
-    transform: scale(0.95);
-    box-shadow: 0 4rpx 12rpx rgba(57, 181, 74, 0.3);
-  }
   
   .fab-icon {
     color: #ffffff;

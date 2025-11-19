@@ -2,7 +2,7 @@
  * @Author: yuanchuang 1226377893@qq.com
  * @Date: 2024-08-01 17:31:22
  * @LastEditors: yuanchuang 1226377893@qq.com
- * @LastEditTime: 2025-11-17 22:38:08
+ * @LastEditTime: 2025-11-19 21:00:21
  * @FilePath: \Toolbox\subpackage\depart\form.vue
  * @Description: 记录模块表单页面（简化版）
  * 
@@ -516,10 +516,6 @@ export default {
       font-size: 20rpx;
     }
   }
-  
-  &:active {
-    transform: scale(0.95);
-  }
 }
 
 /* 富文本入口 */
@@ -612,11 +608,6 @@ export default {
   font-size: 32rpx;
   border: none;
   transition: all 0.3s ease;
-  
-  &:active {
-    transform: scale(0.98);
-    opacity: 0.9;
-  }
   
   &::after {
     border: none;

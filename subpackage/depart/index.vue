@@ -2,7 +2,7 @@
  * @Author: yuanchuang 1226377893@qq.com
  * @Date: 2024-08-19 09:34:16
  * @LastEditors: yuanchuang 1226377893@qq.com
- * @LastEditTime: 2025-11-17 23:14:56
+ * @LastEditTime: 2025-11-19 21:12:50
  * @FilePath: \Toolbox\subpackage\depart\index.vue
  * @Description: 记录列表（简化版）
  * 
@@ -38,12 +38,14 @@
             :key="record._id" 
             class="record-card shadow-warp"
             @tap="goDetail(record)"
-            @longpress="onLongPress($event, record)"
           >
             <view class="record-card-header">
               <view class="record-title">
                 <text class="cuIcon-creativefill text-blue margin-right-xs"></text>
                 <text class="text-bold">{{ record.title }}</text>
+              </view>
+              <view class="record-more-icon" @tap.stop="onIconClick($event, record)">
+                <text class="cuIcon-moreandroid text-gray"></text>
               </view>
             </view>
             
@@ -219,12 +221,14 @@ export default {
           break;
       }
     },
-    /* 长按监听 */
-    onLongPress(e, row) {
-      let [touches, style] = [e.touches[0], ""];
-
-      style = `top:${touches.clientY}px;`;
-      style += `left:${touches.clientX}px`;
+    /* 图标点击监听 */
+    onIconClick(e, row) {
+      // 获取点击位置，uni-app 中 tap 事件使用 e.detail.x 和 e.detail.y
+      let clientX = (e.detail ? e.detail.x : (e.touches ? e.touches[0].clientX : 300)) - 100;
+      let clientY = e.detail ? e.detail.y : (e.touches ? e.touches[0].clientY : 200);
+      
+      let style = `top:${clientY}px;`;
+      style += `left:${clientX}px`;
 
       this.pickerRecordItem = row;
       this.popStyle = style;
@@ -353,12 +357,10 @@ export default {
   position: relative;
   overflow: hidden;
   
-  &:active {
-    transform: scale(0.98);
-    box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
-  }
-  
   .record-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     margin-bottom: 20rpx;
     
     .record-title {
@@ -366,6 +368,26 @@ export default {
       align-items: center;
       font-size: 30rpx;
       color: #333;
+      flex: 1;
+    }
+    
+    .record-more-icon {
+      width: 56rpx;
+      height: 56rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: all 0.2s ease;
+      margin-left: 16rpx;
+      
+      .cuIcon-moreandroid {
+        font-size: 40rpx;
+      }
+      
+      &:active {
+        background-color: rgba(0, 0, 0, 0.05);
+      }
     }
   }
   
@@ -409,11 +431,6 @@ export default {
   justify-content: center;
   z-index: 99;
   transition: all 0.3s ease;
-  
-  &:active {
-    transform: scale(0.95);
-    box-shadow: 0 4rpx 12rpx rgba(57, 181, 74, 0.3);
-  }
   
   .fab-icon {
     color: #ffffff;

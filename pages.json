@@ -30,18 +30,6 @@
 					"style": {}
 				},
 				{
-					"path": "knowledge/detail",
-					"style": {}
-				},
-				{
-					"path": "knowledge/index",
-					"style": {}
-				},
-				{
-					"path": "knowledge/form",
-					"style": {}
-				},
-				{
 					"path": "dictCategory/index",
 					"style": {}
 				},

@@ -36,13 +36,15 @@
                 <text class="text-red margin-left-xs">*</text>
               </view>
               <view class="form-item-content">
-                <uni-easyinput 
-                  v-model="formData.name" 
-                  :maxlength="20" 
-                  placeholder="请输入标签名称" 
-                  :inputBorder="true"
-                  :styles="inputStyles"
-                />
+                <uni-forms-item name="name">
+                  <uni-easyinput 
+                    v-model="formData.name" 
+                    :maxlength="20" 
+                    placeholder="请输入标签名称" 
+                    :inputBorder="true"
+                    :styles="inputStyles"
+                  />
+                </uni-forms-item>
                 <view class="char-count">
                   <text class="text-xs text-gray">{{ (formData.name || '').length }}/20</text>
                 </view>
@@ -56,15 +58,17 @@
                 <text class="text-gray text-xs margin-left-xs">（可选）</text>
               </view>
               <view class="form-item-content">
-                <uni-easyinput 
-                  type="textarea" 
-                  v-model="formData.description" 
-                  :maxlength="100"
-                  placeholder="请输入标签描述，帮助更好地理解标签用途" 
-                  :inputBorder="true"
-                  :autoHeight="true"
-                  :styles="inputStyles"
-                />
+                <uni-forms-item name="description">
+                  <uni-easyinput 
+                    type="textarea" 
+                    v-model="formData.description" 
+                    :maxlength="100"
+                    placeholder="请输入标签描述，帮助更好地理解标签用途" 
+                    :inputBorder="true"
+                    :autoHeight="true"
+                    :styles="inputStyles"
+                  />
+                </uni-forms-item>
                 <view class="char-count">
                   <text class="text-xs text-gray">{{ (formData.description || '').length }}/100</text>
                 </view>
@@ -247,6 +251,20 @@ export default {
         })
         .catch((err) => {
           console.log("表单错误信息：", err);
+          // 显示第一个校验错误信息
+          if (err && err.length > 0) {
+            uni.showToast({
+              title: err[0].errorMessage || "请检查表单填写是否正确",
+              icon: "none",
+              duration: 2000,
+            });
+          } else {
+            uni.showToast({
+              title: "请检查表单填写是否正确",
+              icon: "none",
+              duration: 2000,
+            });
+          }
         });
     }, 500),
   },
@@ -408,11 +426,6 @@ export default {
   font-size: 32rpx;
   border: none;
   transition: all 0.3s ease;
-  
-  &:active {
-    transform: scale(0.98);
-    opacity: 0.9;
-  }
   
   &::after {
     border: none;

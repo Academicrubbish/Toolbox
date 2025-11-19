@@ -10,13 +10,6 @@
 					<text class="text-grey">柒月</text>
 				</view>
 			</view>
-			<view class="cu-item arrow" @tap="goKnowledge">
-				<view class="content">
-					<text class="cuIcon-circlefill text-grey"></text>
-					<text class="text-grey">知识点</text>
-				</view>
-			</view>
-
 			<!-- 分类字典 -->
 			<view class="cu-item arrow" @tap="goDictCategory">
 				<view class="content">
@@ -154,11 +147,6 @@
 			goDepart() {
 				uni.navigateTo({
 					url: "/subpackage/depart/index",
-				});
-			},
-			goKnowledge() {
-				uni.navigateTo({
-					url: "/subpackage/knowledge/index",
 				});
 			},
 			goDictCategory() {
