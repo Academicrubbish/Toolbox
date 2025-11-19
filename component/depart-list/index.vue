@@ -2,22 +2,24 @@
  * @Author: yuanchuang 1226377893@qq.com
  * @Date: 2024-08-19 09:34:16
  * @LastEditors: yuanchuang 1226377893@qq.com
- * @LastEditTime: 2025-11-19 21:12:50
- * @FilePath: \Toolbox\subpackage\depart\index.vue
+ * @LastEditTime: 2025-11-19 22:26:06
+ * @FilePath: \Toolbox\component\depart-list\index.vue
  * @Description: 记录列表（简化版）
  * 
 -->
 
 <template>
   <view class="record-container">
+
     <z-paging ref="paging" v-model="recordList" @query="queryList">
       <view slot="top">
-        <cu-custom bgColor="bg-gradual-blue" :isBack="true">
-          <block slot="backText">返回</block>
-          <block slot="content">在路上</block>
+        <cu-custom bgColor="bg-gradual-blue">
+          <view slot="left" class="action" @tap="handleShowDrawer">
+            <text class="cuIcon-sort text-white"></text>
+          </view>
+          <block slot="content">首页</block>
         </cu-custom>
       </view>
-
       <!-- 记录列表 -->
       <view v-for="item in recordList" :key="item.date" class="date-group">
         <!-- 日期标题 -->
@@ -33,12 +35,8 @@
 
         <!-- 记录卡片列表 -->
         <view class="record-card-list">
-          <view 
-            v-for="record in item.children" 
-            :key="record._id" 
-            class="record-card shadow-warp"
-            @tap="goDetail(record)"
-          >
+          <view v-for="record in item.children" :key="record._id" class="record-card shadow-warp"
+            @tap="goDetail(record)">
             <view class="record-card-header">
               <view class="record-title">
                 <text class="cuIcon-creativefill text-blue margin-right-xs"></text>
@@ -48,19 +46,15 @@
                 <text class="cuIcon-moreandroid text-gray"></text>
               </view>
             </view>
-            
+
             <!-- 标签区域 -->
             <view v-if="record.tags && record.tags.length > 0" class="record-tags">
-              <view 
-                v-for="(tagId, index) in record.tags" 
-                :key="tagId"
-                class="record-tag"
-                :class="tagColorClasses[index % 12]"
-              >
+              <view v-for="(tagId, index) in record.tags" :key="tagId" class="record-tag"
+                :class="tagColorClasses[index % 12]">
                 <text>{{ getTagName(tagId) }}</text>
               </view>
             </view>
-            
+
             <!-- 时间信息 -->
             <view class="record-footer">
               <text class="cuIcon-timefill text-gray text-xs margin-right-xs"></text>
@@ -89,15 +83,8 @@
 
     <!-- 删除提示 -->
     <uni-popup ref="alertDialog" type="dialog">
-      <uni-popup-dialog 
-        type="warn" 
-        title="提醒" 
-        :content="dialogContent" 
-        cancelText="取消" 
-        confirmText="确定"
-        @confirm="dialogConfirm" 
-        @close="dialogClose" 
-      />
+      <uni-popup-dialog type="warn" title="提醒" :content="dialogContent" cancelText="取消" confirmText="确定"
+        @confirm="dialogConfirm" @close="dialogClose" />
     </uni-popup>
   </view>
 </template>
@@ -129,10 +116,13 @@ export default {
       dialogContent: "",
     };
   },
-  onLoad() {
+  mounted() {
     this.loadTagList();
   },
   methods: {
+    handleShowDrawer() {
+      this.$emit('show-drawer');
+    },
     // 加载标签列表
     loadTagList() {
       getDictCategoryList()
@@ -167,7 +157,7 @@ export default {
         .then((res) => {
           let list = res.result.data || [];
           let groupedRecords = [];
-          
+
           list.forEach((element) => {
             // 使用 createTime 进行分组
             let groupDate = moment(element.createTime).format("YYYY-MM-DD");
@@ -188,7 +178,7 @@ export default {
               });
             }
           });
-          
+
           // 调用 z-paging 组件的 complete 方法
           this.$refs.paging.complete(groupedRecords);
         })
@@ -226,7 +216,7 @@ export default {
       // 获取点击位置，uni-app 中 tap 事件使用 e.detail.x 和 e.detail.y
       let clientX = (e.detail ? e.detail.x : (e.touches ? e.touches[0].clientX : 300)) - 100;
       let clientY = e.detail ? e.detail.y : (e.touches ? e.touches[0].clientY : 200);
-      
+
       let style = `top:${clientY}px;`;
       style += `left:${clientX}px`;
 
@@ -294,7 +284,7 @@ export default {
           });
         });
     },
-    dialogClose() {},
+    dialogClose() { },
   },
 };
 </script>
@@ -302,7 +292,6 @@ export default {
 <style lang="scss" scoped>
 .record-container {
   position: relative;
-  min-height: 100vh;
   background: linear-gradient(to bottom, #f5f7fa 0%, #f1f1f1 100%);
   padding-bottom: 160rpx;
 }
@@ -318,7 +307,7 @@ export default {
   align-items: center;
   margin-bottom: 24rpx;
   padding: 0 8rpx;
-  
+
   .date-icon {
     width: 48rpx;
     height: 48rpx;
@@ -328,12 +317,12 @@ export default {
     align-items: center;
     justify-content: center;
     margin-right: 16rpx;
-    
+
     .cuIcon-calendar {
       font-size: 28rpx;
     }
   }
-  
+
   .date-text {
     flex: 1;
     display: flex;
@@ -356,13 +345,13 @@ export default {
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
-  
+
   .record-card-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 20rpx;
-    
+
     .record-title {
       display: flex;
       align-items: center;
@@ -370,7 +359,7 @@ export default {
       color: #333;
       flex: 1;
     }
-    
+
     .record-more-icon {
       width: 56rpx;
       height: 56rpx;
@@ -380,23 +369,23 @@ export default {
       border-radius: 50%;
       transition: all 0.2s ease;
       margin-left: 16rpx;
-      
+
       .cuIcon-moreandroid {
         font-size: 40rpx;
       }
-      
+
       &:active {
         background-color: rgba(0, 0, 0, 0.05);
       }
     }
   }
-  
+
   .record-tags {
     display: flex;
     flex-wrap: wrap;
     margin-bottom: 16rpx;
     gap: 12rpx;
-    
+
     .record-tag {
       display: inline-block;
       padding: 8rpx 16rpx;
@@ -406,7 +395,7 @@ export default {
       box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.08);
     }
   }
-  
+
   .record-footer {
     display: flex;
     align-items: center;
@@ -431,7 +420,7 @@ export default {
   justify-content: center;
   z-index: 99;
   transition: all 0.3s ease;
-  
+
   .fab-icon {
     color: #ffffff;
     font-size: 48rpx;
@@ -474,7 +463,7 @@ export default {
       transform: scale(1, 1);
     }
 
-    & > view {
+    &>view {
       padding: 24rpx 32rpx;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -499,6 +488,7 @@ export default {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }

@@ -6,6 +6,9 @@
 					<text class="cuIcon-back"></text>
 					<slot name="backText"></slot>
 				</view>
+				<view class="action" v-else>
+					<slot name="left"></slot>
+				</view>
 				<view class="content" :style="[{top:StatusBar + 'px'}]">
 					<slot name="content"></slot>
 				</view>
