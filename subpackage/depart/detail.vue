@@ -71,7 +71,6 @@ import { getRecord } from "@/api/record";
 import { getSummarize } from "@/api/summarize";
 import { getDictCategoryList } from "@/api/dictCategory.js";
 import { tagColorClasses } from "@/utils/tagColors";
-import { parseMarkdown } from "@/api/markdown";
 import moment from "moment";
 
 export default {
@@ -115,69 +114,58 @@ export default {
       return moment(timeStr).format('YYYY-MM-DD HH:mm');
     },
     // 加载记录详情
-    async loadRecordDetail(id) {
-      try {
-        // 获取记录数据
-        const recordRes = await getRecord(id);
-        if (recordRes.result && recordRes.result.data && recordRes.result.data.length > 0) {
-          this.recordData = recordRes.result.data[0];
+    loadRecordDetail(id) {
+      // 使用 Promise 链式调用，避免 async/await 依赖 regenerator-runtime
+      getRecord(id)
+        .then((recordRes) => {
+          if (recordRes.result && recordRes.result.data && recordRes.result.data.length > 0) {
+            this.recordData = recordRes.result.data[0];
 
-          // 根据总结ID查询并汇总信息
-          if (this.recordData.summarizeId) {
-            const summarizeRes = await getSummarize(this.recordData.summarizeId);
-
-            // 检查查询结果并更新汇总数据
-            if (summarizeRes.result && summarizeRes.result.data && summarizeRes.result.data.length > 0) {
-              let summarizeData = summarizeRes.result.data[0];
-              
-              // 使用云函数解析 Markdown
-              try {
-                const html = await parseMarkdown(summarizeData.content, "markdown");
-                this.towxmlData = this.towxml(html, "html", {
-                  events: {
-                    tap: (e) => {
-                      console.log("tap", e);
+            // 根据总结ID查询并汇总信息
+            if (this.recordData.summarizeId) {
+              return getSummarize(this.recordData.summarizeId).then((summarizeRes) => {
+                // 检查查询结果并更新汇总数据
+                if (summarizeRes.result && summarizeRes.result.data && summarizeRes.result.data.length > 0) {
+                  let summarizeData = summarizeRes.result.data[0];
+                  
+                  // 直接使用 towxml 解析 Markdown，支持所有插件（latex、yuml、echarts 等）
+                  // 与 md-editor 保持一致，确保所有功能都能正常渲染
+                  this.towxmlData = this.towxml(summarizeData.content, "markdown", {
+                    events: {
+                      tap: (e) => {
+                        console.log("tap", e);
+                      },
                     },
-                  },
-                });
-              } catch (error) {
-                console.error("Markdown 解析失败，使用本地解析：", error);
-                // 降级到本地解析
-                this.towxmlData = this.towxml(summarizeData.content, "markdown", {
-                  events: {
-                    tap: (e) => {
-                      console.log("tap", e);
-                    },
-                  },
-                });
-              }
+                  });
+                } else {
+                  // 表示没有找到汇总数据
+                  this.towxmlData = this.towxml("", "markdown");
+                }
+              });
             } else {
-              // 表示没有找到汇总数据
-              this.towxmlData = this.towxml("", "markdown");
+              // 没有总结ID
+              this.towxmlData = "";
             }
           } else {
-            // 没有总结ID
-            this.towxmlData = "";
+            uni.showToast({
+              title: "记录不存在",
+              icon: "none",
+            });
+            setTimeout(() => {
+              uni.navigateBack();
+            }, 1500);
           }
-        } else {
+        })
+        .catch((error) => {
+          console.error("Error in loadRecordDetail:", error);
           uni.showToast({
-            title: "记录不存在",
+            title: "加载失败，请稍后重试",
             icon: "none",
           });
           setTimeout(() => {
             uni.navigateBack();
           }, 1500);
-        }
-      } catch (error) {
-        console.error("Error in loadRecordDetail:", error);
-        uni.showToast({
-          title: "加载失败，请稍后重试",
-          icon: "none",
         });
-        setTimeout(() => {
-          uni.navigateBack();
-        }, 1500);
-      }
     },
   },
 };

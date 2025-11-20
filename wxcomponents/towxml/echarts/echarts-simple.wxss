@@ -1,0 +1,20 @@
+.h2w__echartsBox {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20rpx 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.h2w__echartsView {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+}
+

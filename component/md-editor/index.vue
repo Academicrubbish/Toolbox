@@ -22,6 +22,7 @@
       <view class="iconfont icon-taskList" @click="toolBarClick('taskList')" />
       <view class="toolbar-btn" @click="toolBarClick('latex')" title="LaTeX公式">∑</view>
       <view class="toolbar-btn" @click="toolBarClick('yuml')" title="YUML图表">◉</view>
+      <view class="toolbar-btn" @click="toolBarClick('echarts')" title="ECharts图表">📊</view>
       <view class="iconfont icon-empty" @click="toolBarClick('clear')" />
       <view class="iconfont icon-toggle" @click="toolBarClick('toggle')" />
       <view class="submit">
@@ -91,12 +92,13 @@ export default {
           });
           
           // 渲染完成后，等待一段时间确保所有组件都已加载
-          // 检查是否包含 latex 或 yuml 组件
-          const hasLatexOrYuml = this.textareaData.includes('$') || 
-                                  this.textareaData.includes('```yuml');
+          // 检查是否包含 latex、yuml 或 echarts 组件
+          const hasLatexOrYumlOrEcharts = this.textareaData.includes('$') || 
+                                          this.textareaData.includes('```yuml') ||
+                                          this.textareaData.includes('```echarts');
           
-          if (hasLatexOrYuml) {
-            // 如果有 LaTeX 或 YUML，等待更长时间（云函数调用需要时间）
+          if (hasLatexOrYumlOrEcharts) {
+            // 如果有 LaTeX、YUML 或 ECharts，等待更长时间（云函数调用需要时间）
             // 设置一个较长的等待时间，确保云函数调用完成
             setTimeout(() => {
               this.loading = false;
@@ -106,7 +108,7 @@ export default {
               }
             }, 3000); // 3秒后隐藏加载提示（给云函数足够的时间）
           } else {
-            // 没有 LaTeX 或 YUML，快速隐藏
+            // 没有需要云函数渲染的内容，快速隐藏
             setTimeout(() => {
               this.loading = false;
               if (this.loadingTimer) {
@@ -233,6 +235,169 @@ export default {
                 // 用例图
                 appendText("\n```yuml\n[User]-(Login)\n```\n");
               }
+            },
+          });
+          break;
+        case "echarts":
+          uni.showActionSheet({
+            itemList: ["折线图", "柱状图", "饼图", "散点图", "雷达图", "自定义"],
+            success: (res) => {
+              let chartTemplate = "";
+              if (res.tapIndex === 0) {
+                // 折线图
+                chartTemplate = `\n\`\`\`echarts\n{
+  "title": {
+    "text": "折线图示例"
+  },
+  "tooltip": {
+    "trigger": "axis"
+  },
+  "xAxis": {
+    "type": "category",
+    "data": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+  },
+  "yAxis": {
+    "type": "value"
+  },
+  "series": [{
+    "data": [120, 200, 150, 80, 70, 110, 130],
+    "type": "line"
+  }]
+}\n\`\`\`\n`;
+              } else if (res.tapIndex === 1) {
+                // 柱状图
+                chartTemplate = `\n\`\`\`echarts\n{
+  "title": {
+    "text": "柱状图示例"
+  },
+  "tooltip": {
+    "trigger": "axis"
+  },
+  "xAxis": {
+    "type": "category",
+    "data": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+  },
+  "yAxis": {
+    "type": "value"
+  },
+  "series": [{
+    "data": [120, 200, 150, 80, 70, 110, 130],
+    "type": "bar"
+  }]
+}\n\`\`\`\n`;
+              } else if (res.tapIndex === 2) {
+                // 饼图
+                chartTemplate = `\n\`\`\`echarts\n{
+  "title": {
+    "text": "饼图示例",
+    "left": "center"
+  },
+  "tooltip": {
+    "trigger": "item"
+  },
+  "series": [{
+    "name": "访问来源",
+    "type": "pie",
+    "radius": "50%",
+    "data": [
+      {"value": 1048, "name": "搜索引擎"},
+      {"value": 735, "name": "直接访问"},
+      {"value": 580, "name": "邮件营销"},
+      {"value": 484, "name": "联盟广告"},
+      {"value": 300, "name": "视频广告"}
+    ],
+    "emphasis": {
+      "itemStyle": {
+        "shadowBlur": 10,
+        "shadowOffsetX": 0,
+        "shadowColor": "rgba(0, 0, 0, 0.5)"
+      }
+    }
+  }]
+}\n\`\`\`\n`;
+              } else if (res.tapIndex === 3) {
+                // 散点图
+                chartTemplate = `\n\`\`\`echarts\n{
+  "title": {
+    "text": "散点图示例"
+  },
+  "tooltip": {
+    "trigger": "item"
+  },
+  "xAxis": {
+    "type": "value"
+  },
+  "yAxis": {
+    "type": "value"
+  },
+  "series": [{
+    "symbolSize": 20,
+    "data": [
+      [10.0, 8.04],
+      [8.0, 6.95],
+      [13.0, 7.58],
+      [9.0, 8.81],
+      [11.0, 8.33],
+      [14.0, 9.96],
+      [6.0, 7.24],
+      [4.0, 4.26],
+      [12.0, 10.84],
+      [7.0, 4.82],
+      [5.0, 5.68]
+    ],
+    "type": "scatter"
+  }]
+}\n\`\`\`\n`;
+              } else if (res.tapIndex === 4) {
+                // 雷达图
+                chartTemplate = `\n\`\`\`echarts\n{
+  "title": {
+    "text": "雷达图示例"
+  },
+  "radar": {
+    "indicator": [
+      {"name": "销售", "max": 6500},
+      {"name": "管理", "max": 16000},
+      {"name": "信息技术", "max": 30000},
+      {"name": "客服", "max": 38000},
+      {"name": "研发", "max": 52000},
+      {"name": "市场", "max": 25000}
+    ]
+  },
+  "series": [{
+    "name": "预算 vs 开销",
+    "type": "radar",
+    "data": [
+      {
+        "value": [4200, 3000, 20000, 35000, 50000, 18000],
+        "name": "预算分配"
+      },
+      {
+        "value": [5000, 14000, 28000, 26000, 42000, 21000],
+        "name": "实际开销"
+      }
+    ]
+  }]
+}\n\`\`\`\n`;
+              } else {
+                // 自定义（空模板）
+                chartTemplate = `\n\`\`\`echarts\n{
+  "title": {
+    "text": "自定义图表"
+  },
+  "tooltip": {},
+  "xAxis": {
+    "data": ["数据1", "数据2", "数据3", "数据4", "数据5"]
+  },
+  "yAxis": {},
+  "series": [{
+    "name": "销量",
+    "type": "bar",
+    "data": [5, 20, 36, 10, 10]
+  }]
+}\n\`\`\`\n`;
+              }
+              appendText(chartTemplate);
             },
           });
           break;

@@ -24,38 +24,43 @@
 
 <script>
 import moment from "moment";
-const db = uniCloud.database(); //创建数据库连接
 export default {
   methods: {
     //第一步，先判断是否注册过
     //第二步，注册过就去数据库拿用户信息；没有注册过就跳转注册页
-    async judgeUser() {
-      try {
-        uni.showLoading({
-          title: "登录中"
-        });
+    judgeUser() {
+      // 使用 Promise 链式调用，避免 async/await 依赖 regenerator-runtime
+      uni.showLoading({
+        title: "登录中"
+      });
 
-        const code = await this.loginWeixin();
-
-        const openId = await this.$store.dispatch("GetOpenId", code);
-
-        //获取用户信息，判断是否注册
-        const isRegister = await this.$store.dispatch("GetInfo");
-
-        if (isRegister) {
-          // 用户已注册，处理逻辑
-          uni.navigateTo({
-            url: "/pages/home/index"
-          });
-        } else {
-          // 用户未注册，跳转注册页
-          this.addUserInfo(openId);
-        }
-      } catch (error) {
-        console.error("发生错误：", error);
-      } finally {
+      const hideLoading = () => {
         uni.hideLoading();
-      }
+      };
+
+      this.loginWeixin()
+        .then((code) => {
+          return this.$store.dispatch("GetOpenId", code);
+        })
+        .then((openId) => {
+          //获取用户信息，判断是否注册
+          return this.$store.dispatch("GetInfo").then((isRegister) => {
+            hideLoading();
+            if (isRegister) {
+              // 用户已注册，处理逻辑
+              uni.navigateTo({
+                url: "/pages/home/index"
+              });
+            } else {
+              // 用户未注册，跳转注册页
+              this.addUserInfo(openId);
+            }
+          });
+        })
+        .catch((error) => {
+          hideLoading();
+          console.error("发生错误：", error);
+        });
     },
 
     loginWeixin() {
@@ -69,28 +74,30 @@ export default {
     },
 
     //云数据库用户表新增
-    async addUserInfo(openId) {
+    addUserInfo(openId) {
+      // 使用 Promise 链式调用，避免 async/await 依赖 regenerator-runtime
       const data = {
         _openid: openId,
         createTime: moment(new Date()).format("YYYY-MM-DD HH:mm:ss"),
         updateTime: moment(new Date()).format("YYYY-MM-DD HH:mm:ss")
       };
 
-      try {
-        const res = await this.$store.dispatch("AddUser", data);
-        uni.showToast({
-          title: res,
-          icon: "none"
+      this.$store.dispatch("AddUser", data)
+        .then((res) => {
+          uni.showToast({
+            title: res,
+            icon: "none"
+          });
+          uni.navigateTo({
+            url: "/pages/home/index"
+          });
+        })
+        .catch((error) => {
+          uni.showToast({
+            title: error,
+            icon: "none"
+          });
         });
-        uni.navigateTo({
-          url: "/pages/home/index"
-        });
-      } catch (error) {
-        uni.showToast({
-          title: error,
-          icon: "none"
-        });
-      }
     }
   }
 };

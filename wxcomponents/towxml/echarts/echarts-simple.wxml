@@ -1,0 +1,14 @@
+<view class="h2w__echartsBox">
+  <view class="h2w__echartsView">
+    <image 
+      class="{{attr.class}}" 
+      src="{{attr.src}}" 
+      style="width: 100%; max-width: 100%;" 
+      lazy-load="true" 
+      mode="widthFix" 
+      bindload="load"
+      binderror="error"
+    />
+  </view>
+</view>
+

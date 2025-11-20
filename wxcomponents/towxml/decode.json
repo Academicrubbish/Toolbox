@@ -2,6 +2,7 @@
   "component": true,
   "usingComponents": {
     "decode": "./decode",
+    "echarts": "./echarts/echarts-simple",
     "latex": "./latex/latex",
     "table": "./table/table",
     "todogroup": "./todogroup/todogroup",
