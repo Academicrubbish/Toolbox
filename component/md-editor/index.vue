@@ -4,41 +4,24 @@
       <view class="iconfont icon-bold" @click="toolBarClick('bold')" />
       <view class="iconfont icon-italic" @click="toolBarClick('italic')" />
       <view class="iconfont icon-title" @click="toolBarClick('header')" />
-      <!-- 已隐藏：下划线、删除线、上标、下标（towxml配置中已移除这些功能） -->
-      <!-- <view
-        class="iconfont icon-underline"
-        @click="toolBarClick('underline')"
-      />
-      <view
-        class="iconfont icon-strikeThrough"
-        @click="toolBarClick('strike')"
-      />
+      <view class="iconfont icon-underline" @click="toolBarClick('underline')" />
+      <view class="iconfont icon-strikeThrough" @click="toolBarClick('strike')" />
       <view class="iconfont icon-superscript" @click="toolBarClick('sup')" />
-      <view class="iconfont icon-subscript" @click="toolBarClick('sub')" /> -->
-      <view
-        class="iconfont icon-inIndentation"
-        @click="toolBarClick('inIndentation')"
-      />
-      <view
-        class="iconfont icon-reIndentation"
-        @click="toolBarClick('reIndentation')"
-      />
+      <view class="iconfont icon-subscript" @click="toolBarClick('sub')" />
+      <view class="iconfont icon-inIndentation" @click="toolBarClick('inIndentation')" />
+      <view class="iconfont icon-reIndentation" @click="toolBarClick('reIndentation')" />
       <view class="iconfont icon-ul" @click="toolBarClick('ul')" />
       <view class="iconfont icon-ol" @click="toolBarClick('ol')" />
-      <view
-        class="iconfont icon-dividingLine"
-        @click="toolBarClick('dividingLine')"
-      />
+      <view class="iconfont icon-dividingLine" @click="toolBarClick('dividingLine')" />
       <view class="iconfont icon-hyperlinke" @click="toolBarClick('link')" />
       <view class="iconfont icon-image" @click="toolBarClick('img')" />
-      <view
-        class="iconfont icon-inlineCode"
-        @click="toolBarClick('inlineCode')"
-      />
+      <view class="iconfont icon-inlineCode" @click="toolBarClick('inlineCode')" />
       <view class="iconfont icon-codeBlock" @click="toolBarClick('code')" />
       <view class="iconfont icon-table" @click="toolBarClick('table')" />
       <view class="iconfont icon-quote" @click="toolBarClick('quote')" />
       <view class="iconfont icon-taskList" @click="toolBarClick('taskList')" />
+      <view class="toolbar-btn" @click="toolBarClick('latex')" title="LaTeX公式">∑</view>
+      <view class="toolbar-btn" @click="toolBarClick('yuml')" title="YUML图表">◉</view>
       <view class="iconfont icon-empty" @click="toolBarClick('clear')" />
       <view class="iconfont icon-toggle" @click="toolBarClick('toggle')" />
       <view class="submit">
@@ -48,7 +31,10 @@
     <view class="input-content">
       <textarea v-if="status" maxlength="-1" v-model="textareaData"></textarea>
       <view v-if="!status && loading" class="loading-wrapper">
-        <text class="text-gray">正在解析...</text>
+        <view class="loading-content">
+          <view class="loading-spinner"></view>
+          <text class="loading-text">正在渲染中，请稍候...</text>
+        </view>
       </view>
       <towxml v-if="!status && !loading" :nodes="towxmlData" />
     </view>
@@ -56,7 +42,6 @@
 </template>
 
 <script>
-import { parseMarkdown } from "@/api/markdown";
 
 export default {
   name: "mdEditor",
@@ -66,6 +51,7 @@ export default {
       towxmlData: "",
       status: true,
       loading: false, // 加载状态
+      loadingTimer: null, // 加载定时器（用于延迟显示）
     };
   },
   props: {
@@ -81,39 +67,63 @@ export default {
         towxmlData: this.towxmlData,
       });
     },
-    // 使用云函数解析 Markdown
-    async updateTextareaContent() {
-      if (!this.textareaData || !this.textareaData.trim()) {
-        this.towxmlData = "";
-        return;
+    updateTextareaContent() {
+      // 清除之前的定时器
+      if (this.loadingTimer) {
+        clearTimeout(this.loadingTimer);
+        this.loadingTimer = null;
       }
-
-      this.loading = true;
-      try {
-        // 调用云函数解析 Markdown
-        const html = await parseMarkdown(this.textareaData, "markdown");
-        
-        // 使用 towxml 的 HTML 模式渲染
-        this.towxmlData = this.towxml(html, "html", {
-          events: {
-            tap: (e) => {
-              console.log("tap", e);
+      
+      // 显示加载提示（延迟 200ms 显示，避免快速切换时闪烁）
+      this.loadingTimer = setTimeout(() => {
+        this.loading = true;
+      }, 200);
+      
+      // 使用 nextTick 确保 DOM 更新后再渲染
+      this.$nextTick(() => {
+        try {
+          this.towxmlData = this.towxml(this.textareaData, "markdown", {
+            events: {
+              tap: (e) => {
+                console.log("tap", e);
+              },
             },
-          },
-        });
-      } catch (error) {
-        console.error("Markdown 解析失败，使用本地解析：", error);
-        // 降级到本地解析
-        this.towxmlData = this.towxml(this.textareaData, "markdown", {
-          events: {
-            tap: (e) => {
-              console.log("tap", e);
-            },
-          },
-        });
-      } finally {
-        this.loading = false;
-      }
+          });
+          
+          // 渲染完成后，等待一段时间确保所有组件都已加载
+          // 检查是否包含 latex 或 yuml 组件
+          const hasLatexOrYuml = this.textareaData.includes('$') || 
+                                  this.textareaData.includes('```yuml');
+          
+          if (hasLatexOrYuml) {
+            // 如果有 LaTeX 或 YUML，等待更长时间（云函数调用需要时间）
+            // 设置一个较长的等待时间，确保云函数调用完成
+            setTimeout(() => {
+              this.loading = false;
+              if (this.loadingTimer) {
+                clearTimeout(this.loadingTimer);
+                this.loadingTimer = null;
+              }
+            }, 3000); // 3秒后隐藏加载提示（给云函数足够的时间）
+          } else {
+            // 没有 LaTeX 或 YUML，快速隐藏
+            setTimeout(() => {
+              this.loading = false;
+              if (this.loadingTimer) {
+                clearTimeout(this.loadingTimer);
+                this.loadingTimer = null;
+              }
+            }, 300);
+          }
+        } catch (error) {
+          console.error('渲染失败：', error);
+          this.loading = false;
+          if (this.loadingTimer) {
+            clearTimeout(this.loadingTimer);
+            this.loadingTimer = null;
+          }
+        }
+      });
     },
     toolBarClick(type) {
       const updateTextareaContent = () => {
@@ -153,19 +163,18 @@ export default {
               ),
           });
           break;
-        // 已移除：下划线、删除线、上标、下标（towxml配置中已移除这些功能）
-        // case "underline":
-        //   appendText("++下划线++ ");
-        //   break;
-        // case "strike":
-        //   appendText("~~删除线~~ ");
-        //   break;
-        // case "sup":
-        //   appendText("^上角标^ ");
-        //   break;
-        // case "sub":
-        //   appendText("~下角标~ ");
-        //   break;
+        case "underline":
+          appendText("++下划线++ ");
+          break;
+        case "strike":
+          appendText("~~删除线~~ ");
+          break;
+        case "sup":
+          appendText("^上角标^ ");
+          break;
+        case "sub":
+          appendText("~下角标~ ");
+          break;
         case "link":
           appendText("[在此输入网址描述](在此输入网址) ");
           break;
@@ -196,6 +205,37 @@ export default {
         case "quote":
           appendText("\n> 引用内容");
           break;
+        case "latex":
+          uni.showActionSheet({
+            itemList: ["行内公式", "块级公式"],
+            success: (res) => {
+              if (res.tapIndex === 0) {
+                // 行内公式
+                appendText("$E = mc^2$ ");
+              } else {
+                // 块级公式
+                appendText("\n$$\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}$$\n");
+              }
+            },
+          });
+          break;
+        case "yuml":
+          uni.showActionSheet({
+            itemList: ["类图", "活动图", "用例图"],
+            success: (res) => {
+              if (res.tapIndex === 0) {
+                // 类图
+                appendText("\n```yuml\n[Customer]<>-orders*>[Order]\n```\n");
+              } else if (res.tapIndex === 1) {
+                // 活动图
+                appendText("\n```yuml\n[Start]->[End]\n```\n");
+              } else {
+                // 用例图
+                appendText("\n```yuml\n[User]-(Login)\n```\n");
+              }
+            },
+          });
+          break;
         case "inIndentation":
           adjustIndentation(true);
           break;
@@ -223,7 +263,17 @@ export default {
           });
           break;
         case "toggle":
-          if (this.status) updateTextareaContent();
+          if (this.status) {
+            // 切换到预览模式
+            updateTextareaContent();
+          } else {
+            // 切换到编辑模式，清除加载状态
+            this.loading = false;
+            if (this.loadingTimer) {
+              clearTimeout(this.loadingTimer);
+              this.loadingTimer = null;
+            }
+          }
           this.status = !this.status;
           break;
       }
@@ -277,6 +327,24 @@ export default {
   box-sizing: border-box;
 }
 
+.toolbar .toolbar-btn {
+  display: inline-block;
+  cursor: pointer;
+  width: calc(100% / 9);
+  aspect-ratio: 1;
+  font-size: 32rpx;
+  padding: 10rpx;
+  color: #757575;
+  text-align: center;
+  background: none;
+  border: none;
+  outline: none;
+  line-height: 2.2;
+  vertical-align: middle;
+  box-sizing: border-box;
+  font-weight: bold;
+}
+
 .toolbar .submit {
   height: calc(100% / 3);
   position: absolute;
@@ -305,10 +373,40 @@ export default {
 }
 
 .loading-wrapper {
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+  background-color: #fff;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   padding: 40rpx;
+}
+
+.loading-spinner {
+  width: 60rpx;
+  height: 60rpx;
+  border: 4rpx solid #f3f3f3;
+  border-top: 4rpx solid #007aff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20rpx;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
   font-size: 28rpx;
+  color: #666;
+  text-align: center;
 }
 </style>

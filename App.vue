@@ -2,6 +2,24 @@
 	import Vue from 'vue'
 	export default {
 		onLaunch: function() {
+			// 将 uniCloud 挂载到全局，供小程序组件使用
+			if (typeof uniCloud !== 'undefined') {
+				// 挂载到 global
+				if (typeof global !== 'undefined') {
+					global.uniCloud = uniCloud;
+				}
+				// 挂载到 getApp().globalData
+				if (typeof getApp !== 'undefined') {
+					const app = getApp();
+					if (app && !app.globalData) {
+						app.globalData = {};
+					}
+					if (app && app.globalData) {
+						app.globalData.uniCloud = uniCloud;
+					}
+				}
+			}
+			
 			this.autoUpdate();
 			console.log('App Launch')
 			uni.getSystemInfo({

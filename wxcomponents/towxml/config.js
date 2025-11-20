@@ -1,35 +1,41 @@
 module.exports = {
-    // LaTex公式、yuml解析服务架设参见 https://github.com/sbfkcel/markdown-server
+    // LaTex公式、yuml解析服务配置
+    // 优先使用云函数渲染（renderLatex、renderYuml），失败时降级到外部API
+    // 外部API服务架设参见 https://github.com/sbfkcel/markdown-server
 
-    // 数学公式解析API
-    latex:{
-        api:'http://towxml.vvadd.com/?tex'
+    // 数学公式解析API（降级备用）
+    latex: {
+        api: 'http://towxml.vvadd.com/?tex',
+        useCloudFunction: true  // 是否使用云函数，true 使用云函数，false 使用外部API
     },
 
-    // yuml图解析APPI
-    yuml:{
-        api:'http://towxml.vvadd.com/?yuml'
+    // yuml图解析API（降级备用）
+    yuml: {
+        api: 'http://towxml.vvadd.com/?yuml',
+        useCloudFunction: true  // 是否使用云函数，true 使用云函数，false 使用外部API
     },
 
     // markdown解析配置，保留需要的选项即可
     // 已优化：只保留常用功能，减少代码包体积
-    markdown:[
+    markdown: [
         'todo',                     // todo支持（任务列表）
         'emoji',                    // emoji表情支持
-        // 已移除：sub（下标）、sup（上标）、ins（删除线）、mark（高亮）
-        // 如需这些功能，可取消注释添加
+        'sub',                      // 下标支持
+        'sup',                      // 上标支持
+        'ins',                      // 删除线支持
+        'mark',                     // 高亮支持
     ],
 
     // 代码高亮配置，保留需要的选项即可（尽量越少越好，不要随意调整顺序。部分高亮有顺序依赖）
     // 已优化：只保留最常用的语言，减少代码包体积
-    highlight:[
+    highlight: [
         'javascript',  // JavaScript（必需）
         'json',        // JSON（常用）
         'css',         // CSS（常用）
         'bash',        // Shell脚本（可选，如果不需要可删除）
         // 已移除：c-like, c, dart, go, java, less, scss, shell, xml, htmlbars, nginx, php, python, python-repl, typescript
         // 如需其他语言，可取消注释添加
-        
+
         // 'csharp',
         // 'http',
         // 'swift',
@@ -203,7 +209,7 @@ module.exports = {
     ],
 
     // wxml原生标签，该系列标签将不会被转换
-    wxml:[
+    wxml: [
         'view',
         'video',
         'text',
@@ -240,16 +246,16 @@ module.exports = {
 
     // 自定义组件
     // 已优化：移除不常用的组件，减少代码包体积
-    components:[
+    components: [
         'table',                    // 表格支持
         'todogroup',                // todo支持
         'img',                      // 图片解析组件（必需）
-        // 已移除：latex（数学公式）、yuml（图表）
-        // 如需这些功能，可取消注释添加
+        'latex',                    // LaTeX 数学公式支持（使用云函数渲染）
+        'yuml',                     // YUML 图表支持（使用云函数渲染）
     ],
 
     // 保留原本的元素属性（建议不要变动）
-    attrs:[
+    attrs: [
         'class',
         'data',
         'id',
@@ -257,10 +263,10 @@ module.exports = {
     ],
 
     // 事件绑定方式（catch或bind），catch 会阻止事件向上冒泡。更多请参考：https://developers.weixin.qq.com/miniprogram/dev/framework/view/wxml/event.html
-    bindType:'catch',
+    bindType: 'catch',
 
     // 需要激活的事件
-    events:[
+    events: [
         // 'touchstart',
         // 'touchmove',
         // 'touchcancel',
@@ -270,8 +276,8 @@ module.exports = {
     ],
 
     // 图片倍数
-    dpr:1,
+    dpr: 1,
 
     // 代码块显示行号
-    showLineNumber:true
+    showLineNumber: true
 }

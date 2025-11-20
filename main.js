@@ -8,6 +8,13 @@ import './uni.promisify.adaptor'
 
 Vue.prototype.towxml = require('./wxcomponents/towxml/index.js')
 
+// 将渲染 API 挂载到全局，供小程序组件使用
+import { renderLatex, renderYuml } from './api/render.js'
+if (typeof global !== 'undefined') {
+	global.renderLatex = renderLatex
+	global.renderYuml = renderYuml
+}
+
 import cuCustom from './colorui/components/cu-custom.vue'
 Vue.component('cu-custom', cuCustom)
 
