@@ -68,11 +68,7 @@
             "es6" : true
         },
         "usingComponents" : true,
-        "permission" : {
-            "scope.userLocation" : {
-                "desc" : "你的位置信息将用于请求当地天气情况，以供参考"
-            }
-        },
+        "permission" : {},
         "requiredPrivateInfos" : [ "getLocation" ]
     },
     "mp-alipay" : {

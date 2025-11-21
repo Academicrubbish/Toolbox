@@ -20,9 +20,9 @@
       <view class="iconfont icon-table" @click="toolBarClick('table')" />
       <view class="iconfont icon-quote" @click="toolBarClick('quote')" />
       <view class="iconfont icon-taskList" @click="toolBarClick('taskList')" />
-      <view class="toolbar-btn" @click="toolBarClick('latex')" title="LaTeX公式">∑</view>
-      <view class="toolbar-btn" @click="toolBarClick('yuml')" title="YUML图表">◉</view>
-      <view class="toolbar-btn" @click="toolBarClick('echarts')" title="ECharts图表">📊</view>
+      <view class="iconfont icon-latex" @click="toolBarClick('latex')" title="LaTeX公式"></view>
+      <view class="iconfont icon-yuml" @click="toolBarClick('yuml')" title="YUML图表"></view>
+      <view class="iconfont icon-echarts" @click="toolBarClick('echarts')" title="ECharts图表"></view>
       <view class="iconfont icon-empty" @click="toolBarClick('clear')" />
       <view class="iconfont icon-toggle" @click="toolBarClick('toggle')" />
       <view class="submit">
@@ -456,8 +456,6 @@ export default {
 </script>
 
 <style>
-@import "../../static/mdEditor/markdown.css";
-
 .mdEditor {
   width: 100%;
   height: 100%;

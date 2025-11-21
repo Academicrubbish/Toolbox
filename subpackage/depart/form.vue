@@ -36,7 +36,7 @@
                 <text class="text-red margin-left-xs">*</text>
               </view>
               <view class="form-item-content">
-                <uni-easyinput v-model="formData.title" :maxlength="50" placeholder="请输入记录标题" :inputBorder="true"
+                <uni-easyinput name="title" v-model="formData.title" :maxlength="50" placeholder="请输入记录标题" :inputBorder="true"
                   :styles="inputStyles" />
                 <view class="char-count">
                   <text class="text-xs text-gray">{{ getTitleLength }}/50</text>
@@ -48,7 +48,8 @@
             <view class="form-item">
               <view class="form-item-label">
                 <text class="text-bold">标签</text>
-                <text class="text-gray text-xs margin-left-xs">（可选，可多选）</text>
+                <text class="text-red margin-left-xs">*</text>
+                <text class="text-gray text-xs margin-left-xs">（至少选择一个，可多选）</text>
               </view>
               <view class="form-item-content">
                 <view v-if="tagList.length === 0" class="tag-empty-tip">
@@ -274,6 +275,26 @@ export default {
       this.$refs[form]
         .validate()
         .then((res) => {
+          // 验证标题是否为空（额外校验，确保 trim 后不为空）
+          const title = (res.title || this.formData.title || '').trim();
+          if (!title) {
+            uni.showToast({
+              title: "标题不能为空",
+              icon: "none",
+            });
+            return;
+          }
+
+          // 验证标签是否至少选择一个
+          const tags = this.formData.tags || [];
+          if (!tags || tags.length === 0) {
+            uni.showToast({
+              title: "请至少选择一个标签",
+              icon: "none",
+            });
+            return;
+          }
+
           // 验证富文本是否已填写
           if (!this.formData.summarizeId) {
             uni.showToast({
@@ -284,7 +305,7 @@ export default {
           }
 
           let data = {
-            title: (res.title || this.formData.title || '').trim(),
+            title: title,
             tags: this.formData.tags || [],
             summarizeId: this.formData.summarizeId,
             createTime: this.type === "add"
@@ -316,7 +337,10 @@ export default {
                 }
               })
               .catch((err) => {
-                console.error("添加失败：", err);
+                // 如果是用户取消登录，不显示错误提示
+                if (err && err.message && err.message === '用户取消登录') {
+                  return;
+                }
                 uni.showToast({
                   title: "添加失败",
                   icon: "none",
@@ -345,7 +369,10 @@ export default {
                 }
               })
               .catch((err) => {
-                console.error("修改失败：", err);
+                // 如果是用户取消登录，不显示错误提示
+                if (err && err.message && err.message === '用户取消登录') {
+                  return;
+                }
                 uni.showToast({
                   title: "修改失败",
                   icon: "none",
@@ -354,7 +381,27 @@ export default {
           }
         })
         .catch((err) => {
-          console.log("表单错误信息：", err);
+          // 表单校验失败，显示错误信息
+          if (err && err.length > 0) {
+            // uni-forms 校验失败返回错误数组
+            const firstError = err[0];
+            if (firstError && firstError.errorMessage) {
+              uni.showToast({
+                title: firstError.errorMessage,
+                icon: "none",
+              });
+            } else {
+              uni.showToast({
+                title: "请检查表单填写是否正确",
+                icon: "none",
+              });
+            }
+          } else {
+            uni.showToast({
+              title: "请检查表单填写是否正确",
+              icon: "none",
+            });
+          }
         });
     }, 500),
   },

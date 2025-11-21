@@ -19,21 +19,27 @@
     <view :style="contentHeight">
       <md-editor :textareaDataProp="textareaData" @submit="submit" />
     </view>
+    
+    <!-- 登录授权弹窗 -->
+    <login-modal ref="loginModal" @success="handleLoginSuccess" @cancel="handleLoginCancel" />
   </view>
 </template>
 
 <script>
 import mdEditor from "../../component/md-editor/index.vue";
+import LoginModal from "@/component/login-modal/index.vue";
 import {
   addSummarize,
   updateSummarize,
   getSummarize
 } from "@/api/summarize";
+import { setLoginModalRef, notifyLoginResult } from "@/utils/api-auth.js";
 import debounce from "lodash/debounce";
 import moment from "moment";
 export default {
   components: {
     mdEditor,
+    LoginModal,
   },
   data() {
     return {
@@ -43,14 +49,20 @@ export default {
       textareaData: "# 标题",
     };
   },
+  mounted() {
+    // 设置登录弹窗的全局引用，供API授权检查使用
+    this.$nextTick(() => {
+      if (this.$refs.loginModal) {
+        setLoginModalRef(this.$refs.loginModal);
+      }
+    });
+  },
   onLoad(option) {
-    console.log('111', option);
     this.summarizeId = option.id;
     // 修改操作
     if (option.id) {
       let _this = this;
       getSummarize(option.id).then(res => {
-        console.log("res", res);
         if (res.result.data.length > 0) {
           this.status = "update";
           this.form = res.result.data[0];
@@ -84,6 +96,7 @@ export default {
 
           updateSummarize(_this.form._id, form)
             .then((res) => {
+              uni.hideLoading();
               if (res.result.code === 0) {
                 uni.showToast({
                   title: "修改成功",
@@ -98,6 +111,11 @@ export default {
               }
             })
             .catch((err) => {
+              uni.hideLoading();
+              // 如果是用户取消登录，不显示错误提示
+              if (err && err.message && err.message === '用户取消登录') {
+                return;
+              }
               uni.showToast({
                 title: "修改失败",
                 icon: "none",
@@ -114,6 +132,7 @@ export default {
 
           addSummarize(form)
             .then((res) => {
+              uni.hideLoading();
               if (res.result.code === 0) {
                 // 添加成功后，将总结id缓存到store
                 _this.$store.dispatch("cacheSummary", {
@@ -133,6 +152,11 @@ export default {
               }
             })
             .catch((err) => {
+              uni.hideLoading();
+              // 如果是用户取消登录，不显示错误提示
+              if (err && err.message && err.message === '用户取消登录') {
+                return;
+              }
               uni.showToast({
                 title: "添加失败",
                 icon: "none",
@@ -161,7 +185,6 @@ export default {
       while ((matches = regex.exec(htmlString)) !== null) {
         imageUrls.push(matches[1]);
       }
-      console.log("222", imageUrls);
 
       if (imageUrls.length) {
         uniCloud.callFunction({
@@ -193,8 +216,6 @@ export default {
         const imgTag = match[0]; // 完整的img标签
         const imgUrl = match[1]; // 图片的临时地址
 
-        console.log("111", imgUrl);
-
         // 调用上传图片方法，获取永久地址
         const permanentUrl = await this.uploadImageToCloudStorage(imgUrl);
 
@@ -203,6 +224,14 @@ export default {
       }
 
       return richText;
+    },
+    // 登录成功处理
+    handleLoginSuccess() {
+      notifyLoginResult(true);
+    },
+    // 登录取消处理
+    handleLoginCancel() {
+      notifyLoginResult(false);
     },
   },
   computed: {

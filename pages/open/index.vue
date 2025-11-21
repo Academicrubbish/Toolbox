@@ -8,17 +8,12 @@
     </view>
     <view class="animation-slide-bottom open_login">
       <view class="cu-bar btn-group login_btn">
-        <button class="cu-btn bg-green shadow-blur round lg" @click="judgeUser">登录</button>
+        <button class="cu-btn bg-green shadow-blur round lg" @click="judgeUser">授权登录</button>
       </view>
-      <!-- <view class="text-center text-grey margin-top" @tap="browse"><text style="text-decoration: underline">先看看</text> -->
+      <view class="text-center text-grey margin-top" @tap="browseAsGuest">
+        <text style="text-decoration: underline">游客登录</text>
+      </view>
     </view>
-
-    <!-- 		<view class="text-xs text-gray animation-slide-bottom open_bottom">
-			<view>
-				<image src="../../static/open/me.jpg" />
-				致谢那个嘴里卡着灯泡的自己
-			</view>
-    </view>-->
   </view>
 </template>
 
@@ -26,10 +21,8 @@
 import moment from "moment";
 export default {
   methods: {
-    //第一步，先判断是否注册过
-    //第二步，注册过就去数据库拿用户信息；没有注册过就跳转注册页
+    // 授权登录
     judgeUser() {
-      // 使用 Promise 链式调用，避免 async/await 依赖 regenerator-runtime
       uni.showLoading({
         title: "登录中"
       });
@@ -47,20 +40,37 @@ export default {
           return this.$store.dispatch("GetInfo").then((isRegister) => {
             hideLoading();
             if (isRegister) {
-              // 用户已注册，处理逻辑
-              uni.navigateTo({
+              // 用户已注册
+              this.$store.commit('SET_IS_GUEST', false);
+              uni.redirectTo({
                 url: "/pages/home/index"
               });
             } else {
-              // 用户未注册，跳转注册页
+              // 用户未注册，自动注册
               this.addUserInfo(openId);
             }
           });
         })
         .catch((error) => {
           hideLoading();
-          console.error("发生错误：", error);
+          uni.showToast({
+            title: "登录失败，请重试",
+            icon: "none"
+          });
         });
+    },
+
+    // 游客登录
+    browseAsGuest() {
+      // 设置游客状态
+      this.$store.commit('SET_IS_GUEST', true);
+      // 清空 openid 和 userData
+      this.$store.commit('SET_OPENID', '');
+      this.$store.commit('SET_USERDATA', {});
+      // 跳转到首页
+      uni.redirectTo({
+        url: "/pages/home/index"
+      });
     },
 
     loginWeixin() {
@@ -73,9 +83,8 @@ export default {
       });
     },
 
-    //云数据库用户表新增
+    // 云数据库用户表新增
     addUserInfo(openId) {
-      // 使用 Promise 链式调用，避免 async/await 依赖 regenerator-runtime
       const data = {
         _openid: openId,
         createTime: moment(new Date()).format("YYYY-MM-DD HH:mm:ss"),
@@ -84,17 +93,18 @@ export default {
 
       this.$store.dispatch("AddUser", data)
         .then((res) => {
+          this.$store.commit('SET_IS_GUEST', false);
           uni.showToast({
             title: res,
-            icon: "none"
+            icon: "success"
           });
-          uni.navigateTo({
+          uni.redirectTo({
             url: "/pages/home/index"
           });
         })
         .catch((error) => {
           uni.showToast({
-            title: error,
+            title: error || "注册失败",
             icon: "none"
           });
         });
@@ -105,39 +115,30 @@ export default {
 
 <style lang="scss" scoped>
 .open {
-  height: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(to bottom, #f5f7fa 0%, #f1f1f1 100%);
 
   .open_title {
     animation-delay: 0.2s;
-    margin-top: 300rpx;
   }
 
   .open_comment {
     animation-delay: 0.3s;
+    margin-top: 40rpx;
   }
 
   .open_login {
     animation-delay: 0.4s;
+    margin-top: 200rpx;
+    width: 100%;
 
     .login_btn {
-      margin-top: 280rpx;
-    }
-  }
-
-  .open_bottom {
-    animation-delay: 0.5s;
-    position: fixed;
-    bottom: 100rpx;
-    width: 100%;
-    text-align: center;
-
-    image {
-      display: inline-block;
-      vertical-align: middle;
-      width: 40rpx;
-      height: 40rpx;
-      border-radius: 40rpx;
-      margin-right: 10rpx;
+      justify-content: center;
+      margin-top: 0;
     }
   }
 }

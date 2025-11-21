@@ -18,6 +18,10 @@ if (typeof global !== 'undefined') {
 import cuCustom from './colorui/components/cu-custom.vue'
 Vue.component('cu-custom', cuCustom)
 
+// 注册全局登录弹窗组件
+import LoginModal from './component/login-modal/index.vue'
+Vue.component('login-modal', LoginModal)
+
 Vue.config.productionTip = false
 App.mpType = 'app'
 const app = new Vue({
@@ -25,6 +29,18 @@ const app = new Vue({
 	...App
 })
 app.$mount()
+
+// 将 store 和 app 实例挂载到 globalData，供工具函数使用
+if (typeof getApp !== 'undefined') {
+	const globalApp = getApp();
+	if (globalApp && !globalApp.globalData) {
+		globalApp.globalData = {};
+	}
+	if (globalApp && globalApp.globalData) {
+		globalApp.globalData.store = app.$store;
+		globalApp.globalData.app = app; // 挂载 app 实例
+	}
+}
 // #endif
 
 // #ifdef VUE3

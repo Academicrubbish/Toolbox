@@ -1,3 +1,6 @@
+import store from '@/store';
+import { withAuth } from '@/utils/api-auth.js';
+
 // 延迟初始化数据库连接，避免在模块加载时 uniCloud 未初始化
 const getRequest = () => {
   if (typeof uniCloud === 'undefined' || !uniCloud.database) {
@@ -18,19 +21,17 @@ export function  summarizeRecordInfoById(id) {
 
 
 
-// 添加总结
-export function addSummarize(data) {
+// 添加总结（需要登录）
+export const addSummarize = withAuth(function(data) {
   return getRequest().add(data)
-}
+}, store)
 
-
-// 更新总结
-export function updateSummarize(id,data) {
+// 更新总结（需要登录）
+export const updateSummarize = withAuth(function(id, data) {
   return getRequest().doc(id).update(data)
-}
+}, store)
 
-
-//删除总结
-export function delSummarize(id) {
+// 删除总结（需要登录）
+export const delSummarize = withAuth(function(id) {
   return getRequest().doc(id).remove()
-}
+}, store)

@@ -9,7 +9,8 @@ const getDb = () => {
 const user = {
   state: {
     openid: '',
-    userData: {}
+    userData: {},
+    isGuest: false  // 游客状态标识
   },
 
   mutations: {
@@ -18,6 +19,9 @@ const user = {
     },
     SET_USERDATA: (state, userData) => {
       state.userData = userData
+    },
+    SET_IS_GUEST: (state, isGuest) => {
+      state.isGuest = isGuest
     }
   },
 
