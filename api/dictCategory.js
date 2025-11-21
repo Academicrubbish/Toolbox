@@ -42,11 +42,21 @@ export function getDictCategory(id) {
 
 // 添加标签（需要登录）
 export const addDictCategory = withAuth(function(data) {
+  // 登录成功后，从 store 中实时获取 openid，确保 createBy 正确
+  const openid = store.state?.user?.openid;
+  if (openid && openid !== '') {
+    data.createBy = openid;
+  }
   return getRequest().add(data)
 }, store)
 
 // 更新标签（需要登录）
 export const updateDictCategory = withAuth(function(id, data) {
+  // 登录成功后，从 store 中实时获取 openid，确保 createBy 正确
+  const openid = store.state?.user?.openid;
+  if (openid && openid !== '') {
+    data.createBy = openid;
+  }
   return getRequest().doc(id).update(data)
 }, store)
 

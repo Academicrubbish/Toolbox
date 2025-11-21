@@ -13,7 +13,8 @@
 					</cu-custom>
 				</view>
 				<!-- 自定义授权失败页面 -->
-				<view slot="empty">
+				<view slot="empty" slot-scope="{ isLoadFailed: slotIsLoadFailed }">
+					<!-- 授权失败时显示自定义页面 -->
 					<view v-if="showAuthFailed" class="auth-failed-container auth-failed-container-fixed">
 						<view class="auth-failed-main">
 							<image class="auth-failed-image-rpx" :src="zStatic.base64Error" mode="aspectFit" />
@@ -22,6 +23,8 @@
 							<text class="auth-failed-error-btn auth-failed-error-btn-rpx" @click.stop="handleAuthorize">授权登录</text>
 						</view>
 					</view>
+					<!-- 非授权失败时显示默认失败页 -->
+					<z-paging-empty-view v-else :isLoadFailed="slotIsLoadFailed || isLoadFailed" @reload="handleDefaultReload" />
 				</view>
 
 				<!-- 记录列表 -->
@@ -57,6 +60,11 @@
 									:class="tagColorClasses[index % 12]">
 									<text>{{ getTagName(tagId) }}</text>
 								</view>
+							</view>
+
+							<!-- 总结内容 -->
+							<view v-if="record.summarizeContent" class="record-summary">
+								<text class="record-summary-text">{{ formatSummaryContent(record.summarizeContent) }}</text>
 							</view>
 
 							<!-- 时间信息 -->
@@ -140,13 +148,15 @@ import { delSummarize } from "@/api/summarize";
 import { tagColorClasses } from "@/utils/tagColors";
 import moment from "moment";
 import zStatic from '@/uni_modules/z-paging/components/z-paging/js/z-paging-static.js';
+import zPagingEmptyView from '@/uni_modules/z-paging/components/z-paging-empty-view/z-paging-empty-view.vue';
 
 import LoginModal from '@/component/login-modal/index.vue'
 import { setLoginModalRef } from '@/utils/api-auth.js'
 
 export default {
 	components: {
-		LoginModal
+		LoginModal,
+		zPagingEmptyView
 	},
 	data() {
 		return {
@@ -163,6 +173,7 @@ export default {
 			pickerRecordItem: null, // 选择的记录内容
 			dialogContent: "", // 删除提醒文本
 			showAuthFailed: false, // 是否显示授权失败页面
+			isLoadFailed: false, // 是否加载失败（用于显示默认失败页）
 			zStatic, // 导入 z-paging 静态资源
 			lastAuthStateVersion: 0, // 记录上一次的授权状态版本号
 			lastIsGuest: null, // 记录上一次的游客状态
@@ -254,6 +265,27 @@ export default {
 			if (!timeStr) return '';
 			return moment(timeStr).format('HH:mm');
 		},
+		// 格式化总结内容（简单处理markdown，保留文本内容）
+		formatSummaryContent(content) {
+			if (!content) return '';
+			// 去除markdown的标题符号、列表符号等，保留文本内容
+			let text = content
+				.replace(/^#{1,6}\s+/gm, '') // 去除标题符号
+				.replace(/^\*\s+/gm, '') // 去除无序列表符号
+				.replace(/^\d+\.\s+/gm, '') // 去除有序列表符号
+				.replace(/```[\s\S]*?```/g, '') // 去除代码块
+				.replace(/`[^`]+`/g, '') // 去除行内代码
+				.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // 将链接转换为文本
+				.replace(/!\[([^\]]*)\]\([^\)]+\)/g, '') // 去除图片
+				.replace(/\*\*([^\*]+)\*\*/g, '$1') // 去除加粗
+				.replace(/\*([^\*]+)\*/g, '$1') // 去除斜体
+				.replace(/~~([^~]+)~~/g, '$1') // 去除删除线
+				.replace(/^\s*[-*+]\s+/gm, '') // 去除列表符号
+				.replace(/^\s*\d+\.\s+/gm, '') // 去除有序列表
+				.replace(/\n+/g, ' ') // 将换行符替换为空格
+				.trim();
+			return text;
+		},
 		// 查询列表
 		queryList(pageNo, pageSize) {
 			// 调用接口，不自动弹出登录弹窗，失败时显示失败页面
@@ -264,6 +296,7 @@ export default {
 				.then((res) => {
 					// 加载成功，重置失败状态
 					this.showAuthFailed = false;
+					this.isLoadFailed = false;
 					const list = res.result.data || [];
 					
 					// 按日期分组
@@ -295,6 +328,7 @@ export default {
 						errorMessage.includes('用户取消登录');
 
 					this.showAuthFailed = isAuthError;
+					this.isLoadFailed = !isAuthError; // 非授权错误时，显示默认失败页
 
 					// 确保状态更新后再调用 complete
 					this.$nextTick(() => {
@@ -426,6 +460,7 @@ export default {
 		refreshAfterAuthChange() {
 			// 重置授权失败状态
 			this.showAuthFailed = false;
+			this.isLoadFailed = false;
 			// 重新加载标签列表（授权状态改变后，标签接口返回的数据会不同）
 			this.loadTagList();
 			// 刷新列表
@@ -434,6 +469,12 @@ export default {
 					this.$refs.paging.reload();
 				}
 			});
+		},
+		// 处理默认失败页的重新加载
+		handleDefaultReload() {
+			if (this.$refs.paging) {
+				this.$refs.paging.reload();
+			}
 		},
 		// 登录取消处理
 		handleLoginCancel() {
@@ -633,6 +674,26 @@ export default {
       font-size: 24rpx;
       font-weight: 500;
       box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.08);
+    }
+  }
+
+  .record-summary {
+    margin-bottom: 16rpx;
+    padding: 12rpx 0;
+    border-top: 1rpx solid rgba(0, 0, 0, 0.05);
+    border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+
+    .record-summary-text {
+      font-size: 26rpx;
+      color: #666;
+      line-height: 1.6;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      word-break: break-all;
     }
   }
 

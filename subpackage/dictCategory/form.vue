@@ -86,15 +86,23 @@
         </button>
       </view>
     </view>
+    
+    <!-- 登录授权弹窗 -->
+    <login-modal ref="loginModal" @success="handleLoginSuccess" @cancel="handleLoginCancel" />
   </view>
 </template>
 
 <script>
 import { addDictCategory, getDictCategory, updateDictCategory } from "@/api/dictCategory";
+import LoginModal from "@/component/login-modal/index.vue";
+import { setLoginModalRef, notifyLoginResult } from "@/utils/api-auth.js";
 import debounce from "lodash/debounce";
 import moment from "moment";
 
 export default {
+  components: {
+    LoginModal,
+  },
   data() {
     return {
       type: "add", // add 或 update
@@ -135,6 +143,14 @@ export default {
         },
       },
     };
+  },
+  mounted() {
+    // 设置登录弹窗的全局引用，供API授权检查使用
+    this.$nextTick(() => {
+      if (this.$refs.loginModal) {
+        setLoginModalRef(this.$refs.loginModal);
+      }
+    });
   },
   onLoad(option) {
     if (option.type === "update" && option.id) {
@@ -212,6 +228,13 @@ export default {
                 }
               })
               .catch((err) => {
+                // 如果是用户未授权或用户取消登录，不显示错误提示
+                const errorMessage = err?.message || err?.errMsg || String(err || '');
+                if (errorMessage.includes('未授权') || 
+                    errorMessage.includes('用户未授权') || 
+                    errorMessage === '用户取消登录') {
+                  return;
+                }
                 console.error("添加失败：", err);
                 uni.showToast({
                   title: "添加失败",
@@ -241,6 +264,13 @@ export default {
                 }
               })
               .catch((err) => {
+                // 如果是用户未授权或用户取消登录，不显示错误提示
+                const errorMessage = err?.message || err?.errMsg || String(err || '');
+                if (errorMessage.includes('未授权') || 
+                    errorMessage.includes('用户未授权') || 
+                    errorMessage === '用户取消登录') {
+                  return;
+                }
                 console.error("修改失败：", err);
                 uni.showToast({
                   title: "修改失败",
@@ -267,6 +297,25 @@ export default {
           }
         });
     }, 500),
+    // 登录成功处理
+    handleLoginSuccess() {
+      // 记录调用前的版本号
+      const oldVersion = this.$store.state.user.authStateVersion;
+      // 清除游客状态（会自动递增 authStateVersion，如果从游客变为已登录）
+      this.$store.commit('SET_IS_GUEST', false);
+      // 检查版本号是否变化，如果没变化说明之前 isGuest 已经是 false，手动递增
+      const newVersion = this.$store.state.user.authStateVersion;
+      if (oldVersion === newVersion) {
+        // 版本号没有变化，手动递增，确保首页能检测到授权状态变化
+        this.$store.commit('INCREMENT_AUTH_STATE_VERSION');
+      }
+      // 通知 API 授权检查工具登录成功
+      notifyLoginResult(true);
+    },
+    // 登录取消处理
+    handleLoginCancel() {
+      notifyLoginResult(false);
+    },
   },
 };
 </script>

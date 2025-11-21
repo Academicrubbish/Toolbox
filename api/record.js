@@ -28,7 +28,60 @@ export const getRecordList = function(data, options = {}) {
     const { pageSize, pageNum } = data;
     const { skip, limit } = convertPagination(pageSize, pageNum);
     const user = store.state.user
-    return getRequest().where({ createBy: user.openid }).orderBy('createTime desc').skip(skip).limit(limit).get()
+    const db = uniCloud.database()
+    
+    // 先查询记录列表
+    return getRequest()
+      .where({ createBy: user.openid })
+      .orderBy('createTime desc')
+      .skip(skip)
+      .limit(limit)
+      .get()
+      .then(res => {
+        if (!res.result || !res.result.data || res.result.data.length === 0) {
+          return res;
+        }
+        
+        // 收集所有有 summarizeId 的记录ID
+        const summarizeIds = res.result.data
+          .map(record => record.summarizeId)
+          .filter(id => id && id !== '');
+        
+        // 如果没有总结ID，直接返回
+        if (summarizeIds.length === 0) {
+          res.result.data.forEach(record => {
+            record.summarizeContent = '';
+          });
+          return res;
+        }
+        
+        // 批量查询总结内容
+        return db.collection('summarize')
+          .where({
+            _id: db.command.in(summarizeIds)
+          })
+          .get()
+          .then(summarizeRes => {
+            // 构建总结内容映射
+            const summarizeMap = {};
+            if (summarizeRes.result && summarizeRes.result.data) {
+              summarizeRes.result.data.forEach(summarize => {
+                summarizeMap[summarize._id] = summarize.content || '';
+              });
+            }
+            
+            // 将总结内容合并到记录中
+            res.result.data.forEach(record => {
+              if (record.summarizeId && summarizeMap[record.summarizeId]) {
+                record.summarizeContent = summarizeMap[record.summarizeId];
+              } else {
+                record.summarizeContent = '';
+              }
+            });
+            
+            return res;
+          });
+      })
   }, store, options)(data)
 }
 
@@ -51,3 +104,39 @@ export const updateRecord = withAuth(function(id, data) {
 export const delRecord = withAuth(function(id) {
   return getRequest().doc(id).remove()
 }, store)
+
+// 模糊查询记录（需要登录）
+// 支持通过时间、标题、总结内容进行模糊查询
+export const searchRecord = function(data, options = {}) {
+  return withAuth(function(data) {
+    const { keyword, pageNum = 1, pageSize = 10, searchType = 'all' } = data;
+    const user = store.state.user;
+    
+    if (!keyword || keyword.trim() === '') {
+      return Promise.reject(new Error('搜索关键词不能为空'));
+    }
+    
+    return uniCloud.callFunction({
+      name: 'searchRecord',
+      data: {
+        keyword: keyword.trim(),
+        openid: user.openid,
+        pageNum,
+        pageSize,
+        searchType // 'all'(全部)、'title'(标题)、'time'(时间)、'summary'(总结内容)
+      }
+    }).then(res => {
+      // 处理云函数返回的数据格式
+      if (res.result && res.result.code === 0) {
+        return {
+          result: {
+            data: res.result.data || [],
+            total: res.result.total || 0
+          }
+        };
+      } else {
+        return Promise.reject(new Error(res.result?.message || '搜索失败'));
+      }
+    });
+  }, store, options)(data);
+}
