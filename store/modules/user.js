@@ -10,7 +10,8 @@ const user = {
   state: {
     openid: '',
     userData: {},
-    isGuest: false  // 游客状态标识
+    isGuest: true,  // 游客状态标识，默认为 true（游客状态）
+    authStateVersion: 0  // 授权状态版本号，每次登录成功时递增
   },
 
   mutations: {
@@ -21,7 +22,15 @@ const user = {
       state.userData = userData
     },
     SET_IS_GUEST: (state, isGuest) => {
-      state.isGuest = isGuest
+      const wasGuest = state.isGuest;
+      state.isGuest = isGuest;
+      // 如果从游客状态变为已登录状态，递增版本号
+      if (wasGuest === true && isGuest === false) {
+        state.authStateVersion += 1;
+      }
+    },
+    INCREMENT_AUTH_STATE_VERSION: (state) => {
+      state.authStateVersion += 1;
     }
   },
 

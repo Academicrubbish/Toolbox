@@ -1,10 +1,6 @@
 {
 	"pages": [
 		{
-			"path": "pages/open/index",
-			"style": {}
-		},
-		{
 			"path": "pages/home/index",
 			"style": {}
 		}

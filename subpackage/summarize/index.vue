@@ -227,6 +227,17 @@ export default {
     },
     // 登录成功处理
     handleLoginSuccess() {
+      // 记录调用前的版本号
+      const oldVersion = this.$store.state.user.authStateVersion;
+      // 清除游客状态（会自动递增 authStateVersion，如果从游客变为已登录）
+      this.$store.commit('SET_IS_GUEST', false);
+      // 检查版本号是否变化，如果没变化说明之前 isGuest 已经是 false，手动递增
+      const newVersion = this.$store.state.user.authStateVersion;
+      if (oldVersion === newVersion) {
+        // 版本号没有变化，手动递增，确保首页能检测到授权状态变化
+        this.$store.commit('INCREMENT_AUTH_STATE_VERSION');
+      }
+      // 通知 API 授权检查工具登录成功
       notifyLoginResult(true);
     },
     // 登录取消处理
