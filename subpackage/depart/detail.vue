@@ -2,7 +2,7 @@
  * @Author: yuanchuang 1226377893@qq.com
  * @Date: 2024-08-19 09:34:16
  * @LastEditors: yuanchuang 1226377893@qq.com
- * @LastEditTime: 2025-11-17 23:14:56
+ * @LastEditTime: 2025-11-23 23:16:33
  * @FilePath: \Toolbox\subpackage\depart\detail.vue
  * @Description: 记录详情页面（简化版）
  * 

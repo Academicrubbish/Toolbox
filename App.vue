@@ -20,6 +20,9 @@
 				}
 			}
 			
+			// 尝试从缓存恢复登录状态
+			this.restoreAuthFromCache();
+			
 			this.autoUpdate();
 			uni.getSystemInfo({
 				success: function(e) {
@@ -51,6 +54,23 @@
 			console.log('App Hide')
 		},
 		methods: {
+		  // 从缓存恢复登录状态
+		  restoreAuthFromCache() {
+		    // 延迟执行，确保 store 已经初始化
+		    this.$nextTick(() => {
+		      if (this.$store) {
+		        this.$store.dispatch('RestoreFromCache')
+		          .then((restored) => {
+		            if (restored) {
+		              // 恢复成功，静默处理，不显示提示
+		            }
+		          })
+		          .catch(() => {
+		            // 恢复失败，静默处理
+		          })
+		      }
+		    })
+		  },
 		  autoUpdate() {
 		    let _this = this
 		    // 获取小程序更新机制的兼容，由于更新的功能基础库要1.9.90以上版本才支持，所以此处要做低版本的兼容处理

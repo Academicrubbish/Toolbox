@@ -21,9 +21,84 @@ function convertPagination(pageSize, pageNum) {
   };
 }
 
+// 查询示例记录列表（游客状态使用，不需要登录）
+function getExampleRecordList(data) {
+  const { pageSize, pageNum } = data;
+  const { skip, limit } = convertPagination(pageSize, pageNum);
+  const db = uniCloud.database()
+  
+  // 查询 createBy 为空字符串的示例记录
+  return getRequest()
+    .where({ createBy: '' })
+    .orderBy('createTime desc')
+    .skip(skip)
+    .limit(limit)
+    .get()
+    .then(res => {
+      if (!res.result || !res.result.data || res.result.data.length === 0) {
+        return res;
+      }
+      
+      // 收集所有有 summarizeId 的记录ID
+      const summarizeIds = res.result.data
+        .map(record => record.summarizeId)
+        .filter(id => id && id !== '');
+      
+      // 如果没有总结ID，直接返回
+      if (summarizeIds.length === 0) {
+        res.result.data.forEach(record => {
+          record.summarizeContent = '';
+        });
+        return res;
+      }
+      
+      // 批量查询总结内容
+      return db.collection('summarize')
+        .where({
+          _id: db.command.in(summarizeIds)
+        })
+        .get()
+        .then(summarizeRes => {
+          // 构建总结内容映射
+          const summarizeMap = {};
+          if (summarizeRes.result && summarizeRes.result.data) {
+            summarizeRes.result.data.forEach(summarize => {
+              summarizeMap[summarize._id] = summarize.content || '';
+            });
+          }
+          
+          // 将总结内容合并到记录中
+          res.result.data.forEach(record => {
+            if (record.summarizeId && summarizeMap[record.summarizeId]) {
+              record.summarizeContent = summarizeMap[record.summarizeId];
+            } else {
+              record.summarizeContent = '';
+            }
+          });
+          
+          return res;
+        });
+    })
+}
+
 // 查询记录列表（需要登录）
 // 注意：此函数支持传入 options 参数来控制是否自动弹出登录弹窗
 export const getRecordList = function(data, options = {}) {
+  const user = store.state.user
+  const isGuest = user.isGuest
+  
+  // 如果是游客状态，查询示例记录
+  if (isGuest) {
+    return Promise.resolve(getExampleRecordList(data))
+      .then(res => {
+        return { result: res.result || { data: [], total: 0 } }
+      })
+      .catch(err => {
+        return Promise.reject(err)
+      })
+  }
+  
+  // 已登录状态，使用原来的逻辑
   return withAuth(function(data) {
     const { pageSize, pageNum } = data;
     const { skip, limit } = convertPagination(pageSize, pageNum);

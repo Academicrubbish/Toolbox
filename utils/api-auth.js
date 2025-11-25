@@ -4,6 +4,7 @@
  */
 
 import { isLoggedIn } from './auth.js'
+import { getOpenidFromCache, isAuthCacheValid } from './auth-cache.js'
 
 // 全局登录弹窗引用
 let loginModalRef = null
@@ -51,11 +52,29 @@ export function notifyLoginResult(success) {
 export function checkLoginBeforeRequest(store, options = {}) {
   const { autoShowLogin = true } = options;
   
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
     // 如果已登录，直接返回true
     if (isLoggedIn(store)) {
       resolve(true)
       return
+    }
+    
+    // 如果未登录，先尝试从缓存恢复
+    if (isAuthCacheValid()) {
+      const cachedOpenid = getOpenidFromCache()
+      if (cachedOpenid) {
+        // 尝试从缓存恢复登录状态
+        try {
+          const restored = await store.dispatch('RestoreFromCache')
+          if (restored && isLoggedIn(store)) {
+            // 恢复成功，直接返回 true
+            resolve(true)
+            return
+          }
+        } catch (e) {
+          // 恢复失败，继续后续流程
+        }
+      }
     }
 
     // 如果不需要自动弹出登录弹窗，直接返回 false

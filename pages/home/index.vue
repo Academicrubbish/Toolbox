@@ -11,6 +11,24 @@
 						</view>
 						<block slot="content">首页</block>
 					</cu-custom>
+
+				</view>
+				<!-- 搜索框 -->
+				<view v-if="!isGuest" slot="top" class="search-container">
+					<view class="search-box">
+						<view class="search-icon">
+							<text class="cuIcon-search text-gray"></text>
+						</view>
+						<input class="search-input" type="text" v-model="searchKeyword" placeholder="搜索标题、时间或内容..."
+							@input="onSearchInput" @confirm="handleSearch" :focus="isSearchMode" />
+						<view v-if="searchKeyword" class="search-clear" @tap="clearSearch">
+							<text class="cuIcon-close text-gray"></text>
+						</view>
+					</view>
+					<view v-if="searchKeyword && searchKeyword.trim()" class="search-reset" @tap="resetSearch">
+						<text class="cuIcon-refresh text-gray"></text>
+						<text class="search-reset-text">重置</text>
+					</view>
 				</view>
 				<!-- 自定义授权失败页面 -->
 				<view slot="empty" slot-scope="{ isLoadFailed: slotIsLoadFailed }">
@@ -49,7 +67,8 @@
 									<text class="cuIcon-creativefill text-blue margin-right-xs"></text>
 									<text class="text-bold">{{ record.title }}</text>
 								</view>
-								<view class="record-more-icon" @tap.stop="onIconClick($event, record)">
+								<!-- 示例记录（createBy为空字符串）不显示更多按钮 -->
+								<view v-if="!isExampleRecord(record)" class="record-more-icon" @tap.stop="onIconClick($event, record)">
 									<text class="cuIcon-moreandroid text-gray"></text>
 								</view>
 							</view>
@@ -142,7 +161,7 @@
 	</view>
 </template>
 <script>
-import { getRecordList, delRecord } from "@/api/record.js";
+import { getRecordList, delRecord, searchRecord } from "@/api/record.js";
 import { getDictCategoryList } from "@/api/dictCategory.js";
 import { delSummarize } from "@/api/summarize";
 import { tagColorClasses } from "@/utils/tagColors";
@@ -177,6 +196,8 @@ export default {
 			zStatic, // 导入 z-paging 静态资源
 			lastAuthStateVersion: 0, // 记录上一次的授权状态版本号
 			lastIsGuest: null, // 记录上一次的游客状态
+			searchKeyword: '', // 搜索关键词
+			isSearchMode: false, // 是否处于搜索模式
 		};
 	},
 	computed: {
@@ -209,9 +230,9 @@ export default {
 		// 检查授权状态版本号是否变化
 		const currentAuthStateVersion = this.$store.state.user.authStateVersion;
 		const currentIsGuest = this.$store.state.user.isGuest;
-		
+
 		// 如果版本号变化，或者从游客状态变为已登录状态，都刷新
-		if (this.lastAuthStateVersion !== currentAuthStateVersion || 
+		if (this.lastAuthStateVersion !== currentAuthStateVersion ||
 			(this.lastIsGuest === true && currentIsGuest === false)) {
 			// 授权状态已改变，刷新列表和标签
 			this.refreshAfterAuthChange();
@@ -288,6 +309,12 @@ export default {
 		},
 		// 查询列表
 		queryList(pageNo, pageSize) {
+			// 如果有搜索关键词，使用搜索接口
+			if (this.searchKeyword && this.searchKeyword.trim()) {
+				this.querySearchList(pageNo, pageSize);
+				return;
+			}
+
 			// 调用接口，不自动弹出登录弹窗，失败时显示失败页面
 			getRecordList({
 				pageNum: pageNo,
@@ -298,12 +325,63 @@ export default {
 					this.showAuthFailed = false;
 					this.isLoadFailed = false;
 					const list = res.result.data || [];
-					
+
 					// 按日期分组
 					const groupedRecords = list.reduce((groups, element) => {
 						const groupDate = moment(element.createTime).format("YYYY-MM-DD");
 						const existingGroup = groups.find(group => group.date === groupDate);
-						
+
+						if (existingGroup) {
+							existingGroup.children.push(element);
+							existingGroup.count++;
+						} else {
+							groups.push({
+								date: groupDate,
+								children: [element],
+								count: 1,
+							});
+						}
+						return groups;
+					}, []);
+
+					// 调用 z-paging 组件的 complete 方法
+					this.$refs.paging.complete(groupedRecords);
+				})
+				.catch((err) => {
+					// 判断是否是未授权错误
+					const errorMessage = err?.message || err?.errMsg || String(err || '');
+					const isAuthError = errorMessage.includes('未授权') ||
+						errorMessage.includes('用户未授权') ||
+						errorMessage.includes('用户取消登录');
+
+					this.showAuthFailed = isAuthError;
+					this.isLoadFailed = !isAuthError; // 非授权错误时，显示默认失败页
+
+					// 确保状态更新后再调用 complete
+					this.$nextTick(() => {
+						// 调用 z-paging 组件的 complete 方法，传入 false 表示加载失败
+						this.$refs.paging.complete(false);
+					});
+				});
+		},
+		// 搜索查询列表
+		querySearchList(pageNo, pageSize) {
+			searchRecord({
+				keyword: this.searchKeyword.trim(),
+				pageNum: pageNo,
+				pageSize: pageSize,
+			}, { autoShowLogin: false })
+				.then((res) => {
+					// 加载成功，重置失败状态
+					this.showAuthFailed = false;
+					this.isLoadFailed = false;
+					const list = res.result.data || [];
+
+					// 按日期分组
+					const groupedRecords = list.reduce((groups, element) => {
+						const groupDate = moment(element.createTime).format("YYYY-MM-DD");
+						const existingGroup = groups.find(group => group.date === groupDate);
+
 						if (existingGroup) {
 							existingGroup.children.push(element);
 							existingGroup.count++;
@@ -355,9 +433,23 @@ export default {
 				url: `/subpackage/depart/detail?id=${row._id}`,
 			});
 		},
+		// 判断是否是示例记录
+		isExampleRecord(record) {
+			return !record.createBy || record.createBy === '';
+		},
 		// 处理菜单选择
 		pickerMenu(item) {
 			this.hidePop();
+			
+			// 如果是示例记录，不允许编辑和删除
+			if (this.isExampleRecord(this.pickerRecordItem)) {
+				uni.showToast({
+					title: '示例记录不支持此操作',
+					icon: 'none'
+				});
+				return;
+			}
+			
 			// 编辑和删除操作会通过API拦截器自动检查登录，这里不需要手动检查
 			switch (item) {
 				case "编辑":
@@ -401,7 +493,7 @@ export default {
 		dialogConfirm() {
 			const recordId = this.pickerRecordItem._id;
 			const summarizeId = this.pickerRecordItem.summarizeId;
-			
+
 			delRecord(recordId)
 				.then((res) => {
 					if (res.result && (res.result.code === 0 || res.result.code === undefined)) {
@@ -495,12 +587,129 @@ export default {
 		},
 		hideModal() {
 			this.modalName = null;
+		},
+		// 搜索输入处理
+		onSearchInput(e) {
+			this.searchKeyword = e.detail.value || '';
+		},
+		// 执行搜索
+		handleSearch() {
+			if (!this.searchKeyword || !this.searchKeyword.trim()) {
+				uni.showToast({
+					title: '请输入搜索关键词',
+					icon: 'none'
+				});
+				return;
+			}
+
+			this.isSearchMode = true;
+			// 刷新列表，触发搜索
+			if (this.$refs.paging) {
+				this.$refs.paging.reload();
+			}
+		},
+		// 清除搜索
+		clearSearch() {
+			this.searchKeyword = '';
+			this.isSearchMode = false;
+			// 刷新列表，显示全部记录
+			if (this.$refs.paging) {
+				this.$refs.paging.reload();
+			}
+		},
+		// 重置搜索状态
+		resetSearch() {
+			this.clearSearch();
 		}
 	},
 };
 </script>
 
 <style lang="scss" scoped>
+/* 搜索框容器 */
+.search-container {
+	padding: 20rpx 30rpx;
+	background: #fff;
+	border-bottom: 1rpx solid #f0f0f0;
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+}
+
+.search-box {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	background: #f5f7fa;
+	border-radius: 50rpx;
+	padding: 0 24rpx;
+	height: 72rpx;
+	position: relative;
+}
+
+.search-icon {
+	width: 40rpx;
+	height: 40rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 16rpx;
+	flex-shrink: 0;
+
+	.cuIcon-search {
+		font-size: 36rpx;
+	}
+}
+
+.search-input {
+	flex: 1;
+	font-size: 28rpx;
+	color: #333;
+	height: 72rpx;
+	line-height: 72rpx;
+}
+
+.search-clear {
+	width: 40rpx;
+	height: 40rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-left: 16rpx;
+	flex-shrink: 0;
+
+	.cuIcon-close {
+		font-size: 32rpx;
+	}
+}
+
+.search-reset {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 20rpx;
+	height: 72rpx;
+	background: #f5f7fa;
+	border-radius: 36rpx;
+	flex-shrink: 0;
+	transition: all 0.3s ease;
+
+	.cuIcon-refresh {
+		font-size: 32rpx;
+		margin-right: 8rpx;
+	}
+
+	.search-reset-text {
+		font-size: 26rpx;
+		color: #666;
+	}
+
+	&:active {
+		background: #e8eaed;
+		opacity: 0.8;
+	}
+}
+
 /* 抽屉内容上侧内边距 */
 .drawer-content {
 	padding-top: 120rpx;
@@ -572,288 +781,285 @@ export default {
 }
 
 .record-container {
-  position: relative;
-  background: linear-gradient(to bottom, #f5f7fa 0%, #f1f1f1 100%);
-  padding-bottom: 160rpx;
+	position: relative;
+	background: linear-gradient(to bottom, #f5f7fa 0%, #f1f1f1 100%);
+	padding-bottom: 160rpx;
 }
 
 /* 日期分组 */
 .date-group {
-  padding: 30rpx 30rpx 0;
+	padding: 30rpx 30rpx 0;
 }
 
 /* 日期标题 */
 .date-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 24rpx;
-  padding: 0 8rpx;
+	display: flex;
+	align-items: center;
+	margin-bottom: 24rpx;
+	padding: 0 8rpx;
 
-  .date-icon {
-    width: 48rpx;
-    height: 48rpx;
-    border-radius: 12rpx;
-    background: linear-gradient(135deg, rgba(0, 129, 255, 0.1) 0%, rgba(28, 187, 180, 0.1) 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 16rpx;
+	.date-icon {
+		width: 48rpx;
+		height: 48rpx;
+		border-radius: 12rpx;
+		background: linear-gradient(135deg, rgba(0, 129, 255, 0.1) 0%, rgba(28, 187, 180, 0.1) 100%);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-right: 16rpx;
 
-    .cuIcon-calendar {
-      font-size: 28rpx;
-    }
-  }
+		.cuIcon-calendar {
+			font-size: 28rpx;
+		}
+	}
 
-  .date-text {
-    flex: 1;
-    display: flex;
-    align-items: center;
-  }
+	.date-text {
+		flex: 1;
+		display: flex;
+		align-items: center;
+	}
 }
 
 /* 记录卡片列表 */
 .record-card-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20rpx;
+	display: flex;
+	flex-direction: column;
+	gap: 20rpx;
 }
 
 /* 记录卡片 */
 .record-card {
-  background: #ffffff;
-  border-radius: 24rpx;
-  padding: 32rpx 24rpx 24rpx;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
+	background: #ffffff;
+	border-radius: 24rpx;
+	padding: 32rpx 24rpx 24rpx;
+	transition: all 0.3s ease;
+	position: relative;
+	overflow: hidden;
 
-  .record-card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 20rpx;
+	.record-card-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 20rpx;
 
-    .record-title {
-      display: flex;
-      align-items: center;
-      font-size: 30rpx;
-      color: #333;
-      flex: 1;
-    }
+		.record-title {
+			display: flex;
+			align-items: center;
+			font-size: 30rpx;
+			color: #333;
+			flex: 1;
+		}
 
-    .record-more-icon {
-      width: 56rpx;
-      height: 56rpx;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 50%;
-      transition: all 0.2s ease;
-      margin-left: 16rpx;
+		.record-more-icon {
+			width: 56rpx;
+			height: 56rpx;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			border-radius: 50%;
+			transition: all 0.2s ease;
+			margin-left: 16rpx;
 
-      .cuIcon-moreandroid {
-        font-size: 40rpx;
-      }
+			.cuIcon-moreandroid {
+				font-size: 40rpx;
+			}
 
-      &:active {
-        background-color: rgba(0, 0, 0, 0.05);
-      }
-    }
-  }
+			&:active {
+				background-color: rgba(0, 0, 0, 0.05);
+			}
+		}
+	}
 
-  .record-tags {
-    display: flex;
-    flex-wrap: wrap;
-    margin-bottom: 16rpx;
-    gap: 12rpx;
+	.record-tags {
+		display: flex;
+		flex-wrap: wrap;
+		margin-bottom: 16rpx;
+		gap: 12rpx;
 
-    .record-tag {
-      display: inline-block;
-      padding: 8rpx 16rpx;
-      border-radius: 20rpx;
-      font-size: 24rpx;
-      font-weight: 500;
-      box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.08);
-    }
-  }
+		.record-tag {
+			display: inline-block;
+			padding: 8rpx 16rpx;
+			border-radius: 20rpx;
+			font-size: 24rpx;
+			font-weight: 500;
+			box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.08);
+		}
+	}
 
-  .record-summary {
-    margin-bottom: 16rpx;
-    padding: 12rpx 0;
-    border-top: 1rpx solid rgba(0, 0, 0, 0.05);
-    border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+	.record-summary {
+		margin-bottom: 16rpx;
+		padding: 12rpx 0;
 
-    .record-summary-text {
-      font-size: 26rpx;
-      color: #666;
-      line-height: 1.6;
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
-      line-clamp: 2;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      word-break: break-all;
-    }
-  }
+		.record-summary-text {
+			font-size: 26rpx;
+			color: #666;
+			line-height: 1.6;
+			display: -webkit-box;
+			-webkit-box-orient: vertical;
+			-webkit-line-clamp: 2;
+			line-clamp: 2;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			word-break: break-all;
+		}
+	}
 
-  .record-footer {
-    display: flex;
-    align-items: center;
-    padding-top: 16rpx;
-    border-top: 1rpx solid rgba(0, 0, 0, 0.05);
-    opacity: 0.7;
-  }
+	.record-footer {
+		display: flex;
+		align-items: center;
+		padding-top: 16rpx;
+		border-top: 1rpx solid rgba(0, 0, 0, 0.05);
+		opacity: 0.7;
+	}
 }
 
 /* 浮动操作按钮 FAB */
 .fab-button {
-  position: fixed;
-  bottom: 40rpx;
-  right: 40rpx;
-  width: 112rpx;
-  height: 112rpx;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #39b54a 0%, #8dc63f 100%);
-  box-shadow: 0 8rpx 24rpx rgba(57, 181, 74, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 99;
-  transition: all 0.3s ease;
+	position: fixed;
+	bottom: 40rpx;
+	right: 40rpx;
+	width: 112rpx;
+	height: 112rpx;
+	border-radius: 50%;
+	background: linear-gradient(135deg, #39b54a 0%, #8dc63f 100%);
+	box-shadow: 0 8rpx 24rpx rgba(57, 181, 74, 0.4);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 99;
+	transition: all 0.3s ease;
 
-  .fab-icon {
-    color: #ffffff;
-    font-size: 48rpx;
-    font-weight: 300;
-  }
+	.fab-icon {
+		color: #ffffff;
+		font-size: 48rpx;
+		font-weight: 300;
+	}
 }
 
 /* 遮罩 */
 .shade {
-  position: fixed;
-  z-index: 100;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(4rpx);
-  -webkit-touch-callout: none;
-  animation: fadeIn 0.2s ease;
+	position: fixed;
+	z-index: 100;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	background: rgba(0, 0, 0, 0.3);
+	backdrop-filter: blur(4rpx);
+	-webkit-touch-callout: none;
+	animation: fadeIn 0.2s ease;
 
-  .pop {
-    position: fixed;
-    z-index: 101;
-    min-width: 240rpx;
-    box-sizing: border-box;
-    font-size: 28rpx;
-    text-align: left;
-    color: #333;
-    background-color: #fff;
-    border-radius: 16rpx;
-    box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
-    overflow: hidden;
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    user-select: none;
-    -webkit-touch-callout: none;
-    transform: scale(0, 0);
-    transform-origin: center;
+	.pop {
+		position: fixed;
+		z-index: 101;
+		min-width: 240rpx;
+		box-sizing: border-box;
+		font-size: 28rpx;
+		text-align: left;
+		color: #333;
+		background-color: #fff;
+		border-radius: 16rpx;
+		box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
+		overflow: hidden;
+		transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+		user-select: none;
+		-webkit-touch-callout: none;
+		transform: scale(0, 0);
+		transform-origin: center;
 
-    &.show {
-      transform: scale(1, 1);
-    }
+		&.show {
+			transform: scale(1, 1);
+		}
 
-    &>view {
-      padding: 24rpx 32rpx;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      user-select: none;
-      -webkit-touch-callout: none;
-      border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
-      transition: background-color 0.2s ease;
+		&>view {
+			padding: 24rpx 32rpx;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			user-select: none;
+			-webkit-touch-callout: none;
+			border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+			transition: background-color 0.2s ease;
 
-      &:last-child {
-        border-bottom: none;
-      }
+			&:last-child {
+				border-bottom: none;
+			}
 
-      &:active {
-        background-color: #f5f7fa;
-      }
-    }
-  }
+			&:active {
+				background-color: #f5f7fa;
+			}
+		}
+	}
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
+	from {
+		opacity: 0;
+	}
 
-  to {
-    opacity: 1;
-  }
+	to {
+		opacity: 1;
+	}
 }
 
 /* 授权失败页面 - 参考 z-paging 默认样式 */
 .auth-failed-container {
-  /* #ifndef APP-NVUE */
-  display: flex;
-  /* #endif */
-  align-items: center;
-  justify-content: center;
+	/* #ifndef APP-NVUE */
+	display: flex;
+	/* #endif */
+	align-items: center;
+	justify-content: center;
 }
 
 .auth-failed-container-fixed {
-  /* #ifndef APP-NVUE */
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  /* #endif */
-  /* #ifdef APP-NVUE */
-  flex: 1;
-  /* #endif */
+	/* #ifndef APP-NVUE */
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	/* #endif */
+	/* #ifdef APP-NVUE */
+	flex: 1;
+	/* #endif */
 }
 
 .auth-failed-main {
-  /* #ifndef APP-NVUE */
-  display: flex;
-  /* #endif */
-  flex-direction: column;
-  align-items: center;
-  padding: 50rpx 0rpx;
+	/* #ifndef APP-NVUE */
+	display: flex;
+	/* #endif */
+	flex-direction: column;
+	align-items: center;
+	padding: 50rpx 0rpx;
 }
 
 .auth-failed-image-rpx {
-  width: 240rpx;
-  height: 240rpx;
+	width: 240rpx;
+	height: 240rpx;
 }
 
 .auth-failed-title {
-  color: #aaaaaa;
-  text-align: center;
+	color: #aaaaaa;
+	text-align: center;
 }
 
 .auth-failed-title-rpx {
-  font-size: 28rpx;
-  margin-top: 10rpx;
-  padding: 0rpx 20rpx;
+	font-size: 28rpx;
+	margin-top: 10rpx;
+	padding: 0rpx 20rpx;
 }
 
 .auth-failed-error-btn {
-  border: solid 1px #dddddd;
-  color: #aaaaaa;
-  text-align: center;
-  cursor: pointer;
+	border: solid 1px #dddddd;
+	color: #aaaaaa;
+	text-align: center;
+	cursor: pointer;
 }
 
 .auth-failed-error-btn-rpx {
-  font-size: 28rpx;
-  padding: 8rpx 24rpx;
-  border-radius: 6rpx;
-  margin-top: 50rpx;
+	font-size: 28rpx;
+	padding: 8rpx 24rpx;
+	border-radius: 6rpx;
+	margin-top: 50rpx;
 }
-
 </style>
