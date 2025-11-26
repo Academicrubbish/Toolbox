@@ -2,7 +2,7 @@
  * @Author: yuanchuang 1226377893@qq.com
  * @Date: 2024-08-01 17:31:22
  * @LastEditors: yuanchuang 1226377893@qq.com
- * @LastEditTime: 2025-11-19 21:00:21
+ * @LastEditTime: 2025-11-26 18:08:52
  * @FilePath: \Toolbox\subpackage\depart\form.vue
  * @Description: 记录模块表单页面（简化版）
  * 
@@ -36,8 +36,8 @@
                 <text class="text-red margin-left-xs">*</text>
               </view>
               <view class="form-item-content">
-                <uni-easyinput name="title" v-model="formData.title" :maxlength="50" placeholder="请输入记录标题" :inputBorder="true"
-                  :styles="inputStyles" />
+                <uni-easyinput name="title" v-model="formData.title" :maxlength="50" placeholder="请输入记录标题"
+                  :inputBorder="true" :styles="inputStyles" />
                 <view class="char-count">
                   <text class="text-xs text-gray">{{ getTitleLength }}/50</text>
                 </view>
@@ -107,7 +107,7 @@
 import { addRecord, getRecord, updateRecord } from "@/api/record";
 import { getDictCategoryList } from "@/api/dictCategory";
 import { tagColorClasses } from "@/utils/tagColors";
-import debounce from "lodash/debounce";
+import { debounce } from "lodash-es";
 import moment from "moment";
 
 export default {
@@ -433,7 +433,7 @@ export default {
   align-items: center;
   padding: 40rpx 32rpx 32rpx;
   border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
-  
+
   .form-icon {
     width: 80rpx;
     height: 80rpx;
@@ -443,12 +443,12 @@ export default {
     align-items: center;
     justify-content: center;
     margin-right: 24rpx;
-    
+
     .cuIcon-creativefill {
       font-size: 40rpx;
     }
   }
-  
+
   .form-title {
     flex: 1;
     display: flex;
@@ -464,11 +464,11 @@ export default {
 /* 表单项 */
 .form-item {
   margin-bottom: 40rpx;
-  
+
   &:last-child {
     margin-bottom: 0;
   }
-  
+
   .form-item-label {
     display: flex;
     align-items: center;
@@ -476,7 +476,7 @@ export default {
     font-size: 28rpx;
     color: #333;
   }
-  
+
   .form-item-content {
     position: relative;
     width: 100%;
@@ -499,7 +499,7 @@ export default {
 .tag-empty-tip {
   padding: 40rpx 0;
   text-align: center;
-  
+
   .text-blue {
     text-decoration: underline;
   }
@@ -515,19 +515,19 @@ export default {
   position: relative;
   margin: 0 8rpx 16rpx;
   transition: all 0.3s ease;
-  
+
   &.tag-selected {
     .tag-option-badge {
       transform: scale(1.05);
       box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.15);
     }
-    
+
     .tag-check-icon {
       opacity: 1;
       transform: scale(1);
     }
   }
-  
+
   .tag-option-badge {
     display: inline-block;
     padding: 12rpx 24rpx;
@@ -537,12 +537,12 @@ export default {
     box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
     position: relative;
-    
+
     .tag-option-name {
       font-weight: 600;
     }
   }
-  
+
   .tag-check-icon {
     position: absolute;
     top: -8rpx;
@@ -558,7 +558,7 @@ export default {
     opacity: 0;
     transform: scale(0);
     transition: all 0.3s ease;
-    
+
     .cuIcon-check {
       font-size: 20rpx;
     }
@@ -575,17 +575,17 @@ export default {
   border: 2rpx solid #e5e5e5;
   border-radius: 16rpx;
   transition: all 0.3s ease;
-  
+
   &:active {
     background: #f0f0f0;
     border-color: #39b54a;
   }
-  
+
   .rich-text-content {
     flex: 1;
     font-size: 28rpx;
   }
-  
+
   .rich-text-icon {
     margin-left: 16rpx;
     font-size: 32rpx;
@@ -613,7 +613,7 @@ export default {
   border: 2rpx solid #e5e5e5 !important;
   transition: all 0.3s ease;
   background: #fafafa !important;
-  
+
   &:focus-within,
   &.is-focused {
     border-color: #0081ff !important;
@@ -655,11 +655,11 @@ export default {
   font-size: 32rpx;
   border: none;
   transition: all 0.3s ease;
-  
+
   &::after {
     border: none;
   }
-  
+
   .cuIcon-check {
     font-size: 36rpx;
   }
@@ -670,15 +670,15 @@ export default {
   .form-wrapper {
     padding: 20rpx;
   }
-  
+
   .form-card {
     border-radius: 20rpx;
   }
-  
+
   .form-header {
     padding: 32rpx 24rpx 24rpx;
   }
-  
+
   .form-body {
     padding: 24rpx;
   }

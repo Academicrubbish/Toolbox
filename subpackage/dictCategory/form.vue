@@ -13,7 +13,7 @@
       <block slot="backText">返回</block>
       <block slot="content">标签{{ type === 'add' ? '新增' : '修改' }}</block>
     </cu-custom>
-    
+
     <view class="form-wrapper">
       <!-- 表单卡片 -->
       <view class="form-card shadow-warp">
@@ -26,7 +26,7 @@
             <text class="text-sm text-gray margin-top-xs">填写标签的基本信息</text>
           </view>
         </view>
-        
+
         <view class="form-body">
           <uni-forms ref="valiForm" :modelValue="formData" :rules="rules" :label-width="0">
             <!-- 标签名称 -->
@@ -37,13 +37,8 @@
               </view>
               <view class="form-item-content">
                 <uni-forms-item name="name">
-                  <uni-easyinput 
-                    v-model="formData.name" 
-                    :maxlength="20" 
-                    placeholder="请输入标签名称" 
-                    :inputBorder="true"
-                    :styles="inputStyles"
-                  />
+                  <uni-easyinput v-model="formData.name" :maxlength="20" placeholder="请输入标签名称" :inputBorder="true"
+                    :styles="inputStyles" />
                 </uni-forms-item>
                 <view class="char-count">
                   <text class="text-xs text-gray">{{ (formData.name || '').length }}/20</text>
@@ -59,15 +54,8 @@
               </view>
               <view class="form-item-content">
                 <uni-forms-item name="description">
-                  <uni-easyinput 
-                    type="textarea" 
-                    v-model="formData.description" 
-                    :maxlength="100"
-                    placeholder="请输入标签描述，帮助更好地理解标签用途" 
-                    :inputBorder="true"
-                    :autoHeight="true"
-                    :styles="inputStyles"
-                  />
+                  <uni-easyinput type="textarea" v-model="formData.description" :maxlength="100"
+                    placeholder="请输入标签描述，帮助更好地理解标签用途" :inputBorder="true" :autoHeight="true" :styles="inputStyles" />
                 </uni-forms-item>
                 <view class="char-count">
                   <text class="text-xs text-gray">{{ (formData.description || '').length }}/100</text>
@@ -77,7 +65,7 @@
           </uni-forms>
         </view>
       </view>
-      
+
       <!-- 提交按钮 -->
       <view class="form-footer">
         <button class="submit-btn bg-gradual-green shadow-lg" @click="submit('valiForm')">
@@ -86,7 +74,7 @@
         </button>
       </view>
     </view>
-    
+
     <!-- 登录授权弹窗 -->
     <login-modal ref="loginModal" @success="handleLoginSuccess" @cancel="handleLoginCancel" />
   </view>
@@ -96,7 +84,7 @@
 import { addDictCategory, getDictCategory, updateDictCategory } from "@/api/dictCategory";
 import LoginModal from "@/component/login-modal/index.vue";
 import { setLoginModalRef, notifyLoginResult } from "@/utils/api-auth.js";
-import debounce from "lodash/debounce";
+import { debounce } from "lodash-es";
 import moment from "moment";
 
 export default {
@@ -200,8 +188,8 @@ export default {
           let data = {
             name: (res.name || this.formData.name || '').trim(),
             description: res.description ? res.description.trim() : "",
-            createTime: this.type === "add" 
-              ? moment().format("YYYY-MM-DD HH:mm:ss") 
+            createTime: this.type === "add"
+              ? moment().format("YYYY-MM-DD HH:mm:ss")
               : this.formData.createTime,
             createBy: this.$store.state.user.openid,
           };
@@ -230,9 +218,9 @@ export default {
               .catch((err) => {
                 // 如果是用户未授权或用户取消登录，不显示错误提示
                 const errorMessage = err?.message || err?.errMsg || String(err || '');
-                if (errorMessage.includes('未授权') || 
-                    errorMessage.includes('用户未授权') || 
-                    errorMessage === '用户取消登录') {
+                if (errorMessage.includes('未授权') ||
+                  errorMessage.includes('用户未授权') ||
+                  errorMessage === '用户取消登录') {
                   return;
                 }
                 console.error("添加失败：", err);
@@ -266,9 +254,9 @@ export default {
               .catch((err) => {
                 // 如果是用户未授权或用户取消登录，不显示错误提示
                 const errorMessage = err?.message || err?.errMsg || String(err || '');
-                if (errorMessage.includes('未授权') || 
-                    errorMessage.includes('用户未授权') || 
-                    errorMessage === '用户取消登录') {
+                if (errorMessage.includes('未授权') ||
+                  errorMessage.includes('用户未授权') ||
+                  errorMessage === '用户取消登录') {
                   return;
                 }
                 console.error("修改失败：", err);
@@ -345,7 +333,7 @@ export default {
   align-items: center;
   padding: 40rpx 32rpx 32rpx;
   border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
-  
+
   .form-icon {
     width: 80rpx;
     height: 80rpx;
@@ -355,12 +343,12 @@ export default {
     align-items: center;
     justify-content: center;
     margin-right: 24rpx;
-    
+
     .cuIcon-tagfill {
       font-size: 40rpx;
     }
   }
-  
+
   .form-title {
     flex: 1;
     display: flex;
@@ -376,11 +364,11 @@ export default {
 /* 表单项 */
 .form-item {
   margin-bottom: 40rpx;
-  
+
   &:last-child {
     margin-bottom: 0;
   }
-  
+
   .form-item-label {
     display: flex;
     align-items: center;
@@ -388,11 +376,11 @@ export default {
     font-size: 28rpx;
     color: #333;
   }
-  
+
   .form-item-content {
     position: relative;
     width: 100%;
-    
+
     .char-count {
       position: absolute;
       right: 20rpx;
@@ -427,7 +415,7 @@ export default {
   border: 2rpx solid #e5e5e5 !important;
   transition: all 0.3s ease;
   background: #fafafa !important;
-  
+
   &:focus-within,
   &.is-focused {
     border-color: #39b54a !important;
@@ -475,11 +463,11 @@ export default {
   font-size: 32rpx;
   border: none;
   transition: all 0.3s ease;
-  
+
   &::after {
     border: none;
   }
-  
+
   .cuIcon-check {
     font-size: 36rpx;
   }
@@ -490,18 +478,17 @@ export default {
   .form-wrapper {
     padding: 20rpx;
   }
-  
+
   .form-card {
     border-radius: 20rpx;
   }
-  
+
   .form-header {
     padding: 32rpx 24rpx 24rpx;
   }
-  
+
   .form-body {
     padding: 24rpx;
   }
 }
 </style>
-

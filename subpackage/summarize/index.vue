@@ -19,7 +19,7 @@
     <view :style="contentHeight">
       <md-editor :textareaDataProp="textareaData" @submit="submit" />
     </view>
-    
+
     <!-- 登录授权弹窗 -->
     <login-modal ref="loginModal" @success="handleLoginSuccess" @cancel="handleLoginCancel" />
   </view>
@@ -34,7 +34,7 @@ import {
   getSummarize
 } from "@/api/summarize";
 import { setLoginModalRef, notifyLoginResult } from "@/utils/api-auth.js";
-import debounce from "lodash/debounce";
+import { debounce } from "lodash-es";
 import moment from "moment";
 export default {
   components: {
