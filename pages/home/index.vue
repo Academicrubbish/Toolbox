@@ -9,7 +9,7 @@
 						<view slot="left" class="action" @tap="handleShowDrawer">
 							<text class="iconfont icon-menus text-white text-bold"></text>
 						</view>
-						<block slot="content">首页</block>
+						<block slot="content">markdown</block>
 					</cu-custom>
 
 				</view>
