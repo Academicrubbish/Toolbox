@@ -25,6 +25,7 @@
       <view class="iconfont icon-echarts" @click="toolBarClick('echarts')" title="ECharts图表"></view>
       <view class="iconfont icon-empty" @click="toolBarClick('clear')" />
       <view class="iconfont icon-toggle" @click="toolBarClick('toggle')" />
+      <view class="iconfont cuIcon-upload" style="font-family: cuIcon !important;" @click="toolBarClick('upload')" title="上传MD文件"></view>
       <view class="submit">
         <button type="primary" size="mini" @click="submit">保存</button>
       </view>
@@ -124,6 +125,101 @@ export default {
             clearTimeout(this.loadingTimer);
             this.loadingTimer = null;
           }
+        }
+      });
+    },
+    // 上传 MD 文件
+    uploadMdFile() {
+      // 微信小程序使用 wx.chooseMessageFile
+      // 注意：需要微信基础库 2.5.0 及以上
+      const chooseMessageFile = wx.chooseMessageFile || uni.chooseMessageFile;
+      if (typeof chooseMessageFile === 'function') {
+        chooseMessageFile({
+          count: 1,
+          type: 'file',
+          success: (res) => {
+            if (res.tempFiles && res.tempFiles.length > 0) {
+              const file = res.tempFiles[0];
+              const fileName = file.name || '';
+              // 检查文件扩展名
+              if (fileName.endsWith('.md') || fileName.endsWith('.markdown')) {
+                // 获取文件路径，兼容不同的属性名
+                const filePath = file.path || file.tempFilePath || file.filePath;
+                if (filePath) {
+                  // 使用文件路径读取
+                  this.readMdFile(filePath);
+                } else {
+                  uni.showToast({
+                    title: '无法获取文件路径',
+                    icon: 'none'
+                  });
+                }
+              } else {
+                uni.showToast({
+                  title: '请选择 .md 或 .markdown 文件',
+                  icon: 'none',
+                  duration: 2000
+                });
+              }
+            } else {
+              uni.showToast({
+                title: '未获取到文件',
+                icon: 'none'
+              });
+            }
+          },
+          fail: (err) => {
+            console.error('选择文件失败：', err);
+            if (err.errMsg && err.errMsg.includes('cancel')) {
+              // 用户取消，不显示错误提示
+              return;
+            }
+            uni.showToast({
+              title: '选择文件失败',
+              icon: 'none'
+            });
+          }
+        });
+      } else {
+        uni.showToast({
+          title: '当前微信版本过低，请升级微信',
+          icon: 'none',
+          duration: 2000
+        });
+      }
+    },
+    // 读取 MD 文件内容（通过文件路径）
+    readMdFile(filePath) {
+      uni.showLoading({
+        title: '读取文件中...',
+        mask: true
+      });
+      
+      // 使用文件系统管理器读取文件
+      this.readFileWithFileSystem(filePath);
+    },
+    // 使用文件系统管理器读取文件
+    readFileWithFileSystem(filePath) {
+      const fs = uni.getFileSystemManager();
+      fs.readFile({
+        filePath: filePath,
+        encoding: 'utf8',
+        success: (res) => {
+          uni.hideLoading();
+          this.textareaData = res.data;
+          uni.showToast({
+            title: '文件读取成功',
+            icon: 'success',
+            duration: 1500
+          });
+        },
+        fail: (err) => {
+          uni.hideLoading();
+          console.error('读取文件失败：', err);
+          uni.showToast({
+            title: '读取文件失败',
+            icon: 'none'
+          });
         }
       });
     },
@@ -440,6 +536,9 @@ export default {
             }
           }
           this.status = !this.status;
+          break;
+        case "upload":
+          this.uploadMdFile();
           break;
       }
     },
