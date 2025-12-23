@@ -203,6 +203,18 @@ export default {
       });
       return res.fileID;
     },
+    // 判断是否为网络URL（http/https）
+    isNetworkUrl(url) {
+      return /^https?:\/\//i.test(url);
+    },
+    // 判断是否为云存储路径（cloud:// 或 uniCloud 云存储域名）
+    isCloudStorageUrl(url) {
+      return /^cloud:\/\/|cloudstorage|\.tcb\.|\.myqcloud\./i.test(url);
+    },
+    // 判断是否为本地临时路径
+    isLocalTempPath(url) {
+      return /^(tmp|file|wxfile|ttfile|http:\/\/temp-|https:\/\/temp-)/i.test(url);
+    },
     // 处理富文本中的图片地址，将富文本中的图片地址替换为云存储的路径
     async replaceImageUrlsWithCloudPath(htmlString) {
       // 使用正则表达式匹配所有的img标签
@@ -214,13 +226,30 @@ export default {
       let match;
       while ((match = imgRegex.exec(htmlString)) !== null) {
         const imgTag = match[0]; // 完整的img标签
-        const imgUrl = match[1]; // 图片的临时地址
+        const imgUrl = match[1]; // 图片的地址
 
-        // 调用上传图片方法，获取永久地址
-        const permanentUrl = await this.uploadImageToCloudStorage(imgUrl);
+        // 判断图片URL类型
+        // 如果是网络URL或云存储路径，跳过上传，保留原URL
+        if (this.isNetworkUrl(imgUrl) || this.isCloudStorageUrl(imgUrl)) {
+          continue; // 跳过，不处理
+        }
 
-        // 替换临时地址为永久地址
-        richText = richText.replace(imgUrl, permanentUrl);
+        // 如果是本地临时路径，才进行上传
+        if (this.isLocalTempPath(imgUrl)) {
+          try {
+            // 调用上传图片方法，获取永久地址
+            const permanentUrl = await this.uploadImageToCloudStorage(imgUrl);
+            // 替换临时地址为永久地址
+            richText = richText.replace(imgUrl, permanentUrl);
+          } catch (error) {
+            console.error('图片上传失败:', imgUrl, error);
+            // 上传失败时，可以选择保留原URL或移除该图片
+            // 这里选择保留原URL，避免内容丢失
+          }
+        } else {
+          // 其他未知类型的路径，保留原URL
+          console.warn('未知类型的图片路径，跳过处理:', imgUrl);
+        }
       }
 
       return richText;
