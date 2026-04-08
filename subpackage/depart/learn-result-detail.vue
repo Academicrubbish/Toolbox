@@ -18,7 +18,7 @@
       <template v-else-if="resultData">
         <!-- 状态信息 -->
         <view class="status-bar" :class="'status-bar-' + resultData.status">
-          <view class="status-dot" :class="statusClass(resultData.status)"></view>
+          <view class="status-dot" :class="resultData.status === 'pending' ? 'dot-pending' : resultData.status === 'success' ? 'dot-success' : 'dot-error'"></view>
           <text class="status-text">{{ statusText(resultData.status) }}</text>
           <text v-if="resultData.complete_time" class="status-time text-xs">
             {{ formatTime(resultData.complete_time) }}

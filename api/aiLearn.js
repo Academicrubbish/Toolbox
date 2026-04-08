@@ -2,7 +2,7 @@ import store from '@/store';
 import { withAuth } from '@/utils/api-auth.js';
 
 /**
- * 调用AI辅导生成（异步，立即返回）
+ * 调用AI辅导生成（写入pending记录+任务队列，定时触发器异步处理）
  * @param {string} content 笔记内容
  * @param {string} recordId 记录ID
  */
@@ -22,17 +22,15 @@ export const callGenerateLearnNote = withAuth(function(data) {
 }, store);
 
 /**
- * 查询学习结果列表
+ * 查询学习结果列表（通过 record_id 定位，无需 create_by 过滤）
  * @param {string} recordId 关联的记录ID
  */
-export const getLearnResultList = withAuth(function(data) {
+export const getLearnResultList = function(data) {
 	const db = uniCloud.database();
-	const user = store.state.user;
 
 	return db.collection('ai_learn_logs')
 		.where({
-			record_id: data.recordId,
-			create_by: user.openid
+			record_id: data.recordId
 		})
 		.orderBy('create_time desc')
 		.limit(50)
@@ -44,7 +42,7 @@ export const getLearnResultList = withAuth(function(data) {
 				}
 			};
 		});
-}, store);
+};
 
 /**
  * 查询学习结果详情

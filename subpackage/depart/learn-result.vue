@@ -22,24 +22,26 @@
         <text class="text-gray text-sm margin-top-sm">在笔记详情页点击"AI辅导"即可生成</text>
       </view>
 
-      <!-- 结果列表 -->
-      <view v-else class="result-list">
-        <view v-for="(item, index) in resultList" :key="item._id" class="result-card shadow-warp"
-          @click="handleItemClick(item)">
-          <view class="result-card-header">
-            <view class="status-dot" :class="statusClass(item.status)"></view>
-            <text class="result-status-text" :class="statusTextClass(item.status)">{{ statusText(item.status) }}</text>
-            <text class="result-time text-gray text-xs">{{ formatTime(item.create_time) }}</text>
-          </view>
-          <view class="result-card-body">
-            <text class="result-preview text-sm">{{ getPreview(item) }}</text>
-          </view>
-          <!-- 错误信息 -->
-          <view v-if="item.status === 'error' && item.error_msg" class="result-error">
-            <text class="text-xs text-red">{{ item.error_msg }}，通知管理员</text>
+      <!-- 结果列表（支持下拉刷新） -->
+      <scroll-view v-else scroll-y class="result-scroll" @refresherrefresh="onPullRefresh" :refresher-enabled="true" :refresher-triggered="refreshing">
+        <view class="result-list">
+          <view v-for="item in resultList" :key="item._id" class="result-card shadow-warp"
+            @click="handleItemClick(item)">
+            <view class="result-card-header">
+              <view class="status-dot" :class="item.status === 'pending' ? 'dot-pending' : item.status === 'success' ? 'dot-success' : 'dot-error'"></view>
+              <text class="result-status-text" :class="item.status === 'pending' ? 'text-orange' : item.status === 'success' ? 'text-green' : 'text-gray'">{{ item.status === 'pending' ? 'AI 生成中...' : item.status === 'success' ? '已完成' : '生成失败' }}</text>
+              <text class="result-time text-gray text-xs">{{ formatTime(item.create_time) }}</text>
+            </view>
+            <view class="result-card-body">
+              <text class="result-preview text-sm">{{ getPreview(item) }}</text>
+            </view>
+            <!-- 错误信息 -->
+            <view v-if="item.status === 'error' && item.error_msg" class="result-error">
+              <text class="text-xs text-red">{{ item.error_msg }}，通知管理员</text>
+            </view>
           </view>
         </view>
-      </view>
+      </scroll-view>
     </view>
   </view>
 </template>
@@ -54,6 +56,7 @@ export default {
       recordId: "",
       resultList: [],
       loading: false,
+      refreshing: false,
       pollTimer: null
     };
   },
@@ -77,7 +80,6 @@ export default {
       getLearnResultList({ recordId: this.recordId })
         .then((res) => {
           this.resultList = res.result?.data || [];
-          // 如果有pending状态的记录，开启轮询
           const hasPending = this.resultList.some(item => item.status === 'pending');
           if (hasPending) {
             this.startPolling();
@@ -91,31 +93,24 @@ export default {
         })
         .finally(() => {
           this.loading = false;
+          this.refreshing = false;
         });
+    },
+    onPullRefresh() {
+      this.refreshing = true;
+      this.loadResultList();
     },
     startPolling() {
       if (this.pollTimer) return;
       this.pollTimer = setInterval(() => {
         this.loadResultList();
-      }, 5000);
+      }, 10000);
     },
     stopPolling() {
       if (this.pollTimer) {
         clearInterval(this.pollTimer);
         this.pollTimer = null;
       }
-    },
-    statusText(status) {
-      const map = { pending: 'AI 生成中...', success: '已完成', error: '生成失败' };
-      return map[status] || '未知';
-    },
-    statusClass(status) {
-      const map = { pending: 'dot-pending', success: 'dot-success', error: 'dot-error' };
-      return map[status] || '';
-    },
-    statusTextClass(status) {
-      const map = { pending: 'text-orange', success: 'text-green', error: 'text-gray' };
-      return map[status] || '';
     },
     formatTime(timestamp) {
       if (!timestamp) return '';
@@ -155,6 +150,10 @@ export default {
 
 .result-wrapper {
   padding: 30rpx;
+}
+
+.result-scroll {
+  height: calc(100vh - 200rpx);
 }
 
 .loading-wrapper,
