@@ -52,6 +52,10 @@
             <text class="cuIcon-downloadfill text-blue"></text>
             <text class="download-text text-xs">下载</text>
           </view>
+          <view v-if="summaryContent" class="ai-btn" :class="{ 'ai-btn-disabled': aiLoading }" @click="handleAiLearn">
+            <text class="ai-btn-icon" :class="aiLoading ? 'cuIcon-loading1 text-gray' : 'cuIcon-creativefill text-orange'"></text>
+            <text class="ai-btn-text text-xs">{{ aiLoading ? '生成中...' : 'AI辅导' }}</text>
+          </view>
         </view>
         <view class="summary-content">
           <view v-if="towxmlData" class="towxml-wrapper">
@@ -62,6 +66,13 @@
           </view>
         </view>
       </view>
+
+      <!-- 查看学习结果入口 -->
+      <view v-if="summaryContent" class="learn-result-entry shadow-warp" @click="goLearnResult">
+        <text class="cuIcon-creativefill text-orange"></text>
+        <text class="entry-text">查看学习结果</text>
+        <text class="cuIcon-right text-gray"></text>
+      </view>
     </view>
   </view>
 </template>
@@ -70,6 +81,7 @@
 import { getRecord } from "@/api/record";
 import { getSummarize } from "@/api/summarize";
 import { getDictCategoryList } from "@/api/dictCategory.js";
+import { callGenerateLearnNote } from "@/api/aiLearn.js";
 import { tagColorClasses } from "@/utils/tagColors";
 import moment from "moment";
 
@@ -81,6 +93,7 @@ export default {
       summaryContent: "", // 原始Markdown内容，用于下载
       tagMap: {}, // 标签ID到标签信息的映射
       tagColorClasses, // 从公共工具文件导入
+      aiLoading: false, // AI辅导按钮loading状态
     };
   },
   onLoad(option) {
@@ -88,6 +101,33 @@ export default {
     this.loadRecordDetail(option.id);
   },
   methods: {
+    // AI辅导
+    handleAiLearn() {
+      if (this.aiLoading) return;
+      if (!this.summaryContent || this.summaryContent.trim() === '') {
+        uni.showToast({ title: '暂无总结内容，无法生成', icon: 'none' });
+        return;
+      }
+
+      this.aiLoading = true;
+      callGenerateLearnNote({
+        content: this.summaryContent,
+        recordId: this.recordData._id
+      }).then(() => {
+        uni.showToast({ title: '已提交，AI正在生成中...', icon: 'none' });
+      }).catch((err) => {
+        uni.showToast({ title: err.message || '提交失败', icon: 'none' });
+      }).finally(() => {
+        setTimeout(() => { this.aiLoading = false; }, 3000);
+      });
+    },
+    // 跳转学习结果列表
+    goLearnResult() {
+      if (!this.recordData || !this.recordData._id) return;
+      uni.navigateTo({
+        url: `/subpackage/depart/learn-result?recordId=${this.recordData._id}`
+      });
+    },
     // 加载标签列表
     loadTagList() {
       getDictCategoryList()
@@ -481,6 +521,37 @@ export default {
       font-weight: 500;
     }
   }
+
+  .ai-btn {
+    display: flex;
+    align-items: center;
+    padding: 8rpx 16rpx;
+    border-radius: 8rpx;
+    background: rgba(255, 157, 0, 0.1);
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-left: 12rpx;
+
+    &:active {
+      background: rgba(255, 157, 0, 0.2);
+      transform: scale(0.95);
+    }
+
+    &.ai-btn-disabled {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .ai-btn-icon {
+      font-size: 28rpx;
+      margin-right: 8rpx;
+    }
+
+    .ai-btn-text {
+      color: #ff9d00;
+      font-weight: 500;
+    }
+  }
 }
 
 /* 总结内容 */
@@ -536,6 +607,40 @@ export default {
     justify-content: center;
     padding: 80rpx 0;
     text-align: center;
+  }
+}
+
+/* 查看学习结果入口 */
+.learn-result-entry {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 28rpx 32rpx;
+  margin-top: 24rpx;
+  cursor: pointer;
+  transition: all 0.3s;
+
+  &:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+
+  .cuIcon-creativefill {
+    font-size: 36rpx;
+    margin-right: 16rpx;
+  }
+
+  .entry-text {
+    flex: 1;
+    font-size: 28rpx;
+    font-weight: 500;
+    color: #333;
+  }
+
+  .cuIcon-right {
+    font-size: 28rpx;
+    color: #999;
   }
 }
 

@@ -22,6 +22,14 @@
 					"style": {}
 				},
 				{
+					"path": "depart/learn-result",
+					"style": {}
+				},
+				{
+					"path": "depart/learn-result-detail",
+					"style": {}
+				},
+				{
 					"path": "dictCategory/index",
 					"style": {}
 				},
