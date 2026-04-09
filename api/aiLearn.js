@@ -92,7 +92,7 @@ export const batchQueryAiResults = function(recordIds) {
 /**
  * 查询某记录的成功AI学习结果数量
  * @param {string} recordId 记录ID
- * @returns {Object} { hasAiResult: boolean, aiResultCount: number }
+ * @returns {Object} { hasAiResult: boolean, aiResultCount: number, hasPending: boolean }
  */
 export const getAiResultCount = function(recordId) {
 	const db = uniCloud.database();
@@ -100,16 +100,23 @@ export const getAiResultCount = function(recordId) {
 	return db.collection('ai_learn_logs')
 		.where({
 			record_id: recordId,
-			status: 'success'
+			status: db.command.in(['success', 'pending'])
 		})
-		.field({ _id: true })
+		.field({ _id: true, status: true })
 		.limit(100)
 		.get()
 		.then(res => {
-			const count = (res.result?.data || []).length;
+			const list = res.result?.data || [];
+			let successCount = 0;
+			let hasPending = false;
+			list.forEach(item => {
+				if (item.status === 'success') successCount++;
+				if (item.status === 'pending') hasPending = true;
+			});
 			return {
-				hasAiResult: count > 0,
-				aiResultCount: count
+				hasAiResult: successCount > 0,
+				aiResultCount: successCount,
+				hasPending: hasPending
 			};
 		});
 };

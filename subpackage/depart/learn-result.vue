@@ -29,9 +29,9 @@
           <view v-for="group in batchGroups" :key="group.batchId" class="batch-group">
             <view class="batch-header">
               <text class="batch-time text-gray text-xs">{{ group.createTime }}</text>
-              <view class="batch-status" :class="getBatchStatusClass(group)">
-                <view class="status-dot" :class="getBatchDotClass(group)"></view>
-                <text class="text-xs">{{ getBatchStatusText(group) }}</text>
+              <view class="batch-status" :class="group.statusClass">
+                <view class="status-dot" :class="group.dotClass"></view>
+                <text class="text-xs">{{ group.statusText }}</text>
               </view>
             </view>
 
@@ -68,7 +68,8 @@ export default {
       recordId: "",
       resultList: [],
       loading: false,
-      refreshing: false
+      refreshing: false,
+      isLoading: false
     };
   },
   computed: {
@@ -82,7 +83,10 @@ export default {
           groupMap[bid] = {
             batchId: bid,
             createTime: this.formatTime(item.create_time),
-            items: []
+            items: [],
+            statusClass: '',
+            dotClass: '',
+            statusText: ''
           };
         }
         groupMap[bid].items.push(item);
@@ -96,6 +100,28 @@ export default {
           if (a.type !== 'note' && b.type === 'note') return 1;
           return 0;
         });
+
+        // 预计算批次状态 class
+        const hasPending = group.items.some(i => i.status === 'pending');
+        const allSuccess = group.items.every(i => i.status === 'success');
+        const allError = group.items.every(i => i.status === 'error');
+        if (hasPending) {
+          group.statusClass = 'batch-pending';
+          group.dotClass = 'dot-pending';
+          group.statusText = '生成中';
+        } else if (allSuccess) {
+          group.statusClass = 'batch-success';
+          group.dotClass = 'dot-success';
+          group.statusText = '全部完成';
+        } else if (allError) {
+          group.statusClass = 'batch-error';
+          group.dotClass = 'dot-error';
+          group.statusText = '全部失败';
+        } else {
+          group.statusClass = 'batch-success';
+          group.dotClass = 'dot-success';
+          group.statusText = '部分完成';
+        }
       });
 
       return groups;
@@ -110,7 +136,13 @@ export default {
   methods: {
     loadResultList() {
       if (!this.recordId) return;
-      this.loading = true;
+      // 防重入：上一次请求未完成时忽略新请求，彻底避免刷新死循环
+      if (this.isLoading) return;
+      this.isLoading = true;
+      // 仅首次加载（无数据时）显示loading，避免scroll-view被销毁重建
+      if (this.resultList.length === 0) {
+        this.loading = true;
+      }
       getLearnResultList({ recordId: this.recordId })
         .then((res) => {
           this.resultList = res.result?.data || [];
@@ -122,6 +154,7 @@ export default {
         .finally(() => {
           this.loading = false;
           this.refreshing = false;
+          this.isLoading = false;
         });
     },
     onPullRefresh() {
@@ -140,29 +173,6 @@ export default {
         return text.length > 100 ? text.substring(0, 100) + '...' : text;
       }
       return '点击查看详情';
-    },
-    getBatchStatusClass(group) {
-      const hasPending = group.items.some(i => i.status === 'pending');
-      const allError = group.items.every(i => i.status === 'error');
-      if (hasPending) return 'batch-pending';
-      if (allError) return 'batch-error';
-      return 'batch-success';
-    },
-    getBatchDotClass(group) {
-      const hasPending = group.items.some(i => i.status === 'pending');
-      const allError = group.items.every(i => i.status === 'error');
-      if (hasPending) return 'dot-pending';
-      if (allError) return 'dot-error';
-      return 'dot-success';
-    },
-    getBatchStatusText(group) {
-      const hasPending = group.items.some(i => i.status === 'pending');
-      const allSuccess = group.items.every(i => i.status === 'success');
-      const allError = group.items.every(i => i.status === 'error');
-      if (hasPending) return '生成中';
-      if (allSuccess) return '全部完成';
-      if (allError) return '全部失败';
-      return '部分完成';
     },
     handleItemClick(item) {
       if (item.status === 'pending') {

@@ -64,9 +64,9 @@
             <text class="cuIcon-downloadfill text-blue"></text>
             <text class="download-text text-xs">下载</text>
           </view>
-          <view v-if="summaryContent" class="ai-btn" :class="{ 'ai-btn-disabled': aiLoading }" @click="handleAiLearn">
-            <text class="ai-btn-icon" :class="aiLoading ? 'cuIcon-loading1 text-gray' : 'cuIcon-creativefill text-orange'"></text>
-            <text class="ai-btn-text text-xs">{{ aiLoading ? '生成中...' : 'AI辅导' }}</text>
+          <view v-if="summaryContent" class="ai-btn" :class="{ 'ai-btn-disabled': aiLoading || hasPendingAi }" @click="handleAiLearn">
+            <text class="ai-btn-icon" :class="(aiLoading || hasPendingAi) ? 'cuIcon-loading1 text-gray' : 'cuIcon-creativefill text-orange'"></text>
+            <text class="ai-btn-text text-xs">{{ (aiLoading || hasPendingAi) ? '生成中...' : 'AI辅导' }}</text>
           </view>
         </view>
         <view class="summary-content">
@@ -99,6 +99,7 @@ export default {
       tagMap: {}, // 标签ID到标签信息的映射
       tagColorClasses, // 从公共工具文件导入
       aiLoading: false, // AI辅导按钮loading状态
+      hasPendingAi: false, // 是否有正在生成中的AI结果
       hasAiResult: false, // 是否有成功的AI学习结果
       aiResultCount: 0, // 成功的AI学习结果数量
     };
@@ -110,7 +111,7 @@ export default {
   methods: {
     // AI辅导
     handleAiLearn() {
-      if (this.aiLoading) return;
+      if (this.aiLoading || this.hasPendingAi) return;
       if (!this.summaryContent || this.summaryContent.trim() === '') {
         uni.showToast({ title: '暂无总结内容，无法生成', icon: 'none' });
         return;
@@ -141,10 +142,12 @@ export default {
         .then((res) => {
           this.hasAiResult = res.hasAiResult;
           this.aiResultCount = res.aiResultCount;
+          this.hasPendingAi = res.hasPending;
         })
         .catch(() => {
           this.hasAiResult = false;
           this.aiResultCount = 0;
+          this.hasPendingAi = false;
         });
     },
     // 加载标签列表

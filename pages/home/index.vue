@@ -90,9 +90,9 @@
 							<view class="record-footer">
 								<text class="cuIcon-timefill text-gray text-xs margin-right-xs"></text>
 								<text class="text-gray text-xs">{{ formatTime(record.createTime) }}</text>
-								<view v-if="aiResultMap[record._id]?.hasAiNote" class="ai-note-tag" @tap.stop="goLearnResult(record)">
+								<view v-if="getAiNoteCount(record) > 0" class="ai-note-tag" @tap.stop="goLearnResult(record)">
 									<text class="cuIcon-creativefill text-xs"></text>
-									<text class="ai-note-tag-text text-xs">AI笔记{{ aiResultMap[record._id].aiNoteCount > 1 ? " " + aiResultMap[record._id].aiNoteCount + "篇" : "" }}</text>
+									<text class="ai-note-tag-text text-xs">AI笔记{{ getAiNoteCount(record) > 1 ? " " + getAiNoteCount(record) + "篇" : "" }}</text>
 								</view>
 							</view>
 						</view>
@@ -445,7 +445,12 @@ export default {
 				url: `/subpackage/depart/detail?id=${row._id}`,
 			});
 		},
-			// 跳转到AI学习结果列表
+			// 获取记录的AI笔记数量
+				getAiNoteCount(record) {
+					const item = this.aiResultMap[record._id];
+					return (item && item.hasAiNote) ? item.aiNoteCount : 0;
+				},
+				// 跳转到AI学习结果列表
 			goLearnResult(record) {
 				uni.navigateTo({
 					url: `/subpackage/depart/learn-result?recordId=${record._id}`
