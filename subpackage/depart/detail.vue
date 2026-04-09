@@ -39,6 +39,18 @@
         </view>
       </view>
 
+      <!-- AI学习结果入口（仅在有成功结果时显示） -->
+      <view v-if="hasAiResult" class="learn-result-entry shadow-warp" @click="goLearnResult">
+        <view class="entry-icon">
+          <text class="cuIcon-creativefill text-orange"></text>
+        </view>
+        <view class="entry-content">
+          <text class="entry-title">AI 学习笔记</text>
+          <text class="entry-desc text-gray text-xs">{{ aiResultCount > 1 ? '查看 ' + aiResultCount + ' 条学习结果' : '查看学习结果' }}</text>
+        </view>
+        <text class="cuIcon-right text-gray"></text>
+      </view>
+
       <!-- 总结内容卡片 -->
       <view class="summary-card shadow-warp">
         <view class="summary-header">
@@ -66,13 +78,6 @@
           </view>
         </view>
       </view>
-
-      <!-- 查看学习结果入口 -->
-      <view v-if="summaryContent" class="learn-result-entry shadow-warp" @click="goLearnResult">
-        <text class="cuIcon-creativefill text-orange"></text>
-        <text class="entry-text">查看学习结果</text>
-        <text class="cuIcon-right text-gray"></text>
-      </view>
     </view>
   </view>
 </template>
@@ -81,7 +86,7 @@
 import { getRecord } from "@/api/record";
 import { getSummarize } from "@/api/summarize";
 import { getDictCategoryList } from "@/api/dictCategory.js";
-import { callGenerateLearnNote } from "@/api/aiLearn.js";
+import { callGenerateLearnNote, getAiResultCount } from "@/api/aiLearn.js";
 import { tagColorClasses } from "@/utils/tagColors";
 import moment from "moment";
 
@@ -94,6 +99,8 @@ export default {
       tagMap: {}, // 标签ID到标签信息的映射
       tagColorClasses, // 从公共工具文件导入
       aiLoading: false, // AI辅导按钮loading状态
+      hasAiResult: false, // 是否有成功的AI学习结果
+      aiResultCount: 0, // 成功的AI学习结果数量
     };
   },
   onLoad(option) {
@@ -127,6 +134,18 @@ export default {
       uni.navigateTo({
         url: `/subpackage/depart/learn-result?recordId=${this.recordData._id}`
       });
+    },
+    // 加载AI学习结果数量
+    loadAiResultCount(recordId) {
+      getAiResultCount(recordId)
+        .then((res) => {
+          this.hasAiResult = res.hasAiResult;
+          this.aiResultCount = res.aiResultCount;
+        })
+        .catch(() => {
+          this.hasAiResult = false;
+          this.aiResultCount = 0;
+        });
     },
     // 加载标签列表
     loadTagList() {
@@ -330,6 +349,9 @@ export default {
         .then((recordRes) => {
           if (recordRes.result && recordRes.result.data && recordRes.result.data.length > 0) {
             this.recordData = recordRes.result.data[0];
+
+            // 查询该记录的AI学习结果数量
+            this.loadAiResultCount(this.recordData._id);
 
             // 根据总结ID查询并汇总信息
             if (this.recordData.summarizeId) {
@@ -616,8 +638,8 @@ export default {
   align-items: center;
   background: #ffffff;
   border-radius: 24rpx;
-  padding: 28rpx 32rpx;
-  margin-top: 24rpx;
+  padding: 24rpx 32rpx;
+  margin-bottom: 24rpx;
   cursor: pointer;
   transition: all 0.3s;
 
@@ -626,21 +648,43 @@ export default {
     opacity: 0.9;
   }
 
-  .cuIcon-creativefill {
-    font-size: 36rpx;
+  .entry-icon {
+    width: 48rpx;
+    height: 48rpx;
+    border-radius: 12rpx;
+    background: rgba(255, 157, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     margin-right: 16rpx;
+    flex-shrink: 0;
+
+    .cuIcon-creativefill {
+      font-size: 28rpx;
+    }
   }
 
-  .entry-text {
+  .entry-content {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .entry-title {
     font-size: 28rpx;
     font-weight: 500;
     color: #333;
   }
 
+  .entry-desc {
+    margin-top: 4rpx;
+  }
+
   .cuIcon-right {
     font-size: 28rpx;
     color: #999;
+    flex-shrink: 0;
+    margin-left: 12rpx;
   }
 }
 

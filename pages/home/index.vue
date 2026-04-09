@@ -86,10 +86,14 @@
 								<text class="record-summary-text">{{ formatSummaryContent(record.summarizeContent) }}</text>
 							</view>
 
-							<!-- 时间信息 -->
+							<!-- 时间信息 + AI笔记入口 -->
 							<view class="record-footer">
 								<text class="cuIcon-timefill text-gray text-xs margin-right-xs"></text>
 								<text class="text-gray text-xs">{{ formatTime(record.createTime) }}</text>
+								<view v-if="aiResultMap[record._id]?.hasAiNote" class="ai-note-tag" @tap.stop="goLearnResult(record)">
+									<text class="cuIcon-creativefill text-xs"></text>
+									<text class="ai-note-tag-text text-xs">AI笔记{{ aiResultMap[record._id].aiNoteCount > 1 ? " " + aiResultMap[record._id].aiNoteCount + "篇" : "" }}</text>
+								</view>
 							</view>
 						</view>
 					</view>
@@ -164,6 +168,7 @@
 import { getRecordList, delRecord, searchRecord } from "@/api/record.js";
 import { getDictCategoryList } from "@/api/dictCategory.js";
 import { delSummarize } from "@/api/summarize";
+import { batchQueryAiResults } from "@/api/aiLearn.js";
 import { tagColorClasses } from "@/utils/tagColors";
 import moment from "moment";
 import zStatic from '@/uni_modules/z-paging/components/z-paging/js/z-paging-static.js';
@@ -198,6 +203,7 @@ export default {
 			lastIsGuest: null, // 记录上一次的游客状态
 			searchKeyword: '', // 搜索关键词
 			isSearchMode: false, // 是否处于搜索模式
+				aiResultMap: {}, // AI学习结果映射 { recordId: { hasAiNote, aiNoteCount } }
 		};
 	},
 	computed: {
@@ -326,6 +332,9 @@ export default {
 					this.isLoadFailed = false;
 					const list = res.result.data || [];
 
+
+						// 批量查询AI学习结果
+						this.fetchAiResults(list);
 					// 按日期分组
 					const groupedRecords = list.reduce((groups, element) => {
 						const groupDate = moment(element.createTime).format("YYYY-MM-DD");
@@ -377,6 +386,9 @@ export default {
 					this.isLoadFailed = false;
 					const list = res.result.data || [];
 
+
+						// 批量查询AI学习结果
+						this.fetchAiResults(list);
 					// 按日期分组
 					const groupedRecords = list.reduce((groups, element) => {
 						const groupDate = moment(element.createTime).format("YYYY-MM-DD");
@@ -433,6 +445,24 @@ export default {
 				url: `/subpackage/depart/detail?id=${row._id}`,
 			});
 		},
+			// 跳转到AI学习结果列表
+			goLearnResult(record) {
+				uni.navigateTo({
+					url: `/subpackage/depart/learn-result?recordId=${record._id}`
+				});
+			},
+			// 批量查询AI学习结果并附加到记录上
+			fetchAiResults(list) {
+				if (!list || list.length === 0) return;
+				const recordIds = list.map(item => item._id);
+				batchQueryAiResults(recordIds)
+					.then((resultMap) => {
+						this.aiResultMap = resultMap;
+					})
+					.catch(() => {
+						this.aiResultMap = {};
+					});
+			},
 		// 判断是否是示例记录
 		isExampleRecord(record) {
 			return !record.createBy || record.createBy === '';
@@ -905,12 +935,38 @@ export default {
 	}
 
 	.record-footer {
+	display: flex;
+	align-items: center;
+	padding-top: 16rpx;
+	border-top: 1rpx solid rgba(0, 0, 0, 0.05);
+	opacity: 0.7;
+
+	.ai-note-tag {
 		display: flex;
 		align-items: center;
-		padding-top: 16rpx;
-		border-top: 1rpx solid rgba(0, 0, 0, 0.05);
-		opacity: 0.7;
+		margin-left: auto;
+		padding: 4rpx 14rpx;
+		border-radius: 16rpx;
+		background: rgba(255, 157, 0, 0.1);
+		opacity: 1;
+
+		&:active {
+			background: rgba(255, 157, 0, 0.2);
+			transform: scale(0.95);
+		}
+
+		.cuIcon-creativefill {
+			color: #ff9d00;
+			margin-right: 4rpx;
+			font-size: 22rpx;
+		}
+
+		.ai-note-tag-text {
+			color: #ff9d00;
+			font-weight: 500;
+		}
 	}
+}
 }
 
 /* 浮动操作按钮 FAB */
