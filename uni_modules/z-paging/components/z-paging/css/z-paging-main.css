@@ -52,6 +52,10 @@
 	/* #endif */
 }
 
+.zp-right {
+	right: 0;
+}
+
 .zp-scroll-view-super {
 	flex: 1;
 	overflow: hidden;
@@ -193,6 +197,10 @@
 	z-index: 999;
 }
 
+.zp-back-to-top-img-inversion {
+	transform: rotate(180deg);
+}
+
 .zp-empty-view {
 	/* #ifdef APP-NVUE */
 	height: 100%;
@@ -214,7 +222,6 @@
 }
 
 .zp-safe-area-inset-bottom {
-	position: absolute;
 	/* #ifndef APP-PLUS */
 	height: env(safe-area-inset-bottom);
 	/* #endif */

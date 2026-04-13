@@ -8,7 +8,7 @@ export default {
 	props: {
 		// 自定义初始的pageNo，默认为1
 		defaultPageNo: {
-			type: [Number, String],
+			type: Number,
 			default: u.gc('defaultPageNo', 1),
 			observer: function(newVal) {
 				this.pageNo = newVal;
@@ -16,7 +16,7 @@ export default {
 		},
 		// 自定义pageSize，默认为10
 		defaultPageSize: {
-			type: [Number, String],
+			type: Number,
 			default: u.gc('defaultPageSize', 10),
 			validator: (value) => {
 				if (value <= 0) u.consoleErr('default-page-size必须大于0！');
@@ -157,7 +157,8 @@ export default {
 			listRendering: false,
 			isHandlingRefreshToPage: false,
 			isFirstPageAndNoMore: false,
-			totalDataChangeThrow: true
+			totalDataChangeThrow: true,
+			addDataFromTopBufferedInsert: u.useBufferedInsert(this._addDataFromTop)
 		}
 	},
 	computed: {
@@ -182,7 +183,9 @@ export default {
 	},
 	watch: {
 		totalData(newVal, oldVal) {
-			this._totalDataChange(newVal, oldVal, this.totalDataChangeThrow);
+			// 触发totalData改变事件时是否触发emit列表更新事件，如果是从缓存中设置则必须触发，否则根据totalDataChangeThrow的规则判断
+			const eventThrow = this.isSettingCacheList ? true : this.totalDataChangeThrow;
+			this._totalDataChange(newVal, oldVal, eventThrow);
 			this.totalDataChangeThrow = true;
 		},
 		currentData(newVal, oldVal) {
@@ -299,17 +302,10 @@ export default {
 		},
 		// 从顶部添加数据，不会影响分页的pageNo和pageSize
 		addDataFromTop(data, toTop = true, toTopWithAnimate = true) {
-			// 数据是否拼接到顶部，如果是聊天记录模式并且列表没有倒置，则应该拼接在底部
-			let addFromTop = !this.isChatRecordModeAndNotInversion;
-			data = Object.prototype.toString.call(data) !== '[object Array]' ? [data] : (addFromTop ? data.reverse() : data);
-			// #ifndef APP-NVUE
-			this.finalUseVirtualList && this._setCellIndex(data, 'top')
-			// #endif
-			
-			this.totalData = addFromTop ? [...data, ...this.totalData] : [...this.totalData, ...data];
-			if (toTop) {
-				u.delay(() => this.useChatRecordMode ? this.scrollToBottom(toTopWithAnimate) : this.scrollToTop(toTopWithAnimate));
-			}
+			// 如果使用了虚拟列表，则需要对短时间内的大量数据进行整合然后一次性添加，避免设置虚拟列表cellIndex时候key冲突的问题，否则正常调用
+			(this.finalUseVirtualList ? this.addDataFromTopBufferedInsert : this._addDataFromTop)(
+				data, toTop, toTopWithAnimate
+			);
 		},
 		// 重新设置列表数据，调用此方法不会影响pageNo和pageSize，也不会触发请求。适用场景：当需要删除列表中某一项时，将删除对应项后的数组通过此方法传递给z-paging。(当出现类似的需要修改列表数组的场景时，请使用此方法，请勿直接修改page中:list.sync绑定的数组)
 		resetTotalData(data) {
@@ -473,14 +469,10 @@ export default {
 			if (!isLocal && tempIsUserPullDown && this.isFirstPage) {
 				this.isUserPullDown = false;
 			}
-			if (!this.isFirstPage) {
-				this.listRendering = true;
-				this.$nextTick(() => {
-					u.delay(() => this.listRendering = false);
-				})
-			} else {
-				this.listRendering = false;
-			}
+			this.listRendering = true;
+			this.$nextTick(() => {
+				u.delay(() => this.listRendering = false);
+			})
 			let dataTypeRes = this._checkDataType(data, success, isLocal);
 			data = dataTypeRes.data;
 			success = dataTypeRes.success;
@@ -511,7 +503,9 @@ export default {
 					const localPageNo = this.defaultPageNo;
 					const localPageSize = this.queryFrom !== Enum.QueryFrom.Refresh ? this.defaultPageSize : this.currentRefreshPageSize;
 					this._localPagingQueryList(localPageNo, localPageSize, 0, res => {
-						this.completeByTotal(res, this.totalLocalPagingList.length);
+						u.delay(() => {
+							this.completeByTotal(res, this.totalLocalPagingList.length);;
+						}, 0)
 					})
 				} else {
 					// 如果当前不是本地分页，则按照正常分页逻辑进行数据处理&emit数据
@@ -538,7 +532,7 @@ export default {
 				this._callDataPromise(false);
 				this.loadingStatus = Enum.More.Fail;
 				this.isHandlingRefreshToPage = false;
-				if (this.loadingType === Enum.LoadingType.LoadingMore) {
+				if (this.loadingType === Enum.LoadingType.LoadMore) {
 					this.pageNo --;
 				}
 			}
@@ -549,7 +543,7 @@ export default {
 				return;
 			}
 			this._doCheckScrollViewShouldFullHeight(newVal);
-			if(!this.realTotalData.length && !newVal.length){
+			if (!this.realTotalData.length && !newVal.length) {
 				eventThrow = false;
 			}
 			this.realTotalData = newVal;
@@ -615,7 +609,7 @@ export default {
 					this.totalData = [...this.totalData, ...newVal];
 					// 此处是为了解决在微信小程序中，在某些情况下滚动到底部加载更多后滚动位置直接变为最底部的问题，因此需要通过代码强制滚动回加载更多前的位置
 					// #ifdef MP-WEIXIN
-					if (!this.isIos && !this.refresherOnly && !this.usePageScroll && newVal.length) {
+					if (!this.isIos && !this.isOnly && !this.usePageScroll && newVal.length) {
 						this.loadingMoreTimeStamp = u.getTime();
 						this.$nextTick(() => {
 							this.scrollToY(currentScrollTop);
@@ -660,6 +654,20 @@ export default {
 			const finalPageNoIndex = Math.min(totalPagingList.length, pageNoIndex + pageSize);
 			const resultPagingList = totalPagingList.splice(pageNoIndex, finalPageNoIndex - pageNoIndex);
 			u.delay(() => callback(resultPagingList), localPagingLoadingTime)
+		},
+		// 从顶部添加数据，不会影响分页的pageNo和pageSize
+		_addDataFromTop(data, toTop = true, toTopWithAnimate = true) {
+			// 数据是否拼接到顶部，如果是聊天记录模式并且列表没有倒置，则应该拼接在底部
+			let addFromTop = !this.isChatRecordModeAndNotInversion;
+			data = Object.prototype.toString.call(data) !== '[object Array]' ? [data] : (addFromTop ? data.reverse() : data);
+			// #ifndef APP-NVUE
+			this.finalUseVirtualList && this._setCellIndex(data, 'top')
+			// #endif
+			
+			this.totalData = addFromTop ? [...data, ...this.totalData] : [...this.totalData, ...data];
+			if (toTop) {
+				u.delay(() => this.useChatRecordMode ? this.scrollToBottom(toTopWithAnimate) : this.scrollToTop(toTopWithAnimate));
+			}
 		},
 		// 存储列表缓存数据
 		_saveLocalCache(data) {

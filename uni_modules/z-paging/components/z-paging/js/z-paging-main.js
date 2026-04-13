@@ -24,8 +24,7 @@ import virtualListModule from './modules/virtual-list'
 
 import Enum from './z-paging-enum'
 
-const systemInfo = uni.getSystemInfoSync();
-
+const systemInfo = u.getSystemInfoSync();
 export default {
 	name: "z-paging",
 	components: {
@@ -50,8 +49,6 @@ export default {
 	data() {
 		return {
 			// --------------静态资源---------------
-			base64Arrow: zStatic.base64Arrow,
-			base64Flower: zStatic.base64Flower,
 			base64BackToTop: zStatic.base64BackToTop,
 
 			// -------------全局数据相关--------------
@@ -63,6 +60,8 @@ export default {
 			checkScrolledToBottomTimeOut: null,
 			cacheTopHeight: -1,
 			statusBarHeight: systemInfo.statusBarHeight,
+			scrollViewHeight: 0,
+			pagingOrgTop: -1,
 
 			// --------------状态&判断---------------
 			insideOfPaging: -1,
@@ -96,6 +95,11 @@ export default {
 		pagingStyle: {
 			type: Object,
 			default: u.gc('pagingStyle', {}),
+		},
+		// 设置z-paging的class，优先级低于pagingStyle和height、width、maxWidth、bgColor
+		pagingClass: {
+			type: [String, Array, Object],
+			default: u.gc('pagingClass', ''),
 		},
 		// z-paging的高度，优先级低于pagingStyle中设置的height；传字符串，如100px、100rpx、100%
 		height: {
@@ -187,6 +191,16 @@ export default {
 			type: Boolean,
 			default: u.gc('watchTouchDirectionChange', false)
 		},
+		// 是否监听列表滚动方向改变，默认为否
+		watchScrollDirectionChange: {
+			type: Boolean,
+			default: u.gc('watchScrollDirectionChange', false)
+		},
+		// 是否只使用基础布局，设置为true后将关闭mounted自动请求数据、关闭下拉刷新和滚动到底部加载更多，强制隐藏空数据图。默认为否
+		layoutOnly: {
+			type: Boolean,
+			default: u.gc('layoutOnly', false)
+		},
 		// z-paging中布局的单位，默认为rpx
 		unit: {
 			type: String,
@@ -195,7 +209,7 @@ export default {
 	},
 	created() {
 		// 组件创建时，检测是否开始加载状态
-		if (this.createdReload && !this.refresherOnly && this.auto) {
+		if (this.createdReload && !this.isOnly && this.auto) {
 			this._startLoading();
 			this.$nextTick(this._preReload);
 		}
@@ -204,7 +218,7 @@ export default {
 		this.active = true;
 		this.wxsPropType = u.getTime().toString();
 		this.renderJsIgnore;
-		if (!this.createdReload && !this.refresherOnly && this.auto) {
+		if (!this.createdReload && !this.isOnly && this.auto) {
 			// 开始预加载
 			u.delay(() => this.$nextTick(this._preReload), 0);
 		}
@@ -214,17 +228,20 @@ export default {
 		// #ifdef H5 || MP
 		delay = c.delayTime;
 		// #endif
+		this.systemInfo = u.getSystemInfoSync();
 		this.$nextTick(() => {
 			// 初始化systemInfo
-			this.systemInfo = uni.getSystemInfoSync();
+			this.systemInfo = u.getSystemInfoSync();
 			// 初始化z-paging高度
-			!this.usePageScroll && this.autoHeight && this._setAutoHeight();
+			!this.usePageScroll && this.autoHeight  && this._setAutoHeight();
 			this.loaded = true;
 			u.delay(() => {
 				// 更新fixed模式下z-paging的布局，主要是更新windowTop、windowBottom
 				this.updateFixedLayout();
 				// 更新缓存中z-paging整个内容容器高度
 				this._updateCachedSuperContentHeight();
+				// 更新z-paging中scroll-view高度
+				this._updateScrollViewHeight();
 			});
 		})
 		// 初始化页面滚动模式下slot="top"、slot="bottom"高度
@@ -237,18 +254,16 @@ export default {
 				this.isTouchmoving = true;
 			})
 		}
-		// 监听uni.$emit中全局emit的complete error等事件
-		this._onEmit();
+		if (!this.layoutOnly) {
+			// 监听uni.$emit中全局emit的complete error等事件
+			this._onEmit();
+		}
 		// #ifdef APP-NVUE
 		if (!this.isIos && !this.useChatRecordMode) {
 			this.nLoadingMoreFixedHeight = true;
 		}
 		// 在nvue中更新nvue下拉刷新view容器的宽度，而不是写死默认的750rpx，需要考虑列表宽度不是铺满屏幕的情况
 		this._nUpdateRefresherWidth();
-		// #endif
-		// #ifndef APP-NVUE
-		// 虚拟列表模式时，初始化数据
-		this.finalUseVirtualList && this._virtualListInit();
 		// #endif
 		// #ifndef APP-PLUS
 		this.$nextTick(() => {
@@ -320,7 +335,10 @@ export default {
 			}
 			return this.pagingContentStyle;
 		},
-		
+		// 最终的当前开启安全区域适配后，是否使用placeholder形式实现。如果slot=bottom存在，则应当交由固定在底部的view处理，因此需排除此情况
+		finalUseSafeAreaPlaceholder() {
+			return this.useSafeAreaPlaceholder && !this.zSlots.bottom;
+		},
 		renderJsIgnore() {
 			if ((this.usePageScroll && this.useChatRecordMode) || (!this.refresherEnabled && this.scrollable) || !this.useCustomRefresher) {
 				this.$nextTick(() => {
@@ -335,19 +353,19 @@ export default {
 		},
 		windowBottom() {
 			if (!this.systemInfo) return 0;
-			let windowBottom = this.systemInfo.windowBottom || 0;
-			// 如果开启底部安全区域适配并且不使用placeholder的形式体现并且不是聊天记录模式（因为聊天记录模式在keyboardHeight计算初已添加了底部安全区域），在windowBottom添加底部安全区域高度
-			if (this.safeAreaInsetBottom && !this.useSafeAreaPlaceholder && !this.useChatRecordMode) {
-				windowBottom += this.safeAreaBottom;
-			}
-			return windowBottom;
+			return this.systemInfo.windowBottom || 0;
 		},
+		// 是否是ios+h5
 		isIosAndH5() {
 			// #ifndef H5
 			return false;
 			// #endif
 			return this.isIos;
-		}
+		},
+		// 是否是只使用基础布局或者只使用下拉刷新
+		isOnly() {
+			return this.layoutOnly || this.refresherOnly;
+		},
 	},
 	methods: {
 		// 当前版本号
@@ -408,10 +426,7 @@ export default {
 		},
 		// 设置z-paging高度
 		async _setAutoHeight(shouldFullHeight = true, scrollViewNode = null) {
-			let heightKey = 'min-height';
-			// #ifndef APP-NVUE
-			heightKey = 'min-height';
-			// #endif
+			const heightKey = 'min-height';
 			try {
 				if (shouldFullHeight) {
 					// 如果需要铺满全屏，则计算当前全屏可是区域的高度
@@ -422,7 +437,12 @@ export default {
 						let scrollViewHeight = this.windowHeight - scrollViewTop;
 						scrollViewHeight -= finalScrollBottomNode ? finalScrollBottomNode[0].height : 0;
 						const additionHeight = u.convertToPx(this.autoHeightAddition);
-						const finalHeight = scrollViewHeight + additionHeight - (this.insideMore ? 1 : 0) + 'px !important';
+						// 在支付宝小程序中，添加!important会导致min-height失效，因此在支付宝小程序中需要去掉
+						let importantSuffix =  ' !important';
+						// #ifdef MP-ALIPAY
+						importantSuffix = '';
+						// #endif
+						const finalHeight = scrollViewHeight + additionHeight - (this.insideMore ? 1 : 0) + 'px' + importantSuffix;
 						this.$set(this.scrollViewStyle, heightKey, finalHeight);
 						this.$set(this.scrollViewInStyle, heightKey, finalHeight);
 					}
@@ -432,10 +452,25 @@ export default {
 				}
 			} catch (e) {}
 		},
+		// 更新scroll-view高度
+		async _updateScrollViewHeight() {
+			const scrollViewNode = await this._getNodeClientRect('.zp-scroll-view');
+			if (scrollViewNode) {
+				const scrollViewNodeHeight = scrollViewNode[0].height;
+				this.scrollViewHeight = scrollViewNodeHeight;
+				this.pagingOrgTop =  scrollViewNode[0].top;
+				// 设置scroll-view内容器的最小高度等于scroll-view的高度(为了解决在快手小程序中内容较少时scroll-view内容器高度无法铺满scroll-view的问题)
+				// #ifdef MP-KUAISHOU
+				this.$set(this.scrollViewInStyle, 'min-height', scrollViewNodeHeight + 'px');
+				// #endif
+			}
+		},
 		// 组件销毁后续处理
 		_handleUnmounted() {
 			this.active = false;
-			this._offEmit();
+			if (!this.layoutOnly) {
+				this._offEmit();
+			}
 			// 取消监听键盘高度变化事件（H5、百度小程序、抖音小程序、飞书小程序、QQ小程序、快手小程序不支持）
 			// #ifndef H5 || MP-BAIDU || MP-TOUTIAO || MP-QQ || MP-KUAISHOU
 			this.useChatRecordMode && uni.offKeyboardHeightChange(this._handleKeyboardHeightChange);
