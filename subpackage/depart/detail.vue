@@ -363,13 +363,6 @@ export default {
     padding: 8rpx 16rpx;
     border-radius: 8rpx;
     background: rgba(0, 129, 255, 0.1);
-    cursor: pointer;
-    transition: all 0.3s;
-
-    &:active {
-      background: rgba(0, 129, 255, 0.2);
-      transform: scale(0.95);
-    }
 
     .cuIcon-downloadfill {
       font-size: 28rpx;
@@ -388,14 +381,7 @@ export default {
     padding: 8rpx 16rpx;
     border-radius: 8rpx;
     background: rgba(255, 157, 0, 0.1);
-    cursor: pointer;
-    transition: all 0.3s;
     margin-left: 12rpx;
-
-    &:active {
-      background: rgba(255, 157, 0, 0.2);
-      transform: scale(0.95);
-    }
 
     &.ai-btn-disabled {
       opacity: 0.6;

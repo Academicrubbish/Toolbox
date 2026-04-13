@@ -333,11 +333,6 @@ export default {
     border-radius: 8rpx;
     background: rgba(0, 129, 255, 0.1);
 
-    &:active {
-      background: rgba(0, 129, 255, 0.2);
-      transform: scale(0.95);
-    }
-
     .cuIcon-downloadfill {
       font-size: 28rpx;
       margin-right: 8rpx;

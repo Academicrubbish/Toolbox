@@ -574,12 +574,6 @@ export default {
   background: #fafafa;
   border: 2rpx solid #e5e5e5;
   border-radius: 16rpx;
-  transition: all 0.3s ease;
-
-  &:active {
-    background: #f0f0f0;
-    border-color: #39b54a;
-  }
 
   .rich-text-content {
     flex: 1;

@@ -646,7 +646,6 @@ export default {
 	background: #f5f7fa;
 	border-radius: 36rpx;
 	flex-shrink: 0;
-	transition: all 0.3s ease;
 
 	.cuIcon-refresh {
 		font-size: 32rpx;
@@ -656,11 +655,6 @@ export default {
 	.search-reset-text {
 		font-size: 26rpx;
 		color: #666;
-	}
-
-	&:active {
-		background: #e8eaed;
-		opacity: 0.8;
 	}
 }
 
@@ -811,15 +805,10 @@ export default {
 			align-items: center;
 			justify-content: center;
 			border-radius: 50%;
-			transition: all 0.2s ease;
 			margin-left: 16rpx;
 
 			.cuIcon-moreandroid {
 				font-size: 40rpx;
-			}
-
-			&:active {
-				background-color: rgba(0, 0, 0, 0.05);
 			}
 		}
 	}
@@ -873,11 +862,6 @@ export default {
 		border-radius: 16rpx;
 		background: rgba(255, 157, 0, 0.1);
 		opacity: 1;
-
-		&:active {
-			background: rgba(255, 157, 0, 0.2);
-			transform: scale(0.95);
-		}
 
 		.cuIcon-creativefill {
 			color: #ff9d00;

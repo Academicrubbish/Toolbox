@@ -198,11 +198,6 @@ export default {
     
     .cancel-btn {
       padding: 20rpx 0;
-      cursor: pointer;
-      
-      &:active {
-        opacity: 0.7;
-      }
     }
   }
 }

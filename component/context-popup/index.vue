@@ -107,14 +107,9 @@ export default {
       user-select: none;
       -webkit-touch-callout: none;
       border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
-      transition: background-color 0.2s ease;
 
       &:last-child {
         border-bottom: none;
-      }
-
-      &:active {
-        background-color: #f5f7fa;
       }
     }
   }

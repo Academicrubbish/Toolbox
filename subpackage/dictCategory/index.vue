@@ -327,24 +327,14 @@ export default {
   background: #ffffff;
   border-radius: 24rpx;
   padding: 32rpx 24rpx 24rpx;
-  transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
-  
-  /* 点击效果 */
-  &:active {
-    box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
-  }
-  
+
   /* 公共标签样式 */
   &.tag-card-public {
     background: #fafafa;
-    
-    &:active {
-      transform: none;
-    }
   }
-  
+
   /* 卡片头部 */
   .tag-card-header {
     margin-bottom: 20rpx;
