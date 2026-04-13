@@ -199,7 +199,12 @@ export default {
 
 	mounted() {
 		this.loadTagList();
-			this.appVersion = this.getAppVersion();
+			try {
+			const accountInfo = uni.getAccountInfoSync();
+			this.appVersion = accountInfo.miniProgram.version || '开发版';
+		} catch (e) {
+			this.appVersion = '开发版';
+		}
 		this.lastAuthStateVersion = this.$store.state.user.authStateVersion;
 		this.lastIsGuest = this.$store.state.user.isGuest;
 		this.$nextTick(() => {
