@@ -101,20 +101,10 @@
 			</z-paging>
 
 			<!-- 长按弹窗 -->
-			<view class="shade" v-show="showShade" @tap="hidePop">
-				<view class="pop" :style="popStyle" :class="{ show: showPop }">
-					<view v-for="item in popButton" :key="item" @tap="pickerMenu(item)">
-						{{ item }}
-					</view>
-				</view>
-			</view>
+			<context-popup ref="contextPopup" :buttons="popButton" @select="pickerMenu" />
 
 			<!-- 新增记录按钮 - FAB -->
-			<view class="fab-button" @tap="addRecord">
-				<view class="fab-icon">
-					<text class="cuIcon-add"></text>
-				</view>
-			</view>
+			<fab-button @click="addRecord" />
 
 			<!-- 删除提示 -->
 			<uni-popup ref="alertDialog" type="dialog">
@@ -175,11 +165,15 @@ import zStatic from '@/uni_modules/z-paging/components/z-paging/js/z-paging-stat
 import zPagingEmptyView from '@/uni_modules/z-paging/components/z-paging-empty-view/z-paging-empty-view.vue';
 
 import LoginModal from '@/component/login-modal/index.vue'
+import ContextPopup from '@/component/context-popup/index.vue'
+import FabButton from '@/component/fab-button/index.vue'
 import { setLoginModalRef } from '@/utils/api-auth.js'
 
 export default {
 	components: {
 		LoginModal,
+		ContextPopup,
+		FabButton,
 		zPagingEmptyView
 	},
 	data() {
@@ -190,10 +184,7 @@ export default {
 			recordList: [],
 			tagMap: {}, // 标签ID到标签信息的映射
 			tagColorClasses, // 从公共工具文件导入
-			showShade: false, // 显示遮罩
-			showPop: false, // 显示操作弹窗
 			popButton: ["编辑", "删除"], // 弹窗按钮列表
-			popStyle: "", // 弹窗定位样式
 			pickerRecordItem: null, // 选择的记录内容
 			dialogContent: "", // 删除提醒文本
 			showAuthFailed: false, // 是否显示授权失败页面
@@ -315,117 +306,63 @@ export default {
 		},
 		// 查询列表
 		queryList(pageNo, pageSize) {
-			// 如果有搜索关键词，使用搜索接口
-			if (this.searchKeyword && this.searchKeyword.trim()) {
-				this.querySearchList(pageNo, pageSize);
-				return;
-			}
+			// 根据是否有搜索关键词选择不同的接口
+			const queryPromise = (this.searchKeyword && this.searchKeyword.trim())
+				? searchRecord({
+					keyword: this.searchKeyword.trim(),
+					pageNum: pageNo,
+					pageSize: pageSize,
+				}, { autoShowLogin: false })
+				: getRecordList({
+					pageNum: pageNo,
+					pageSize: pageSize,
+				}, { autoShowLogin: false });
 
-			// 调用接口，不自动弹出登录弹窗，失败时显示失败页面
-			getRecordList({
-				pageNum: pageNo,
-				pageSize: pageSize,
-			}, { autoShowLogin: false })
+			queryPromise
 				.then((res) => {
-					// 加载成功，重置失败状态
 					this.showAuthFailed = false;
 					this.isLoadFailed = false;
 					const list = res.result.data || [];
 
+					// 批量查询AI学习结果
+					this.fetchAiResults(list);
 
-						// 批量查询AI学习结果
-						this.fetchAiResults(list);
 					// 按日期分组
-					const groupedRecords = list.reduce((groups, element) => {
-						const groupDate = moment(element.createTime).format("YYYY-MM-DD");
-						const existingGroup = groups.find(group => group.date === groupDate);
-
-						if (existingGroup) {
-							existingGroup.children.push(element);
-							existingGroup.count++;
-						} else {
-							groups.push({
-								date: groupDate,
-								children: [element],
-								count: 1,
-							});
-						}
-						return groups;
-					}, []);
-
-					// 调用 z-paging 组件的 complete 方法
+					const groupedRecords = this.groupRecordsByDate(list);
 					this.$refs.paging.complete(groupedRecords);
 				})
 				.catch((err) => {
-					// 判断是否是未授权错误
 					const errorMessage = err?.message || err?.errMsg || String(err || '');
 					const isAuthError = errorMessage.includes('未授权') ||
 						errorMessage.includes('用户未授权') ||
 						errorMessage.includes('用户取消登录');
 
 					this.showAuthFailed = isAuthError;
-					this.isLoadFailed = !isAuthError; // 非授权错误时，显示默认失败页
+					this.isLoadFailed = !isAuthError;
 
-					// 确保状态更新后再调用 complete
 					this.$nextTick(() => {
-						// 调用 z-paging 组件的 complete 方法，传入 false 表示加载失败
 						this.$refs.paging.complete(false);
 					});
 				});
 		},
-		// 搜索查询列表
-		querySearchList(pageNo, pageSize) {
-			searchRecord({
-				keyword: this.searchKeyword.trim(),
-				pageNum: pageNo,
-				pageSize: pageSize,
-			}, { autoShowLogin: false })
-				.then((res) => {
-					// 加载成功，重置失败状态
-					this.showAuthFailed = false;
-					this.isLoadFailed = false;
-					const list = res.result.data || [];
+		// 按日期分组记录
+		groupRecordsByDate(list) {
+			return list.reduce((groups, element) => {
+				const groupDate = moment(element.createTime).format("YYYY-MM-DD");
+				const existingGroup = groups.find(group => group.date === groupDate);
 
-
-						// 批量查询AI学习结果
-						this.fetchAiResults(list);
-					// 按日期分组
-					const groupedRecords = list.reduce((groups, element) => {
-						const groupDate = moment(element.createTime).format("YYYY-MM-DD");
-						const existingGroup = groups.find(group => group.date === groupDate);
-
-						if (existingGroup) {
-							existingGroup.children.push(element);
-							existingGroup.count++;
-						} else {
-							groups.push({
-								date: groupDate,
-								children: [element],
-								count: 1,
-							});
-						}
-						return groups;
-					}, []);
-
-					// 调用 z-paging 组件的 complete 方法
-					this.$refs.paging.complete(groupedRecords);
-				})
-				.catch((err) => {
-					// 判断是否是未授权错误
-					const errorMessage = err?.message || err?.errMsg || String(err || '');
-					const isAuthError = errorMessage.includes('未授权') ||
-						errorMessage.includes('用户未授权') ||
-						errorMessage.includes('用户取消登录');
-
-					this.showAuthFailed = isAuthError;
-					this.isLoadFailed = !isAuthError; // 非授权错误时，显示默认失败页
-
-					// 确保状态更新后再调用 complete
-					this.$nextTick(() => {
-						// 调用 z-paging 组件的 complete 方法，传入 false 表示加载失败
-						this.$refs.paging.complete(false);
+				if (existingGroup) {
+					existingGroup.children.push(element);
+					existingGroup.count++;
+				} else {
+					groups.push({
+						date: groupDate,
+						children: [element],
+						count: 1,
 					});
-				});
+				}
+				return groups;
+			}, []);
 		},
 		// 处理授权登录
 		handleAuthorize() {
@@ -473,52 +410,34 @@ export default {
 			return !record.createBy || record.createBy === '';
 		},
 		// 处理菜单选择
-		pickerMenu(item) {
-			this.hidePop();
-			
+		pickerMenu({ action, item }) {
 			// 如果是示例记录，不允许编辑和删除
-			if (this.isExampleRecord(this.pickerRecordItem)) {
+			if (this.isExampleRecord(item)) {
 				uni.showToast({
 					title: '示例记录不支持此操作',
 					icon: 'none'
 				});
 				return;
 			}
-			
-			// 编辑和删除操作会通过API拦截器自动检查登录，这里不需要手动检查
-			switch (item) {
+
+			this.pickerRecordItem = item;
+
+			switch (action) {
 				case "编辑":
 					uni.navigateTo({
-						url: `/subpackage/depart/form?type=update&id=${this.pickerRecordItem._id}`,
+						url: `/subpackage/depart/form?type=update&id=${item._id}`,
 					});
 					break;
 				case "删除":
 					this.dialogToggle();
-					this.dialogContent = `确定删除记录 '${this.pickerRecordItem.title}' 吗？删除后不可恢复！`;
+					this.dialogContent = `确定删除记录 '${item.title}' 吗？删除后不可恢复！`;
 					break;
 			}
 		},
 		// 图标点击监听
 		onIconClick(e, row) {
-			// 获取点击位置，uni-app 中 tap 事件使用 e.detail.x 和 e.detail.y
-			const clientX = (e.detail?.x ?? e.touches?.[0]?.clientX ?? 300) - 100;
-			const clientY = e.detail?.y ?? e.touches?.[0]?.clientY ?? 200;
-
 			this.pickerRecordItem = row;
-			this.popStyle = `top:${clientY}px;left:${clientX}px`;
-			this.showShade = true;
-			this.$nextTick(() => {
-				setTimeout(() => {
-					this.showPop = true;
-				}, 10);
-			});
-		},
-		// 隐藏弹窗
-		hidePop() {
-			this.showPop = false;
-			setTimeout(() => {
-				this.showShade = false;
-			}, 250);
+			this.$refs.contextPopup.show(e, row);
 		},
 		// 打开删除确认对话框
 		dialogToggle() {
@@ -972,95 +891,6 @@ export default {
 		}
 	}
 }
-}
-
-/* 浮动操作按钮 FAB */
-.fab-button {
-	position: fixed;
-	bottom: 40rpx;
-	right: 40rpx;
-	width: 112rpx;
-	height: 112rpx;
-	border-radius: 50%;
-	background: linear-gradient(135deg, #39b54a 0%, #8dc63f 100%);
-	box-shadow: 0 8rpx 24rpx rgba(57, 181, 74, 0.4);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	z-index: 99;
-	transition: all 0.3s ease;
-
-	.fab-icon {
-		color: #ffffff;
-		font-size: 48rpx;
-		font-weight: 300;
-	}
-}
-
-/* 遮罩 */
-.shade {
-	position: fixed;
-	z-index: 100;
-	top: 0;
-	right: 0;
-	bottom: 0;
-	left: 0;
-	background: rgba(0, 0, 0, 0.3);
-	backdrop-filter: blur(4rpx);
-	-webkit-touch-callout: none;
-	animation: fadeIn 0.2s ease;
-
-	.pop {
-		position: fixed;
-		z-index: 101;
-		min-width: 240rpx;
-		box-sizing: border-box;
-		font-size: 28rpx;
-		text-align: left;
-		color: #333;
-		background-color: #fff;
-		border-radius: 16rpx;
-		box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
-		overflow: hidden;
-		transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-		user-select: none;
-		-webkit-touch-callout: none;
-		transform: scale(0, 0);
-		transform-origin: center;
-
-		&.show {
-			transform: scale(1, 1);
-		}
-
-		&>view {
-			padding: 24rpx 32rpx;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			white-space: nowrap;
-			user-select: none;
-			-webkit-touch-callout: none;
-			border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
-			transition: background-color 0.2s ease;
-
-			&:last-child {
-				border-bottom: none;
-			}
-
-			&:active {
-				background-color: #f5f7fa;
-			}
-		}
-	}
-}
-
-@keyframes fadeIn {
-	from {
-		opacity: 0;
-	}
-
-	to {
-		opacity: 1;
-	}
 }
 
 /* 授权失败页面 - 参考 z-paging 默认样式 */

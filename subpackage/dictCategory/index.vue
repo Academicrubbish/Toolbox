@@ -55,20 +55,10 @@
     </view>
 
     <!-- 长按弹窗 -->
-    <view class="shade" v-show="showShade" @tap="hidePop">
-      <view class="pop" :style="popStyle" :class="{ show: showPop }">
-        <view v-for="item in popButton" :key="item" @tap="pickerMenu(item)">
-          {{ item }}
-        </view>
-      </view>
-    </view>
+    <context-popup ref="contextPopup" :buttons="popButton" @select="pickerMenu" />
 
     <!-- 新增标签按钮 - FAB -->
-    <view class="fab-button" @tap="addTag">
-      <view class="fab-icon">
-        <text class="cuIcon-add"></text>
-      </view>
-    </view>
+    <fab-button @click="addTag" />
 
     <!-- 删除提示 -->
     <uni-popup ref="alertDialog" type="dialog">
@@ -88,19 +78,19 @@
 <script>
 import { getDictCategoryList, delDictCategory } from "@/api/dictCategory.js";
 import { tagColorClasses } from "@/utils/tagColors";
+import ContextPopup from '@/component/context-popup/index.vue';
+import FabButton from '@/component/fab-button/index.vue';
 
 export default {
+  components: {
+    ContextPopup,
+    FabButton
+  },
   data() {
     return {
       tagList: [],
-      /* 显示遮罩 */
-      showShade: false,
-      /* 显示操作弹窗 */
-      showPop: false,
       /* 弹窗按钮列表 */
       popButton: ["编辑", "删除"],
-      /* 弹窗定位样式 */
-      popStyle: "",
       /* 选择的标签项 */
       pickerTagItem: null,
       /* 删除提醒文本 */
@@ -193,7 +183,6 @@ export default {
     },
     // 处理长按
     handleLongPress(e, row) {
-      // 公共标签不允许操作
       if (this.isPublicTag(row)) {
         uni.showToast({
           title: "公共标签不可操作",
@@ -202,36 +191,12 @@ export default {
         });
         return;
       }
-      this.onLongPress(e, row);
-    },
-    // 长按监听
-    onLongPress(e, row) {
-      let [touches, style] = [e.touches[0], ""];
-
-      style = `top:${touches.clientY}px;`;
-      style += `left:${touches.clientX}px`;
-
       this.pickerTagItem = row;
-      this.popStyle = style;
-      this.showShade = true;
-      this.$nextTick(() => {
-        setTimeout(() => {
-          this.showPop = true;
-        }, 10);
-      });
-    },
-    // 隐藏弹窗
-    hidePop() {
-      this.showPop = false;
-      setTimeout(() => {
-        this.showShade = false;
-      }, 250);
+      this.$refs.contextPopup.show(e, row);
     },
     // 弹窗菜单选择
-    pickerMenu(item) {
-      this.hidePop();
-      // 再次检查是否为公共标签（防止绕过）
-      if (this.isPublicTag(this.pickerTagItem)) {
+    pickerMenu({ action, item }) {
+      if (this.isPublicTag(item)) {
         uni.showToast({
           title: "公共标签不可操作",
           icon: "none",
@@ -239,13 +204,14 @@ export default {
         });
         return;
       }
-      switch (item) {
+      this.pickerTagItem = item;
+      switch (action) {
         case "编辑":
-          this.editTag(this.pickerTagItem);
+          this.editTag(item);
           break;
         case "删除":
           this.dialogToggle();
-          this.dialogContent = `确定删除标签 '${this.pickerTagItem.name}' 吗？`;
+          this.dialogContent = `确定删除标签 '${item.name}' 吗？`;
           break;
       }
     },
@@ -434,92 +400,5 @@ export default {
   }
 }
 
-/* 浮动操作按钮 FAB */
-.fab-button {
-  position: fixed;
-  bottom: 40rpx;
-  right: 40rpx;
-  width: 112rpx;
-  height: 112rpx;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #39b54a 0%, #8dc63f 100%);
-  box-shadow: 0 8rpx 24rpx rgba(57, 181, 74, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 99;
-  transition: all 0.3s ease;
-  
-  .fab-icon {
-    color: #ffffff;
-    font-size: 48rpx;
-    font-weight: 300;
-  }
-}
-
-/* 遮罩 */
-.shade {
-  position: fixed;
-  z-index: 100;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(4rpx);
-  -webkit-touch-callout: none;
-  animation: fadeIn 0.2s ease;
-
-  .pop {
-    position: fixed;
-    z-index: 101;
-    min-width: 240rpx;
-    box-sizing: border-box;
-    font-size: 28rpx;
-    text-align: left;
-    color: #333;
-    background-color: #fff;
-    border-radius: 16rpx;
-    box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
-    overflow: hidden;
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    user-select: none;
-    -webkit-touch-callout: none;
-    transform: scale(0, 0);
-    transform-origin: center;
-
-    &.show {
-      transform: scale(1, 1);
-    }
-
-    & > view {
-      padding: 24rpx 32rpx;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      user-select: none;
-      -webkit-touch-callout: none;
-      border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
-      transition: background-color 0.2s ease;
-
-      &:last-child {
-        border-bottom: none;
-      }
-
-      &:active {
-        background-color: #f5f7fa;
-      }
-    }
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
 </style>
 

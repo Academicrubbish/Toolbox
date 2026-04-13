@@ -3,58 +3,50 @@
 -->
 <template>
   <view class="learn-result-container">
-    <cu-custom bgColor="bg-gradual-orange" :isBack="true">
-      <block slot="backText">返回</block>
-      <block slot="content">学习结果</block>
-    </cu-custom>
-
-    <view class="result-wrapper">
-      <!-- 加载中 -->
-      <view v-if="loading" class="loading-wrapper">
-        <text class="cuIcon-loading2 text-gray text-xl" style="animation: spin 1s linear infinite;"></text>
-        <text class="text-gray text-sm margin-top">加载中...</text>
+    <z-paging ref="paging" v-model="resultList" @query="queryList">
+      <view slot="top">
+        <cu-custom bgColor="bg-gradual-orange" :isBack="true">
+          <block slot="backText">返回</block>
+          <block slot="content">学习结果</block>
+        </cu-custom>
       </view>
 
-      <!-- 空状态 -->
-      <view v-else-if="resultList.length === 0" class="empty-wrapper">
-        <text class="cuIcon-text text-gray" style="font-size: 80rpx;"></text>
-        <text class="text-gray margin-top">暂无学习记录</text>
-        <text class="text-gray text-sm margin-top-sm">在笔记详情页点击"AI辅导"即可生成</text>
+      <view slot="empty">
+        <view class="empty-wrapper">
+          <text class="cuIcon-text text-gray" style="font-size: 80rpx;"></text>
+          <text class="text-gray margin-top">暂无学习记录</text>
+          <text class="text-gray text-sm margin-top-sm">在笔记详情页点击"AI辅导"即可生成</text>
+        </view>
       </view>
 
-      <!-- 结果列表（支持下拉刷新） -->
-      <scroll-view v-else scroll-y class="result-scroll" @refresherrefresh="onPullRefresh" :refresher-enabled="true" :refresher-triggered="refreshing">
-        <view class="result-list">
-          <!-- 按批次分组展示 -->
-          <view v-for="group in batchGroups" :key="group.batchId" class="batch-group">
-            <view class="batch-header">
-              <text class="batch-time text-gray text-xs">{{ group.createTime }}</text>
-              <view class="batch-status" :class="group.statusClass">
-                <view class="status-dot" :class="group.dotClass"></view>
-                <text class="text-xs">{{ group.statusText }}</text>
-              </view>
+      <view class="result-list">
+        <view v-for="group in batchGroups" :key="group.batchId" class="batch-group">
+          <view class="batch-header">
+            <text class="batch-time text-gray text-xs">{{ group.createTime }}</text>
+            <view class="batch-status" :class="group.statusClass">
+              <view class="status-dot" :class="group.dotClass"></view>
+              <text class="text-xs">{{ group.statusText }}</text>
             </view>
+          </view>
 
-            <view v-for="item in group.items" :key="item._id" class="result-card shadow-warp"
-              @click="handleItemClick(item)">
-              <view class="result-card-header">
-                <view class="type-badge" :class="item.type === 'note' ? 'type-note' : 'type-exercise'">
-                  <text class="type-badge-text text-xs">{{ item.type === 'note' ? '知识点精讲' : '针对性练习' }}</text>
-                </view>
-                <text class="result-status-text" :class="item.status === 'pending' ? 'text-orange' : item.status === 'success' ? 'text-green' : 'text-gray'">{{ item.status === 'pending' ? '生成中...' : item.status === 'success' ? '已完成' : '失败' }}</text>
+          <view v-for="item in group.items" :key="item._id" class="result-card shadow-warp"
+            @click="handleItemClick(item)">
+            <view class="result-card-header">
+              <view class="type-badge" :class="item.type === 'note' ? 'type-note' : 'type-exercise'">
+                <text class="type-badge-text text-xs">{{ item.type === 'note' ? '知识点精讲' : '针对性练习' }}</text>
               </view>
-              <view class="result-card-body">
-                <text class="result-preview text-sm">{{ getPreview(item) }}</text>
-              </view>
-              <!-- 错误信息 -->
-              <view v-if="item.status === 'error' && item.error_msg" class="result-error">
-                <text class="text-xs text-red">{{ item.error_msg }}</text>
-              </view>
+              <text class="result-status-text" :class="item.status === 'pending' ? 'text-orange' : item.status === 'success' ? 'text-green' : 'text-gray'">{{ item.status === 'pending' ? '生成中...' : item.status === 'success' ? '已完成' : '失败' }}</text>
+            </view>
+            <view class="result-card-body">
+              <text class="result-preview text-sm">{{ getPreview(item) }}</text>
+            </view>
+            <view v-if="item.status === 'error' && item.error_msg" class="result-error">
+              <text class="text-xs text-red">{{ item.error_msg }}</text>
             </view>
           </view>
         </view>
-      </scroll-view>
-    </view>
+      </view>
+    </z-paging>
   </view>
 </template>
 
@@ -67,13 +59,10 @@ export default {
     return {
       recordId: "",
       resultList: [],
-      loading: false,
-      refreshing: false,
-      isLoading: false
+      navigating: false
     };
   },
   computed: {
-    // 按 batch_id 分组，每组内按 type 排序（note 在前）
     batchGroups() {
       const groupMap = {};
 
@@ -92,7 +81,6 @@ export default {
         groupMap[bid].items.push(item);
       });
 
-      // 组内排序：note 在前，exercise 在后
       const groups = Object.values(groupMap);
       groups.forEach(group => {
         group.items.sort((a, b) => {
@@ -101,7 +89,6 @@ export default {
           return 0;
         });
 
-        // 预计算批次状态 class
         const hasPending = group.items.some(i => i.status === 'pending');
         const allSuccess = group.items.every(i => i.status === 'success');
         const allError = group.items.every(i => i.status === 'error');
@@ -130,36 +117,20 @@ export default {
   onLoad(option) {
     this.recordId = option.recordId || "";
   },
-  onShow() {
-    this.loadResultList();
-  },
   methods: {
-    loadResultList() {
-      if (!this.recordId) return;
-      // 防重入：上一次请求未完成时忽略新请求，彻底避免刷新死循环
-      if (this.isLoading) return;
-      this.isLoading = true;
-      // 仅首次加载（无数据时）显示loading，避免scroll-view被销毁重建
-      if (this.resultList.length === 0) {
-        this.loading = true;
+    queryList(pageNo, pageSize) {
+      if (!this.recordId) {
+        this.$refs.paging.complete([]);
+        return;
       }
       getLearnResultList({ recordId: this.recordId })
         .then((res) => {
-          this.resultList = res.result?.data || [];
+          this.$refs.paging.complete(res.result?.data || []);
         })
         .catch((err) => {
           console.error("加载学习结果失败：", err);
-          uni.showToast({ title: '加载失败', icon: 'none' });
-        })
-        .finally(() => {
-          this.loading = false;
-          this.refreshing = false;
-          this.isLoading = false;
+          this.$refs.paging.complete(false);
         });
-    },
-    onPullRefresh() {
-      this.refreshing = true;
-      this.loadResultList();
     },
     formatTime(timestamp) {
       if (!timestamp) return '';
@@ -175,6 +146,7 @@ export default {
       return '点击查看详情';
     },
     handleItemClick(item) {
+      if (this.navigating) return;
       if (item.status === 'pending') {
         uni.showToast({ title: 'AI正在生成中，请稍后下拉刷新查看', icon: 'none' });
         return;
@@ -183,8 +155,12 @@ export default {
         uni.showToast({ title: '生成失败，请重试', icon: 'none' });
         return;
       }
+      this.navigating = true;
       uni.navigateTo({
-        url: `/subpackage/depart/learn-result-detail?id=${item._id}`
+        url: `/subpackage/depart/learn-result-detail?id=${item._id}`,
+        complete: () => {
+          setTimeout(() => { this.navigating = false; }, 500);
+        }
       });
     }
   }
@@ -197,15 +173,6 @@ export default {
   background: linear-gradient(to bottom, #f5f7fa 0%, #f1f1f1 100%);
 }
 
-.result-wrapper {
-  padding: 30rpx;
-}
-
-.result-scroll {
-  height: calc(100vh - 200rpx);
-}
-
-.loading-wrapper,
 .empty-wrapper {
   display: flex;
   flex-direction: column;
@@ -218,9 +185,9 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 32rpx;
+  padding: 30rpx;
 }
 
-/* 批次分组 */
 .batch-group {
   display: flex;
   flex-direction: column;
@@ -254,13 +221,6 @@ export default {
   background: #ffffff;
   border-radius: 24rpx;
   padding: 28rpx 32rpx;
-  cursor: pointer;
-  transition: all 0.3s;
-
-  &:active {
-    transform: scale(0.98);
-    opacity: 0.9;
-  }
 }
 
 .result-card-header {
@@ -275,13 +235,11 @@ export default {
 
     &.type-note {
       background: rgba(0, 129, 255, 0.1);
-
       .type-badge-text { color: #007aff; }
     }
 
     &.type-exercise {
       background: rgba(255, 157, 0, 0.1);
-
       .type-badge-text { color: #ff9d00; }
     }
   }
@@ -303,10 +261,5 @@ export default {
   margin-top: 12rpx;
   padding-top: 12rpx;
   border-top: 1rpx solid rgba(255, 0, 0, 0.1);
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 </style>

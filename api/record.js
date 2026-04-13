@@ -11,23 +11,56 @@ const getRequest = () => {
 
 // 将传统分页 {pageSize, pageNum} 转换为 JQL 分页 {skip, limit}
 function convertPagination(pageSize, pageNum) {
-  // 计算需要跳过的条目数
   const skipCount = (pageNum - 1) * pageSize;
+  return { skip: skipCount, limit: pageSize };
+}
 
-  // 返回 JQL 可用的 skip 和 limit 参数
-  return {
-    skip: skipCount,
-    limit: pageSize
-  };
+/**
+ * 批量查询总结内容并合并到记录列表中
+ * @param {Array} records - 记录列表
+ * @returns {Promise<Array>} 合并了 summarizeContent 的记录列表
+ */
+function attachSummarizeContent(records) {
+  if (!records || records.length === 0) {
+    return Promise.resolve(records);
+  }
+
+  const summarizeIds = records
+    .map(record => record.summarizeId)
+    .filter(id => id && id !== '');
+
+  if (summarizeIds.length === 0) {
+    records.forEach(record => { record.summarizeContent = ''; });
+    return Promise.resolve(records);
+  }
+
+  const db = uniCloud.database();
+  return db.collection('summarize')
+    .where({ _id: db.command.in(summarizeIds) })
+    .get()
+    .then(summarizeRes => {
+      const summarizeMap = {};
+      if (summarizeRes.result && summarizeRes.result.data) {
+        summarizeRes.result.data.forEach(summarize => {
+          summarizeMap[summarize._id] = summarize.content || '';
+        });
+      }
+
+      records.forEach(record => {
+        record.summarizeContent = (record.summarizeId && summarizeMap[record.summarizeId])
+          ? summarizeMap[record.summarizeId]
+          : '';
+      });
+
+      return records;
+    });
 }
 
 // 查询示例记录列表（游客状态使用，不需要登录）
 function getExampleRecordList(data) {
   const { pageSize, pageNum } = data;
   const { skip, limit } = convertPagination(pageSize, pageNum);
-  const db = uniCloud.database()
-  
-  // 查询 createBy 为空字符串的示例记录
+
   return getRequest()
     .where({ createBy: '' })
     .orderBy('createTime desc')
@@ -38,47 +71,8 @@ function getExampleRecordList(data) {
       if (!res.result || !res.result.data || res.result.data.length === 0) {
         return res;
       }
-      
-      // 收集所有有 summarizeId 的记录ID
-      const summarizeIds = res.result.data
-        .map(record => record.summarizeId)
-        .filter(id => id && id !== '');
-      
-      // 如果没有总结ID，直接返回
-      if (summarizeIds.length === 0) {
-        res.result.data.forEach(record => {
-          record.summarizeContent = '';
-        });
-        return res;
-      }
-      
-      // 批量查询总结内容
-      return db.collection('summarize')
-        .where({
-          _id: db.command.in(summarizeIds)
-        })
-        .get()
-        .then(summarizeRes => {
-          // 构建总结内容映射
-          const summarizeMap = {};
-          if (summarizeRes.result && summarizeRes.result.data) {
-            summarizeRes.result.data.forEach(summarize => {
-              summarizeMap[summarize._id] = summarize.content || '';
-            });
-          }
-          
-          // 将总结内容合并到记录中
-          res.result.data.forEach(record => {
-            if (record.summarizeId && summarizeMap[record.summarizeId]) {
-              record.summarizeContent = summarizeMap[record.summarizeId];
-            } else {
-              record.summarizeContent = '';
-            }
-          });
-          
-          return res;
-        });
-    })
+      return attachSummarizeContent(res.result.data).then(() => res);
+    });
 }
 
 // 查询记录列表（需要登录）
@@ -86,7 +80,7 @@ function getExampleRecordList(data) {
 export const getRecordList = function(data, options = {}) {
   const user = store.state.user
   const isGuest = user.isGuest
-  
+
   // 如果是游客状态，查询示例记录
   if (isGuest) {
     return Promise.resolve(getExampleRecordList(data))
@@ -97,15 +91,13 @@ export const getRecordList = function(data, options = {}) {
         return Promise.reject(err)
       })
   }
-  
-  // 已登录状态，使用原来的逻辑
+
+  // 已登录状态
   return withAuth(function(data) {
     const { pageSize, pageNum } = data;
     const { skip, limit } = convertPagination(pageSize, pageNum);
     const user = store.state.user
-    const db = uniCloud.database()
-    
-    // 先查询记录列表
+
     return getRequest()
       .where({ createBy: user.openid })
       .orderBy('createTime desc')
@@ -116,46 +108,7 @@ export const getRecordList = function(data, options = {}) {
         if (!res.result || !res.result.data || res.result.data.length === 0) {
           return res;
         }
-        
-        // 收集所有有 summarizeId 的记录ID
-        const summarizeIds = res.result.data
-          .map(record => record.summarizeId)
-          .filter(id => id && id !== '');
-        
-        // 如果没有总结ID，直接返回
-        if (summarizeIds.length === 0) {
-          res.result.data.forEach(record => {
-            record.summarizeContent = '';
-          });
-          return res;
-        }
-        
-        // 批量查询总结内容
-        return db.collection('summarize')
-          .where({
-            _id: db.command.in(summarizeIds)
-          })
-          .get()
-          .then(summarizeRes => {
-            // 构建总结内容映射
-            const summarizeMap = {};
-            if (summarizeRes.result && summarizeRes.result.data) {
-              summarizeRes.result.data.forEach(summarize => {
-                summarizeMap[summarize._id] = summarize.content || '';
-              });
-            }
-            
-            // 将总结内容合并到记录中
-            res.result.data.forEach(record => {
-              if (record.summarizeId && summarizeMap[record.summarizeId]) {
-                record.summarizeContent = summarizeMap[record.summarizeId];
-              } else {
-                record.summarizeContent = '';
-              }
-            });
-            
-            return res;
-          });
+        return attachSummarizeContent(res.result.data).then(() => res);
       })
   }, store, options)(data)
 }
@@ -186,11 +139,11 @@ export const searchRecord = function(data, options = {}) {
   return withAuth(function(data) {
     const { keyword, pageNum = 1, pageSize = 10, searchType = 'all' } = data;
     const user = store.state.user;
-    
+
     if (!keyword || keyword.trim() === '') {
       return Promise.reject(new Error('搜索关键词不能为空'));
     }
-    
+
     return uniCloud.callFunction({
       name: 'searchRecord',
       data: {
@@ -201,7 +154,6 @@ export const searchRecord = function(data, options = {}) {
         searchType // 'all'(全部)、'title'(标题)、'time'(时间)、'summary'(总结内容)
       }
     }).then(res => {
-      // 处理云函数返回的数据格式
       if (res.result && res.result.code === 0) {
         return {
           result: {
