@@ -39,14 +39,14 @@
         </view>
       </view>
 
-      <!-- AI学习结果入口（仅在有成功结果时显示） -->
-      <view v-if="hasAiResult" class="learn-result-entry shadow-warp" @click="goLearnResult">
+      <!-- AI学习结果入口（有成功结果或正在生成中时显示） -->
+      <view v-if="hasAiResult || hasPendingAi" class="learn-result-entry shadow-warp" @click="goLearnResult">
         <view class="entry-icon">
           <text class="cuIcon-creativefill text-orange"></text>
         </view>
         <view class="entry-content">
           <text class="entry-title">AI 学习笔记</text>
-          <text class="entry-desc text-gray text-xs">{{ aiResultCount > 1 ? '查看 ' + aiResultCount + ' 条学习结果' : '查看学习结果' }}</text>
+          <text class="entry-desc text-gray text-xs">{{ hasPendingAi && !hasAiResult ? 'AI 正在生成中，点击查看进度' : aiResultCount > 1 ? '查看 ' + aiResultCount + ' 条学习结果' : '查看学习结果' }}</text>
         </view>
         <text class="cuIcon-right text-gray"></text>
       </view>
@@ -123,6 +123,7 @@ export default {
         content: this.summaryContent,
         recordId: this.recordData._id
       }).then(() => {
+        this.hasPendingAi = true;
         uni.showToast({ title: '已提交，AI正在生成中...', icon: 'none' });
       }).catch((err) => {
         uni.showToast({ title: err.message || '提交失败', icon: 'none' });
