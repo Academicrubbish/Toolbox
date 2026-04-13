@@ -62,6 +62,7 @@
 
 <script>
 import { getLearnResultDetail } from "@/api/aiLearn.js";
+import { formatTime } from "@/utils/format";
 import moment from "moment";
 
 export default {
@@ -116,8 +117,7 @@ export default {
       return map[status] || '';
     },
     formatTime(timestamp) {
-      if (!timestamp) return '';
-      return moment(timestamp).format('YYYY-MM-DD HH:mm');
+      return formatTime(timestamp, 'YYYY-MM-DD HH:mm');
     },
     downloadDocument() {
       if (!this.resultData || !this.resultData.ai_result) {

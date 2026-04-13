@@ -182,19 +182,14 @@ export default {
     loadTagList() {
       getDictCategoryList()
         .then((res) => {
-          console.log("标签列表API返回：", res);
           if (res && res.result) {
-            // uniCloud 返回格式：{ result: { data: [...] } }
             const data = res.result.data;
             if (Array.isArray(data)) {
               this.tagList = data;
-              console.log("标签列表加载成功，共", data.length, "个标签");
             } else {
-              console.warn("标签数据格式不正确：", data);
               this.tagList = [];
             }
           } else {
-            console.warn("标签列表返回数据格式异常：", res);
             this.tagList = [];
           }
         })

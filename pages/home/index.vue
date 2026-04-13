@@ -60,42 +60,17 @@
 
 					<!-- 记录卡片列表 -->
 					<view class="record-card-list">
-						<view v-for="record in item.children" :key="record._id" class="record-card shadow-warp"
-							@tap="goDetail(record)">
-							<view class="record-card-header">
-								<view class="record-title">
-									<text class="cuIcon-creativefill text-blue margin-right-xs"></text>
-									<text class="text-bold">{{ record.title }}</text>
-								</view>
-								<!-- 示例记录（createBy为空字符串）不显示更多按钮 -->
-								<view v-if="!isExampleRecord(record)" class="record-more-icon" @tap.stop="onIconClick($event, record)">
-									<text class="cuIcon-moreandroid text-gray"></text>
-								</view>
-							</view>
-
-							<!-- 标签区域 -->
-							<view v-if="record.tags && record.tags.length > 0" class="record-tags">
-								<view v-for="(tagId, index) in record.tags" :key="tagId" class="record-tag"
-									:class="tagColorClasses[index % 12]">
-									<text>{{ getTagName(tagId) }}</text>
-								</view>
-							</view>
-
-							<!-- 总结内容 -->
-							<view v-if="record.summarizeContent" class="record-summary">
-								<text class="record-summary-text">{{ formatSummaryContent(record.summarizeContent) }}</text>
-							</view>
-
-							<!-- 时间信息 + AI笔记入口 -->
-							<view class="record-footer">
-								<text class="cuIcon-timefill text-gray text-xs margin-right-xs"></text>
-								<text class="text-gray text-xs">{{ formatTime(record.createTime) }}</text>
-								<view v-if="getAiNoteCount(record) > 0" class="ai-note-tag" @tap.stop="goLearnResult(record)">
-									<text class="cuIcon-creativefill text-xs"></text>
-									<text class="ai-note-tag-text text-xs">AI笔记{{ getAiNoteCount(record) > 1 ? " " + getAiNoteCount(record) + "篇" : "" }}</text>
-								</view>
-							</view>
-						</view>
+						<record-card
+							v-for="record in item.children"
+							:key="record._id"
+							:record="record"
+							:tagMap="tagMap"
+							:aiNoteCount="getAiNoteCount(record)"
+							:showMore="!isExampleRecord(record)"
+							@tap="goDetail"
+							@more-click="onIconClick"
+							@ai-note-click="goLearnResult"
+						/>
 					</view>
 				</view>
 			</z-paging>
@@ -159,14 +134,14 @@ import { getRecordList, delRecord, searchRecord } from "@/api/record.js";
 import { getDictCategoryList } from "@/api/dictCategory.js";
 import { delSummarize } from "@/api/summarize";
 import { batchQueryAiResults } from "@/api/aiLearn.js";
-import { tagColorClasses } from "@/utils/tagColors";
-import moment from "moment";
+import { groupRecordsByDate } from "@/utils/format";
 import zStatic from '@/uni_modules/z-paging/components/z-paging/js/z-paging-static.js';
 import zPagingEmptyView from '@/uni_modules/z-paging/components/z-paging-empty-view/z-paging-empty-view.vue';
 
 import LoginModal from '@/component/login-modal/index.vue'
 import ContextPopup from '@/component/context-popup/index.vue'
 import FabButton from '@/component/fab-button/index.vue'
+import RecordCard from '@/component/record-card/index.vue'
 import { setLoginModalRef } from '@/utils/api-auth.js'
 
 export default {
@@ -174,6 +149,7 @@ export default {
 		LoginModal,
 		ContextPopup,
 		FabButton,
+		RecordCard,
 		zPagingEmptyView
 	},
 	data() {
@@ -182,19 +158,18 @@ export default {
 			CustomBar: this.CustomBar || 0,
 			modalName: null,
 			recordList: [],
-			tagMap: {}, // 标签ID到标签信息的映射
-			tagColorClasses, // 从公共工具文件导入
-			popButton: ["编辑", "删除"], // 弹窗按钮列表
-			pickerRecordItem: null, // 选择的记录内容
-			dialogContent: "", // 删除提醒文本
-			showAuthFailed: false, // 是否显示授权失败页面
-			isLoadFailed: false, // 是否加载失败（用于显示默认失败页）
-			zStatic, // 导入 z-paging 静态资源
-			lastAuthStateVersion: 0, // 记录上一次的授权状态版本号
-			lastIsGuest: null, // 记录上一次的游客状态
-			searchKeyword: '', // 搜索关键词
-			isSearchMode: false, // 是否处于搜索模式
-				aiResultMap: {}, // AI学习结果映射 { recordId: { hasAiNote, aiNoteCount } }
+			tagMap: {},
+			popButton: ["编辑", "删除"],
+			pickerRecordItem: null,
+			dialogContent: "",
+			showAuthFailed: false,
+			isLoadFailed: false,
+			zStatic,
+			lastAuthStateVersion: 0,
+			lastIsGuest: null,
+			searchKeyword: '',
+			isSearchMode: false,
+			aiResultMap: {},
 		};
 	},
 	computed: {
@@ -211,12 +186,9 @@ export default {
 	},
 
 	mounted() {
-		// 加载标签列表
 		this.loadTagList();
-		// 初始化授权状态版本号和游客状态
 		this.lastAuthStateVersion = this.$store.state.user.authStateVersion;
 		this.lastIsGuest = this.$store.state.user.isGuest;
-		// 设置登录弹窗的全局引用，供API授权检查使用
 		this.$nextTick(() => {
 			if (this.$refs.loginModal) {
 				setLoginModalRef(this.$refs.loginModal);
@@ -224,28 +196,21 @@ export default {
 		});
 	},
 	onShow() {
-		// 检查授权状态版本号是否变化
 		const currentAuthStateVersion = this.$store.state.user.authStateVersion;
 		const currentIsGuest = this.$store.state.user.isGuest;
 
-		// 如果版本号变化，或者从游客状态变为已登录状态，都刷新
 		if (this.lastAuthStateVersion !== currentAuthStateVersion ||
 			(this.lastIsGuest === true && currentIsGuest === false)) {
-			// 授权状态已改变，刷新列表和标签
 			this.refreshAfterAuthChange();
-			// 更新状态记录
 			this.lastAuthStateVersion = currentAuthStateVersion;
 			this.lastIsGuest = currentIsGuest;
 		}
 	},
 	watch: {
-		// 监听 store 中的授权状态版本号变化（实时响应，不依赖页面生命周期）
 		'$store.state.user.authStateVersion': {
 			handler(newVersion, oldVersion) {
 				if (newVersion !== oldVersion && newVersion > this.lastAuthStateVersion) {
-					// 授权状态已改变，刷新列表和标签
 					this.refreshAfterAuthChange();
-					// 更新状态记录
 					this.lastAuthStateVersion = newVersion;
 					this.lastIsGuest = this.$store.state.user.isGuest;
 				}
@@ -254,59 +219,22 @@ export default {
 		}
 	},
 	methods: {
-		// 显示抽屉
 		handleShowDrawer() {
 			this.showDrawer();
 		},
-		// 加载标签列表
 		loadTagList() {
 			getDictCategoryList()
 				.then((res) => {
 					if (res?.result?.data && Array.isArray(res.result.data)) {
-						// 构建标签映射
 						this.tagMap = res.result.data.reduce((map, tag) => {
 							map[tag._id] = tag;
 							return map;
 						}, {});
 					}
 				})
-				.catch(() => {
-					// 加载标签列表失败，静默处理
-				});
+				.catch(() => {});
 		},
-		// 获取标签名称
-		getTagName(tagId) {
-			return this.tagMap[tagId] ? this.tagMap[tagId].name : '未知标签';
-		},
-		// 格式化时间
-		formatTime(timeStr) {
-			if (!timeStr) return '';
-			return moment(timeStr).format('HH:mm');
-		},
-		// 格式化总结内容（简单处理markdown，保留文本内容）
-		formatSummaryContent(content) {
-			if (!content) return '';
-			// 去除markdown的标题符号、列表符号等，保留文本内容
-			let text = content
-				.replace(/^#{1,6}\s+/gm, '') // 去除标题符号
-				.replace(/^\*\s+/gm, '') // 去除无序列表符号
-				.replace(/^\d+\.\s+/gm, '') // 去除有序列表符号
-				.replace(/```[\s\S]*?```/g, '') // 去除代码块
-				.replace(/`[^`]+`/g, '') // 去除行内代码
-				.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // 将链接转换为文本
-				.replace(/!\[([^\]]*)\]\([^\)]+\)/g, '') // 去除图片
-				.replace(/\*\*([^\*]+)\*\*/g, '$1') // 去除加粗
-				.replace(/\*([^\*]+)\*/g, '$1') // 去除斜体
-				.replace(/~~([^~]+)~~/g, '$1') // 去除删除线
-				.replace(/^\s*[-*+]\s+/gm, '') // 去除列表符号
-				.replace(/^\s*\d+\.\s+/gm, '') // 去除有序列表
-				.replace(/\n+/g, ' ') // 将换行符替换为空格
-				.trim();
-			return text;
-		},
-		// 查询列表
 		queryList(pageNo, pageSize) {
-			// 根据是否有搜索关键词选择不同的接口
 			const queryPromise = (this.searchKeyword && this.searchKeyword.trim())
 				? searchRecord({
 					keyword: this.searchKeyword.trim(),
@@ -323,12 +251,8 @@ export default {
 					this.showAuthFailed = false;
 					this.isLoadFailed = false;
 					const list = res.result.data || [];
-
-					// 批量查询AI学习结果
 					this.fetchAiResults(list);
-
-					// 按日期分组
-					const groupedRecords = this.groupRecordsByDate(list);
+					const groupedRecords = groupRecordsByDate(list);
 					this.$refs.paging.complete(groupedRecords);
 				})
 				.catch((err) => {
@@ -336,97 +260,45 @@ export default {
 					const isAuthError = errorMessage.includes('未授权') ||
 						errorMessage.includes('用户未授权') ||
 						errorMessage.includes('用户取消登录');
-
 					this.showAuthFailed = isAuthError;
 					this.isLoadFailed = !isAuthError;
-
 					this.$nextTick(() => {
 						this.$refs.paging.complete(false);
 					});
 				});
 		},
-		// 按日期分组记录
-		groupRecordsByDate(list) {
-			return list.reduce((groups, element) => {
-				const groupDate = moment(element.createTime).format("YYYY-MM-DD");
-				const existingGroup = groups.find(group => group.date === groupDate);
-
-				if (existingGroup) {
-					existingGroup.children.push(element);
-					existingGroup.count++;
-				} else {
-					groups.push({
-						date: groupDate,
-						children: [element],
-						count: 1,
-					});
-				}
-				return groups;
-			}, []);
+		getAiNoteCount(record) {
+			const item = this.aiResultMap[record._id];
+			return (item && item.hasAiNote) ? item.aiNoteCount : 0;
 		},
-		// 处理授权登录
-		handleAuthorize() {
-			if (this.$refs.loginModal) {
-				this.$refs.loginModal.open();
-			}
-		},
-		// 新增记录
-		addRecord() {
+		goLearnResult(record) {
 			uni.navigateTo({
-				url: "/subpackage/depart/form?type=add",
+				url: `/subpackage/depart/learn-result?recordId=${record._id}`
 			});
 		},
-		// 跳转到详情页
-		goDetail(row) {
-			uni.navigateTo({
-				url: `/subpackage/depart/detail?id=${row._id}`,
-			});
-		},
-			// 获取记录的AI笔记数量
-				getAiNoteCount(record) {
-					const item = this.aiResultMap[record._id];
-					return (item && item.hasAiNote) ? item.aiNoteCount : 0;
-				},
-				// 跳转到AI学习结果列表
-			goLearnResult(record) {
-				uni.navigateTo({
-					url: `/subpackage/depart/learn-result?recordId=${record._id}`
+		fetchAiResults(list) {
+			if (!list || list.length === 0) return;
+			const recordIds = list.map(item => item._id);
+			batchQueryAiResults(recordIds)
+				.then((resultMap) => {
+					this.aiResultMap = resultMap;
+				})
+				.catch(() => {
+					this.aiResultMap = {};
 				});
-			},
-			// 批量查询AI学习结果并附加到记录上
-			fetchAiResults(list) {
-				if (!list || list.length === 0) return;
-				const recordIds = list.map(item => item._id);
-				batchQueryAiResults(recordIds)
-					.then((resultMap) => {
-						this.aiResultMap = resultMap;
-					})
-					.catch(() => {
-						this.aiResultMap = {};
-					});
-			},
-		// 判断是否是示例记录
+		},
 		isExampleRecord(record) {
 			return !record.createBy || record.createBy === '';
 		},
-		// 处理菜单选择
 		pickerMenu({ action, item }) {
-			// 如果是示例记录，不允许编辑和删除
 			if (this.isExampleRecord(item)) {
-				uni.showToast({
-					title: '示例记录不支持此操作',
-					icon: 'none'
-				});
+				uni.showToast({ title: '示例记录不支持此操作', icon: 'none' });
 				return;
 			}
-
 			this.pickerRecordItem = item;
-
 			switch (action) {
 				case "编辑":
-					uni.navigateTo({
-						url: `/subpackage/depart/form?type=update&id=${item._id}`,
-					});
+					uni.navigateTo({ url: `/subpackage/depart/form?type=update&id=${item._id}` });
 					break;
 				case "删除":
 					this.dialogToggle();
@@ -434,107 +306,78 @@ export default {
 					break;
 			}
 		},
-		// 图标点击监听
-		onIconClick(e, row) {
-			this.pickerRecordItem = row;
-			this.$refs.contextPopup.show(e, row);
+		onIconClick(record) {
+			this.pickerRecordItem = record;
+			this.$refs.contextPopup.show(event, record);
 		},
-		// 打开删除确认对话框
+		handleAuthorize() {
+			if (this.$refs.loginModal) {
+				this.$refs.loginModal.open();
+			}
+		},
+		addRecord() {
+			uni.navigateTo({ url: "/subpackage/depart/form?type=add" });
+		},
+		goDetail(row) {
+			uni.navigateTo({ url: `/subpackage/depart/detail?id=${row._id}` });
+		},
 		dialogToggle() {
 			this.$refs.alertDialog.open();
 		},
-		// 确认删除
 		dialogConfirm() {
 			const recordId = this.pickerRecordItem._id;
 			const summarizeId = this.pickerRecordItem.summarizeId;
-
 			delRecord(recordId)
 				.then((res) => {
 					if (res.result && (res.result.code === 0 || res.result.code === undefined)) {
-						// 删除关联的富文本内容（如果存在）
 						if (summarizeId) {
-							delSummarize(summarizeId)
-								.finally(() => {
-									this.showDeleteSuccess();
-								});
+							delSummarize(summarizeId).finally(() => { this.showDeleteSuccess(); });
 						} else {
 							this.showDeleteSuccess();
 						}
 					} else {
-						uni.showToast({
-							title: res.result?.msg || "删除失败",
-							icon: "none",
-						});
+						uni.showToast({ title: res.result?.msg || "删除失败", icon: "none" });
 					}
 				})
-				.catch((err) => {
-					uni.showToast({
-						title: "删除失败",
-						icon: "none",
-					});
+				.catch(() => {
+					uni.showToast({ title: "删除失败", icon: "none" });
 				});
 		},
-		// 显示删除成功提示并刷新列表
 		showDeleteSuccess() {
-			uni.showToast({
-				title: "删除成功",
-				icon: "success",
-			});
+			uni.showToast({ title: "删除成功", icon: "success" });
 			if (this.$refs.paging) {
 				this.$refs.paging.refresh();
 			}
 		},
-		// 关闭删除确认对话框
 		dialogClose() { },
-		// 从抽屉中授权登录
 		handleAuthorizeFromDrawer() {
 			this.hideModal();
 			this.handleAuthorize();
 		},
-		// 登录成功处理
 		handleLoginSuccess() {
-			// 清除游客状态（会自动递增 authStateVersion）
 			this.$store.commit('SET_IS_GUEST', false);
-			uni.showToast({
-				title: "登录成功",
-				icon: "success"
-			});
-			// 刷新列表和标签
+			uni.showToast({ title: "登录成功", icon: "success" });
 			this.refreshAfterAuthChange();
 		},
-		// 授权状态改变后的刷新操作
 		refreshAfterAuthChange() {
-			// 重置授权失败状态
 			this.showAuthFailed = false;
 			this.isLoadFailed = false;
-			// 重新加载标签列表（授权状态改变后，标签接口返回的数据会不同）
 			this.loadTagList();
-			// 刷新列表
 			this.$nextTick(() => {
 				if (this.$refs.paging) {
 					this.$refs.paging.reload();
 				}
 			});
 		},
-		// 处理默认失败页的重新加载
 		handleDefaultReload() {
 			if (this.$refs.paging) {
 				this.$refs.paging.reload();
 			}
 		},
-		// 登录取消处理
-		handleLoginCancel() {
-			// 用户取消登录，保持游客状态
-		},
-		// 跳转到标签管理页面
-		goDictCategory() {
-			uni.navigateTo({
-				url: "/subpackage/dictCategory/index",
-			});
-		},
+		handleLoginCancel() {},
 		goDictCategoryFromDrawer() {
 			this.hideModal();
-			this.goDictCategory();
+			uni.navigateTo({ url: "/subpackage/dictCategory/index" });
 		},
 		showDrawer() {
 			this.modalName = 'DrawerModal';
@@ -542,36 +385,26 @@ export default {
 		hideModal() {
 			this.modalName = null;
 		},
-		// 搜索输入处理
 		onSearchInput(e) {
 			this.searchKeyword = e.detail.value || '';
 		},
-		// 执行搜索
 		handleSearch() {
 			if (!this.searchKeyword || !this.searchKeyword.trim()) {
-				uni.showToast({
-					title: '请输入搜索关键词',
-					icon: 'none'
-				});
+				uni.showToast({ title: '请输入搜索关键词', icon: 'none' });
 				return;
 			}
-
 			this.isSearchMode = true;
-			// 刷新列表，触发搜索
 			if (this.$refs.paging) {
 				this.$refs.paging.reload();
 			}
 		},
-		// 清除搜索
 		clearSearch() {
 			this.searchKeyword = '';
 			this.isSearchMode = false;
-			// 刷新列表，显示全部记录
 			if (this.$refs.paging) {
 				this.$refs.paging.reload();
 			}
 		},
-		// 重置搜索状态
 		resetSearch() {
 			this.clearSearch();
 		}
@@ -775,109 +608,7 @@ export default {
 	gap: 20rpx;
 }
 
-/* 记录卡片 */
-.record-card {
-	background: #ffffff;
-	border-radius: 24rpx;
-	padding: 32rpx 24rpx 24rpx;
-	transition: all 0.3s ease;
-	position: relative;
-	overflow: hidden;
-
-	.record-card-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 20rpx;
-
-		.record-title {
-			display: flex;
-			align-items: center;
-			font-size: 30rpx;
-			color: #333;
-			flex: 1;
-		}
-
-		.record-more-icon {
-			width: 56rpx;
-			height: 56rpx;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			border-radius: 50%;
-			margin-left: 16rpx;
-
-			.cuIcon-moreandroid {
-				font-size: 40rpx;
-			}
-		}
-	}
-
-	.record-tags {
-		display: flex;
-		flex-wrap: wrap;
-		margin-bottom: 16rpx;
-		gap: 12rpx;
-
-		.record-tag {
-			display: inline-block;
-			padding: 8rpx 16rpx;
-			border-radius: 20rpx;
-			font-size: 24rpx;
-			font-weight: 500;
-			box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.08);
-		}
-	}
-
-	.record-summary {
-		margin-bottom: 16rpx;
-		padding: 12rpx 0;
-
-		.record-summary-text {
-			font-size: 26rpx;
-			color: #666;
-			line-height: 1.6;
-			display: -webkit-box;
-			-webkit-box-orient: vertical;
-			-webkit-line-clamp: 2;
-			line-clamp: 2;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			word-break: break-all;
-		}
-	}
-
-	.record-footer {
-	display: flex;
-	align-items: center;
-	padding-top: 16rpx;
-	border-top: 1rpx solid rgba(0, 0, 0, 0.05);
-	opacity: 0.7;
-
-	.ai-note-tag {
-		display: flex;
-		align-items: center;
-		margin-left: auto;
-		padding: 4rpx 14rpx;
-		border-radius: 16rpx;
-		background: rgba(255, 157, 0, 0.1);
-		opacity: 1;
-
-		.cuIcon-creativefill {
-			color: #ff9d00;
-			margin-right: 4rpx;
-			font-size: 22rpx;
-		}
-
-		.ai-note-tag-text {
-			color: #ff9d00;
-			font-weight: 500;
-		}
-	}
-}
-}
-
-/* 授权失败页面 - 参考 z-paging 默认样式 */
+/* 授权失败页面 */
 .auth-failed-container {
 	/* #ifndef APP-NVUE */
 	display: flex;

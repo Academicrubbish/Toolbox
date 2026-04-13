@@ -52,7 +52,7 @@
 
 <script>
 import { getLearnResultList } from "@/api/aiLearn.js";
-import moment from "moment";
+import { formatTime } from "@/utils/format";
 
 export default {
   data() {
@@ -133,8 +133,7 @@ export default {
         });
     },
     formatTime(timestamp) {
-      if (!timestamp) return '';
-      return moment(timestamp).format('MM-DD HH:mm');
+      return formatTime(timestamp, 'MM-DD HH:mm');
     },
     getPreview(item) {
       if (item.status === 'pending') return '正在为您生成内容，请稍后下拉刷新查看...';

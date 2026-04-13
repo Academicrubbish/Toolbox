@@ -89,7 +89,7 @@ import { getDictCategoryList } from "@/api/dictCategory.js";
 import { callGenerateLearnNote, getAiResultCount } from "@/api/aiLearn.js";
 import { tagColorClasses } from "@/utils/tagColors";
 import { downloadMarkdown } from "@/utils/download";
-import moment from "moment";
+import { formatTime } from "@/utils/format";
 
 export default {
   data() {
@@ -173,10 +173,9 @@ export default {
     getTagName(tagId) {
       return this.tagMap[tagId] ? this.tagMap[tagId].name : '未知标签';
     },
-    // 格式化时间
+    // 格式化时间（复用 utils/format.js）
     formatTime(timeStr) {
-      if (!timeStr) return '';
-      return moment(timeStr).format('YYYY-MM-DD HH:mm');
+      return formatTime(timeStr, 'YYYY-MM-DD HH:mm');
     },
     // 下载文档
     downloadDocument() {
