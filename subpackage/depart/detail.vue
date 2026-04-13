@@ -46,7 +46,7 @@
         </view>
         <view class="entry-content">
           <text class="entry-title">AI 学习笔记</text>
-          <text class="entry-desc text-gray text-xs">{{ hasPendingAi && !hasAiResult ? 'AI 正在生成中，点击查看进度' : aiResultCount > 1 ? '查看 ' + aiResultCount + ' 条学习结果' : '查看学习结果' }}</text>
+          <text class="entry-desc text-gray text-xs">{{ hasPendingAi ? 'AI 正在生成中，点击查看进度' : aiResultCount > 1 ? '查看 ' + aiResultCount + ' 条学习结果' : '查看学习结果' }}</text>
         </view>
         <text class="cuIcon-right text-gray"></text>
       </view>
