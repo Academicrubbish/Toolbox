@@ -10,7 +10,7 @@
 export const getChangelogList = function(limit = 20) {
   const db = uniCloud.database();
   return db.collection('changelog')
-    .orderBy('create_time desc')
+    .orderBy('date desc')
     .limit(limit)
     .get()
     .then(res => {

@@ -128,6 +128,10 @@
 							<text class="text-grey">联系客服</text>
 						</button>
 					</view>
+					<!-- 版本号 -->
+					<view class="version-footer">
+						<text class="version-text">v{{ appVersion }}</text>
+					</view>
 				</view>
 			</view>
 		</view>
@@ -138,8 +142,6 @@
 </template>
 <script>
 import { getRecordList, delRecord, searchRecord } from "@/api/record.js";
-				this.hideModal();
-				uni.navigateTo({ url: "/subpackage/changelog/index" });
 import { getDictCategoryList } from "@/api/dictCategory.js";
 import { delSummarize } from "@/api/summarize";
 import { batchQueryAiResults } from "@/api/aiLearn.js";
@@ -179,6 +181,7 @@ export default {
 			searchKeyword: '',
 			isSearchMode: false,
 			aiResultMap: {},
+			appVersion: "1.0.0",
 		};
 	},
 	computed: {
@@ -196,6 +199,7 @@ export default {
 
 	mounted() {
 		this.loadTagList();
+			this.appVersion = this.getAppVersion();
 		this.lastAuthStateVersion = this.$store.state.user.authStateVersion;
 		this.lastIsGuest = this.$store.state.user.isGuest;
 		this.$nextTick(() => {
@@ -675,7 +679,17 @@ export default {
 	cursor: pointer;
 }
 
-.auth-failed-error-btn-rpx {
+.version-footer {
+		padding: 40rpx 32rpx 20rpx;
+		text-align: center;
+	}
+
+	.version-text {
+		font-size: 22rpx;
+		color: #ccc;
+	}
+
+	.auth-failed-error-btn-rpx {
 	font-size: 28rpx;
 	padding: 8rpx 24rpx;
 	border-radius: 6rpx;

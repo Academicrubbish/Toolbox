@@ -16,16 +16,18 @@
       </view>
 
       <!-- 日志列表 -->
-      <view v-else-if="logList.length > 0" class="cu-timeline">
-        <view v-for="item in logList" :key="item._id" class="cu-item text-blue">
-          <view class="cu-time">{{ item.date || '' }}</view>
-          <view class="content">
-            <view v-if="item.version" class="log-version">
-              <text class="text-bold text-blue">v{{ item.version }}</text>
+      <view v-else-if="logList.length > 0" class="log-list">
+        <view v-for="item in logList" :key="item._id" class="log-card">
+          <!-- 顶部：版本号 + 日期 -->
+          <view class="log-header">
+            <view v-if="item.version" class="version-badge">
+              <text class="version-text">v{{ item.version }}</text>
             </view>
-            <view class="log-content">
-              <text class="text-sm">{{ item.content }}</text>
-            </view>
+            <text class="log-date">{{ item.date || '' }}</text>
+          </view>
+          <!-- 内容区域 -->
+          <view v-if="item.nodes" class="log-body">
+            <towxml :nodes="item.nodes" />
           </view>
         </view>
       </view>
@@ -57,6 +59,15 @@ export default {
       this.loading = true;
       getChangelogList()
         .then(list => {
+          list.forEach(item => {
+            if (item.content) {
+              item.nodes = this.towxml(item.content, "markdown", {
+                events: {
+                  tap: (e) => { console.log("tap", e); }
+                }
+              });
+            }
+          });
           this.logList = list;
         })
         .catch(err => {
@@ -74,11 +85,11 @@ export default {
 <style lang="scss" scoped>
 .changelog-container {
   min-height: 100vh;
-  background: linear-gradient(to bottom, #f5f7fa 0%, #f1f1f1 100%);
+  background: #ffffff;
 }
 
 .changelog-wrapper {
-  padding: 30rpx;
+  padding: 24rpx 30rpx;
 }
 
 .loading-wrapper,
@@ -90,42 +101,93 @@ export default {
   padding: 200rpx 0;
 }
 
-.cu-timeline {
-  background: transparent;
-  padding: 0;
-
-  ::v-deep .cu-item {
-    padding: 30rpx 30rpx 30rpx 140rpx;
-
-    &::before {
-      color: #007aff;
-    }
-
-    &::after {
-      background: #007aff;
-    }
-  }
-
-  .content {
-    padding: 24rpx 28rpx;
-    border-radius: 16rpx;
-    background: #ffffff;
-    box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
-  }
+/* 日志列表 */
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
 }
 
-.log-version {
-  margin-bottom: 12rpx;
-  padding-bottom: 12rpx;
-  border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+/* 日志卡片 */
+.log-card {
+  background: #f7f8fa;
+  border-radius: 20rpx;
+  padding: 28rpx;
 }
 
-.log-content {
-  color: #666;
+/* 卡片头部 */
+.log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.06);
+}
+
+.version-badge {
+  background: #007aff;
+  padding: 6rpx 16rpx;
+  border-radius: 8rpx;
+}
+
+.version-text {
+  color: #ffffff;
+  font-size: 24rpx;
+  font-weight: 500;
+}
+
+.log-date {
+  font-size: 24rpx;
+  color: #999;
+}
+
+/* 卡片内容 */
+.log-body {
+  font-size: 26rpx;
+  color: #444;
   line-height: 1.8;
 
-  text {
-    white-space: pre-wrap;
+  ::v-deep h1, ::v-deep h2, ::v-deep h3, ::v-deep h4 {
+    font-size: 28rpx;
+    font-weight: bold;
+    color: #333;
+    margin: 16rpx 0 8rpx;
+  }
+
+  ::v-deep p {
+    margin-bottom: 8rpx;
+    font-size: 26rpx;
+  }
+
+  ::v-deep ul, ::v-deep ol {
+    padding-left: 32rpx;
+    margin-bottom: 8rpx;
+  }
+
+  ::v-deep li {
+    font-size: 26rpx;
+    line-height: 1.8;
+  }
+
+  ::v-deep code {
+    background: #eef0f4;
+    padding: 2rpx 8rpx;
+    border-radius: 6rpx;
+    font-size: 24rpx;
+    color: #e74c3c;
+  }
+
+  ::v-deep strong {
+    color: #333;
+    font-weight: 600;
+  }
+
+  ::v-deep blockquote {
+    border-left: 6rpx solid #007aff;
+    padding-left: 16rpx;
+    margin: 12rpx 0;
+    color: #666;
   }
 }
 
