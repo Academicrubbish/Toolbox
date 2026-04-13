@@ -114,6 +114,13 @@
 							<text class="text-grey">标签管理</text>
 						</view>
 					</view>
+					<!-- 更新日志 -->
+					<view class="cu-item arrow" @tap="goChangelog">
+						<view class="content">
+							<text class="cuIcon-newsfill text-blue margin-right-xs"></text>
+							<text class="text-grey">更新日志</text>
+						</view>
+					</view>
 					<!-- 联系客服 -->
 					<view class="cu-item arrow">
 						<button class="cu-btn content" open-type="contact" @tap="hideModal">
@@ -131,6 +138,8 @@
 </template>
 <script>
 import { getRecordList, delRecord, searchRecord } from "@/api/record.js";
+				this.hideModal();
+				uni.navigateTo({ url: "/subpackage/changelog/index" });
 import { getDictCategoryList } from "@/api/dictCategory.js";
 import { delSummarize } from "@/api/summarize";
 import { batchQueryAiResults } from "@/api/aiLearn.js";
@@ -375,11 +384,15 @@ export default {
 			}
 		},
 		handleLoginCancel() {},
-		goDictCategoryFromDrawer() {
-			this.hideModal();
-			uni.navigateTo({ url: "/subpackage/dictCategory/index" });
-		},
-		showDrawer() {
+			goDictCategoryFromDrawer() {
+				this.hideModal();
+				uni.navigateTo({ url: "/subpackage/dictCategory/index" });
+			},
+			goChangelog() {
+				this.hideModal();
+				uni.navigateTo({ url: "/subpackage/changelog/index" });
+			},
+			showDrawer() {
 			this.modalName = 'DrawerModal';
 		},
 		hideModal() {

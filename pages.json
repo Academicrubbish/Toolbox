@@ -36,6 +36,10 @@
 				{
 					"path": "dictCategory/form",
 					"style": {}
+				},
+				{
+					"path": "changelog/index",
+					"style": {}
 				}
 			]
 		}
