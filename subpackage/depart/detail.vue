@@ -60,11 +60,11 @@
           <view class="summary-title">
             <text class="text-lg text-bold">总结内容</text>
           </view>
-          <view v-if="summaryContent" class="download-btn" @click="downloadDocument">
+          <view v-if="summaryContent && !isExampleRecord" class="download-btn" @click="downloadDocument">
             <text class="cuIcon-downloadfill text-blue"></text>
             <text class="download-text text-xs">下载</text>
           </view>
-          <view v-if="summaryContent" class="ai-btn" :class="{ 'ai-btn-disabled': aiLoading || hasPendingAi }" @click="handleAiLearn">
+          <view v-if="summaryContent && !isExampleRecord" class="ai-btn" :class="{ 'ai-btn-disabled': aiLoading || hasPendingAi }" @click="handleAiLearn">
             <text class="ai-btn-icon" :class="(aiLoading || hasPendingAi) ? 'cuIcon-loading1 text-gray' : 'cuIcon-creativefill text-orange'"></text>
             <text class="ai-btn-text text-xs">{{ (aiLoading || hasPendingAi) ? '生成中...' : 'AI辅导' }}</text>
           </view>
@@ -92,6 +92,11 @@ import { downloadMarkdown } from "@/utils/download";
 import { formatTime } from "@/utils/format";
 
 export default {
+  computed: {
+    isExampleRecord() {
+      return this.recordData && (!this.recordData.createBy || this.recordData.createBy === '');
+    }
+  },
   data() {
     return {
       recordData: null,
