@@ -33,6 +33,19 @@ module.exports = {
         'json',        // JSON（常用）
         'css',         // CSS（常用）
         'bash',        // Shell脚本（可选，如果不需要可删除）
+        'c-like',
+        'c',
+        'go',
+        'java',
+        'less',
+        'scss',
+        'shell',
+        'xml',
+        'htmlbars',
+        'nginx',
+        'php',
+        'python',
+        'typescript',
         // 已移除：c-like, c, dart, go, java, less, scss, shell, xml, htmlbars, nginx, php, python, python-repl, typescript
         // 如需其他语言，可取消注释添加
 

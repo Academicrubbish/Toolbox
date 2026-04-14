@@ -47,7 +47,7 @@ const config = require('../../config'),
     })(),
     md = require('./markdown')(mdOption);
 
-// 应用Markdown解析扩展，包括自定义组件（['sub','sup','ins','mark','emoji','todo','latex','yuml']）
+// 应用Markdown解析扩展，包括自定义组件（['sub','sup','ins','mark','emoji','todo','latex','yuml','echarts']）
 // [...config.markdown,...config.components].forEach(item => {
 //     if(!/^audio-player|table|todogroup|img$/.test(item)){
 //         md.use(require(`./plugins/${item}`));

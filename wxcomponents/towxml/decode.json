@@ -1,12 +1,12 @@
 {
   "component": true,
   "usingComponents": {
-    "decode": "./decode",
-    "echarts": "./echarts/echarts-simple",
-    "latex": "./latex/latex",
-    "table": "./table/table",
-    "todogroup": "./todogroup/todogroup",
-    "yuml": "./yuml/yuml",
-    "img": "./img/img"
+    "decode": "/wxcomponents/towxml/decode",
+    "echarts": "/wxcomponents/towxml/echarts/echarts-simple",
+    "latex": "/wxcomponents/towxml/latex/latex",
+    "table": "/wxcomponents/towxml/table/table",
+    "todogroup": "/wxcomponents/towxml/todogroup/todogroup",
+    "yuml": "/wxcomponents/towxml/yuml/yuml",
+    "img": "/wxcomponents/towxml/img/img"
   }
 }

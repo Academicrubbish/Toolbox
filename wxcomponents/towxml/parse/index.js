@@ -6,7 +6,8 @@ const parse2 = require('./parse2/index'),
     correspondTag = (()=>{
         let result = {
                 a:'navigator',
-                todogroup:'checkbox-group'
+                todogroup:'checkbox-group',
+                audio:'audio-player'
             };
         
         // 该系列的标签都转换为text
