@@ -73,10 +73,10 @@ export default {
 	},
 	methods: {
 		handleTap() {
-			this.$emit('tap', this.record);
+			this.$emit('card-tap', this.record);
 		},
-		onMoreClick() {
-			this.$emit('more-click', this.record);
+		onMoreClick(e) {
+			this.$emit('more-click', e, this.record);
 		},
 		onAiNoteClick() {
 			this.$emit('ai-note-click', this.record);

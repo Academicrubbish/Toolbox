@@ -67,7 +67,7 @@
 							:tagMap="tagMap"
 							:aiNoteCount="getAiNoteCount(record)"
 							:showMore="!isExampleRecord(record)"
-							@tap="goDetail"
+							@card-tap="goDetail"
 							@more-click="onIconClick"
 							@ai-note-click="goLearnResult"
 						/>
@@ -324,9 +324,9 @@ export default {
 					break;
 			}
 		},
-		onIconClick(record) {
+		onIconClick(e, record) {
 			this.pickerRecordItem = record;
-			this.$refs.contextPopup.show(event, record);
+			this.$refs.contextPopup.show(e, record);
 		},
 		handleAuthorize() {
 			if (this.$refs.loginModal) {
