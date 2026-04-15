@@ -55,119 +55,63 @@ export default {
   },
   onLoad(option) {
     this.summarizeId = option.id;
-    // 修改操作
     if (option.id) {
-      let _this = this;
       getSummarize(option.id).then(res => {
         if (res.result.data.length > 0) {
           this.status = "update";
           this.form = res.result.data[0];
-          this.$nextTick(() => {
-            _this.textareaData = this.form.content;
-          });
+          this.textareaData = this.form.content;
         }
       })
     }
   },
   methods: {
     submit: debounce(async function (e) {
-      let _this = this;
-      uni.showLoading({
-        title: "上传中",
-        mask: true,
-      });
-      // 将富文本中的图片地址替换为云存储的路径
-      let richText = await _this.replaceImageUrlsWithCloudPath(e.textareaData);
-
-      if (e.textareaData.trim()) {
-        if (this.status === "update") {
-          // 修改操作，删除云存储中图片，重新添加
-          _this.deleteImageFromCloudStorage(_this.form.content);
-
-          let form = {
-            content: richText,
-            createTime: _this.form.createTime,
-            updateTime: moment().format("YYYY-MM-DD HH:mm:ss"),
-          };
-
-          updateSummarize(_this.form._id, form)
-            .then((res) => {
-              uni.hideLoading();
-              if (res.result.code === 0) {
-                uni.showToast({
-                  title: "修改成功",
-                  icon: "none",
-                  mask: true,
-                  success: () => {
-                    uni.navigateBack({
-                      delta: 1,
-                    });
-                  }
-                });
-              }
-            })
-            .catch((err) => {
-              uni.hideLoading();
-              // 如果是用户取消登录，不显示错误提示
-              if (err && err.message && err.message === '用户取消登录') {
-                return;
-              }
-              uni.showToast({
-                title: "修改失败",
-                icon: "none",
-              });
-            });
-
-        } else {
-
-          let form = {
-            content: richText,
-            createTime: moment().format("YYYY-MM-DD HH:mm:ss"),
-            updateTime: moment().format("YYYY-MM-DD HH:mm:ss"),
-          };
-
-          addSummarize(form)
-            .then((res) => {
-              uni.hideLoading();
-              if (res.result.code === 0) {
-                // 添加成功后，将总结id缓存到store
-                _this.$store.dispatch("cacheSummary", {
-                  id: res.result.id,
-                  status: 'add'
-                });
-                uni.showToast({
-                  title: "添加成功",
-                  icon: "none",
-                  mask: true,
-                  success: () => {
-                    uni.navigateBack({
-                      delta: 1,
-                    });
-                  }
-                });
-              }
-            })
-            .catch((err) => {
-              uni.hideLoading();
-              // 如果是用户取消登录，不显示错误提示
-              if (err && err.message && err.message === '用户取消登录') {
-                return;
-              }
-              uni.showToast({
-                title: "添加失败",
-                icon: "none",
-              });
-            });
-        }
-
-      } else {
-
-        uni.showToast({
-          title: "内容不能为空",
-          icon: "none",
-        });
-
+      if (!e.textareaData.trim()) {
+        uni.showToast({ title: "内容不能为空", icon: "none" });
+        return;
       }
+
+      uni.showLoading({ title: "上传中", mask: true });
+
+      const richText = await this.replaceImageUrlsWithCloudPath(e.textareaData);
+      const now = moment().format("YYYY-MM-DD HH:mm:ss");
+      const isUpdate = this.status === "update";
+      const successMsg = isUpdate ? "修改成功" : "添加成功";
+      const errorMsg = isUpdate ? "修改失败" : "添加失败";
+
+      if (isUpdate) {
+        this.deleteImageFromCloudStorage(this.form.content);
+      }
+
+      const form = isUpdate
+        ? { content: richText, createTime: this.form.createTime, updateTime: now }
+        : { content: richText, createTime: now, updateTime: now };
+
+      const apiCall = isUpdate
+        ? updateSummarize(this.form._id, form)
+        : addSummarize(form);
+
+      apiCall
+        .then((res) => {
+          uni.hideLoading();
+          if (res.result.code === 0) {
+            if (!isUpdate) {
+              this.$store.dispatch("cacheSummary", { id: res.result.id, status: 'add' });
+            }
+            uni.showToast({
+              title: successMsg,
+              icon: "none",
+              mask: true,
+              success: () => uni.navigateBack({ delta: 1 }),
+            });
+          }
+        })
+        .catch((err) => {
+          uni.hideLoading();
+          if (err?.message === '用户取消登录') return;
+          uni.showToast({ title: errorMsg, icon: "none" });
+        });
     }, 500),
     // 修改操作删除之前的图片
     deleteImageFromCloudStorage(htmlString) {
@@ -192,24 +136,23 @@ export default {
     // 将图片上传至云存储，返回云存储图片地址
     async uploadImageToCloudStorage(src) {
       let res = await uniCloud.uploadFile({
-        cloudPath: "cloudstorage/recordImg/" + moment().unix() + ".png", // 上传至云端的路径
-        filePath: src, // 小程序临时文件路径
+        cloudPath: "cloudstorage/recordImg/" + moment().unix() + '_' + Math.random().toString(36).substr(2, 6) + '.png',
+        filePath: src,
         cloudPathAsRealPath: true,
         fileType: "image",
       });
+      if (!res || !res.fileID) {
+        throw new Error('图片上传失败：未返回 fileID');
+      }
       return res.fileID;
     },
-    // 判断是否为网络URL（http/https）
-    isNetworkUrl(url) {
-      return /^https?:\/\//i.test(url);
-    },
-    // 判断是否为云存储路径（cloud:// 或 uniCloud 云存储域名）
+    // 判断是否为云存储路径
     isCloudStorageUrl(url) {
-      return /^cloud:\/\/|cloudstorage|\.tcb\.|\.myqcloud\./i.test(url);
+      return /cloudstorage|recordImg/i.test(url);
     },
     // 判断是否为本地临时路径
     isLocalTempPath(url) {
-      return /^(tmp|file|wxfile|ttfile|http:\/\/temp-|https:\/\/temp-)/i.test(url);
+      return /^(tmp|wxfile|ttfile)|^https?:\/\/tmp\//i.test(url);
     },
     // 处理富文本中的图片地址，将富文本中的图片地址替换为云存储的路径
     async replaceImageUrlsWithCloudPath(htmlString) {
@@ -221,31 +164,19 @@ export default {
       // 匹配所有的img标签，并替换其中的临时地址
       let match;
       while ((match = imgRegex.exec(htmlString)) !== null) {
-        const imgTag = match[0]; // 完整的img标签
-        const imgUrl = match[1]; // 图片的地址
+        const imgUrl = match[1];
 
-        // 判断图片URL类型
-        // 如果是网络URL或云存储路径，跳过上传，保留原URL
-        if (this.isNetworkUrl(imgUrl) || this.isCloudStorageUrl(imgUrl)) {
-          continue; // 跳过，不处理
+        // 云存储路径跳过上传
+        if (this.isCloudStorageUrl(imgUrl)) {
+          continue;
         }
 
-        // 如果是本地临时路径，才进行上传
+        // 本地临时路径，上传至云存储
         if (this.isLocalTempPath(imgUrl)) {
-          try {
-            // 调用上传图片方法，获取永久地址
-            const permanentUrl = await this.uploadImageToCloudStorage(imgUrl);
-            // 替换临时地址为永久地址
-            richText = richText.replace(imgUrl, permanentUrl);
-          } catch (error) {
-            console.error('图片上传失败:', imgUrl, error);
-            // 上传失败时，可以选择保留原URL或移除该图片
-            // 这里选择保留原URL，避免内容丢失
-          }
-        } else {
-          // 其他未知类型的路径，保留原URL
-          console.warn('未知类型的图片路径，跳过处理:', imgUrl);
+          const permanentUrl = await this.uploadImageToCloudStorage(imgUrl);
+          richText = richText.replace(imgUrl, permanentUrl);
         }
+        // 其他情况视为外部图片，不上传，保留原URL
       }
 
       return richText;
@@ -253,9 +184,7 @@ export default {
   },
   computed: {
     contentHeight() {
-      var CustomBar = this.CustomBar;
-      var style = `height:calc(100vh - ${CustomBar}px)`;
-      return style;
+      return `height:calc(100vh - ${this.CustomBar}px)`;
     },
   },
 };
