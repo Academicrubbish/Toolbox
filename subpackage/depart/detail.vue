@@ -68,6 +68,10 @@
             <text class="ai-btn-icon" :class="(aiLoading || hasPendingAi) ? 'cuIcon-loading1 text-gray' : 'cuIcon-creativefill text-orange'"></text>
             <text class="ai-btn-text text-xs">{{ (aiLoading || hasPendingAi) ? '生成中...' : 'AI辅导' }}</text>
           </view>
+          <view v-if="summaryContent && !isExampleRecord" class="share-btn" :class="{ 'share-btn-disabled': shareLoading }" @click="showShareModal = true">
+            <text class="share-btn-icon" :class="shareLoading ? 'cuIcon-loading1 text-gray' : 'cuIcon-share text-green'"></text>
+            <text class="share-btn-text text-xs">{{ shareLoading ? '生成中...' : '分享' }}</text>
+          </view>
         </view>
         <view class="summary-content">
           <view v-if="towxmlData" class="towxml-wrapper">
@@ -75,6 +79,39 @@
           </view>
           <view v-else class="summary-empty">
             <text class="text-gray text-sm">暂无总结内容</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 分享有效期选择弹窗 -->
+    <view v-if="showShareModal" class="share-modal-mask" @click="closeShareModal">
+      <view class="share-modal" @click.stop>
+        <view class="share-modal-title">分享文章</view>
+        <view class="share-modal-subtitle">选择链接有效期</view>
+        <view class="share-options">
+          <view class="share-option" :class="{ 'share-option-active': selectedExpire === '1h' }" @click="selectedExpire = '1h'">
+            <text class="share-option-text">1小时</text>
+          </view>
+          <view class="share-option" :class="{ 'share-option-active': selectedExpire === '1d' }" @click="selectedExpire = '1d'">
+            <text class="share-option-text">1天</text>
+          </view>
+          <view class="share-option" :class="{ 'share-option-active': selectedExpire === '1w' }" @click="selectedExpire = '1w'">
+            <text class="share-option-text">1周</text>
+          </view>
+          <view class="share-option" :class="{ 'share-option-active': selectedExpire === '1y' }" @click="selectedExpire = '1y'">
+            <text class="share-option-text">1年</text>
+          </view>
+          <view class="share-option" :class="{ 'share-option-active': selectedExpire === 'forever' }" @click="selectedExpire = 'forever'">
+            <text class="share-option-text">永久</text>
+          </view>
+        </view>
+        <view class="share-modal-actions">
+          <view class="share-modal-cancel" @click="closeShareModal">
+            <text>取消</text>
+          </view>
+          <view class="share-modal-confirm" @click="handleShare">
+            <text>生成链接</text>
           </view>
         </view>
       </view>
@@ -87,6 +124,7 @@ import { getRecord } from "@/api/record";
 import { getSummarize } from "@/api/summarize";
 import { getDictCategoryList } from "@/api/dictCategory.js";
 import { callGenerateLearnNote, getAiResultCount } from "@/api/aiLearn.js";
+import { callGenerateShareLink } from "@/api/share.js";
 import { tagColorClasses } from "@/utils/tagColors";
 import { downloadMarkdown } from "@/utils/download";
 import { formatTime } from "@/utils/format";
@@ -108,6 +146,9 @@ export default {
       hasPendingAi: false, // 是否有正在生成中的AI结果
       hasAiResult: false, // 是否有成功的AI学习结果
       aiResultCount: 0, // 成功的AI学习结果数量
+      showShareModal: false, // 分享弹窗显示状态
+      selectedExpire: '1d', // 默认有效期1天
+      shareLoading: false, // 分享按钮loading状态
     };
   },
   onLoad(option) {
@@ -141,6 +182,33 @@ export default {
       if (!this.recordData || !this.recordData._id) return;
       uni.navigateTo({
         url: `/subpackage/depart/learn-result?recordId=${this.recordData._id}`
+      });
+    },
+    // 关闭分享弹窗
+    closeShareModal() {
+      this.showShareModal = false;
+    },
+    // 生成分享链接
+    handleShare() {
+      if (this.shareLoading) return;
+      this.shareLoading = true;
+
+      callGenerateShareLink({
+        recordId: this.recordData._id,
+        expireType: this.selectedExpire
+      }).then((res) => {
+        const shareUrl = res.data.shareUrl;
+        uni.setClipboardData({
+          data: shareUrl,
+          success: () => {
+            uni.showToast({ title: '链接已复制', icon: 'success' });
+          }
+        });
+        this.showShareModal = false;
+      }).catch((err) => {
+        uni.showToast({ title: err.message || '生成失败', icon: 'none' });
+      }).finally(() => {
+        this.shareLoading = false;
       });
     },
     // 加载AI学习结果数量
@@ -403,6 +471,30 @@ export default {
       font-weight: 500;
     }
   }
+
+  .share-btn {
+    display: flex;
+    align-items: center;
+    padding: 8rpx 16rpx;
+    border-radius: 8rpx;
+    background: rgba(48, 190, 100, 0.1);
+    margin-left: 12rpx;
+
+    &.share-btn-disabled {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .share-btn-icon {
+      font-size: 28rpx;
+      margin-right: 8rpx;
+    }
+
+    .share-btn-text {
+      color: #30be64;
+      font-weight: 500;
+    }
+  }
 }
 
 /* 总结内容 */
@@ -534,6 +626,109 @@ export default {
 
   .summary-content {
     padding: 24rpx;
+  }
+}
+
+/* 分享弹窗 */
+.share-modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.share-modal {
+  width: 100%;
+  background: #fff;
+  border-radius: 24rpx 24rpx 0 0;
+  padding: 40rpx 32rpx;
+  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+
+  .share-modal-title {
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #333;
+    text-align: center;
+    margin-bottom: 8rpx;
+  }
+
+  .share-modal-subtitle {
+    font-size: 26rpx;
+    color: #999;
+    text-align: center;
+    margin-bottom: 32rpx;
+  }
+
+  .share-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16rpx;
+    justify-content: center;
+    margin-bottom: 40rpx;
+  }
+
+  .share-option {
+    padding: 16rpx 32rpx;
+    border-radius: 40rpx;
+    background: #f5f5f5;
+    border: 2rpx solid transparent;
+
+    .share-option-text {
+      font-size: 28rpx;
+      color: #666;
+    }
+
+    &.share-option-active {
+      background: rgba(48, 190, 100, 0.1);
+      border-color: #30be64;
+
+      .share-option-text {
+        color: #30be64;
+        font-weight: 500;
+      }
+    }
+  }
+
+  .share-modal-actions {
+    display: flex;
+    gap: 24rpx;
+  }
+
+  .share-modal-cancel {
+    flex: 1;
+    height: 80rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 40rpx;
+    background: #f5f5f5;
+
+    text {
+      font-size: 28rpx;
+      color: #999;
+    }
+  }
+
+  .share-modal-confirm {
+    flex: 1;
+    height: 80rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 40rpx;
+    background: #30be64;
+
+    text {
+      font-size: 28rpx;
+      color: #fff;
+      font-weight: 500;
+    }
   }
 }
 </style>

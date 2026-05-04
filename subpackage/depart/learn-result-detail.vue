@@ -38,6 +38,10 @@
               <text class="cuIcon-downloadfill text-blue"></text>
               <text class="download-text text-xs">下载</text>
             </view>
+            <view class="share-btn" :class="{ 'share-btn-disabled': shareLoading }" @click="showShareModal = true">
+              <text class="share-btn-icon" :class="shareLoading ? 'cuIcon-loading1 text-gray' : 'cuIcon-share text-green'"></text>
+              <text class="share-btn-text text-xs">{{ shareLoading ? '生成中...' : '分享' }}</text>
+            </view>
           </view>
           <view class="content-body">
             <view class="towxml-wrapper">
@@ -57,11 +61,45 @@
         </view>
       </template>
     </view>
+
+    <!-- 分享有效期选择弹窗 -->
+    <view v-if="showShareModal" class="share-modal-mask" @click="showShareModal = false">
+      <view class="share-modal" @click.stop>
+        <view class="share-modal-title">分享 AI 辅导内容</view>
+        <view class="share-modal-subtitle">选择链接有效期</view>
+        <view class="share-options">
+          <view class="share-option" :class="{ 'share-option-active': selectedExpire === '1h' }" @click="selectedExpire = '1h'">
+            <text>1小时</text>
+          </view>
+          <view class="share-option" :class="{ 'share-option-active': selectedExpire === '1d' }" @click="selectedExpire = '1d'">
+            <text>1天</text>
+          </view>
+          <view class="share-option" :class="{ 'share-option-active': selectedExpire === '1w' }" @click="selectedExpire = '1w'">
+            <text>1周</text>
+          </view>
+          <view class="share-option" :class="{ 'share-option-active': selectedExpire === '1y' }" @click="selectedExpire = '1y'">
+            <text>1年</text>
+          </view>
+          <view class="share-option" :class="{ 'share-option-active': selectedExpire === 'forever' }" @click="selectedExpire = 'forever'">
+            <text>永久</text>
+          </view>
+        </view>
+        <view class="share-modal-actions">
+          <view class="share-modal-cancel" @click="showShareModal = false">
+            <text>取消</text>
+          </view>
+          <view class="share-modal-confirm" @click="handleShare">
+            <text>生成链接</text>
+          </view>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
 <script>
 import { getLearnResultDetail } from "@/api/aiLearn.js";
+import { callGenerateShareLink } from "@/api/share.js";
 import { formatTime } from "@/utils/format";
 import moment from "moment";
 
@@ -71,7 +109,10 @@ export default {
       logId: "",
       resultData: null,
       towxmlData: "",
-      loading: false
+      loading: false,
+      showShareModal: false,
+      selectedExpire: '1d',
+      shareLoading: false
     };
   },
   onLoad(option) {
@@ -107,6 +148,29 @@ export default {
         .finally(() => {
           this.loading = false;
         });
+    },
+    handleShare() {
+      if (this.shareLoading) return;
+      this.shareLoading = true;
+
+      callGenerateShareLink({
+        recordId: this.resultData.record_id || '',
+        expireType: this.selectedExpire,
+        shareType: 'ai_learn',
+        logId: this.logId
+      }).then((res) => {
+        uni.setClipboardData({
+          data: res.data.shareUrl,
+          success: () => {
+            uni.showToast({ title: '链接已复制', icon: 'success' });
+          }
+        });
+        this.showShareModal = false;
+      }).catch((err) => {
+        uni.showToast({ title: err.message || '生成失败', icon: 'none' });
+      }).finally(() => {
+        this.shareLoading = false;
+      });
     },
     statusText(status) {
       const map = { pending: 'AI 生成中...', success: '已完成', error: '生成失败' };
@@ -343,6 +407,30 @@ export default {
       font-weight: 500;
     }
   }
+
+  .share-btn {
+    display: flex;
+    align-items: center;
+    padding: 8rpx 16rpx;
+    border-radius: 8rpx;
+    background: rgba(48, 190, 100, 0.1);
+    margin-left: 12rpx;
+
+    &.share-btn-disabled {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .share-btn-icon {
+      font-size: 28rpx;
+      margin-right: 8rpx;
+    }
+
+    .share-btn-text {
+      color: #30be64;
+      font-weight: 500;
+    }
+  }
 }
 
 .content-body {
@@ -404,5 +492,96 @@ export default {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* 分享弹窗 */
+.share-modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.share-modal {
+  width: 100%;
+  background: #fff;
+  border-radius: 24rpx 24rpx 0 0;
+  padding: 40rpx 32rpx;
+  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+
+  .share-modal-title {
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #333;
+    text-align: center;
+    margin-bottom: 8rpx;
+  }
+
+  .share-modal-subtitle {
+    font-size: 26rpx;
+    color: #999;
+    text-align: center;
+    margin-bottom: 32rpx;
+  }
+
+  .share-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16rpx;
+    justify-content: center;
+    margin-bottom: 40rpx;
+  }
+
+  .share-option {
+    padding: 16rpx 32rpx;
+    border-radius: 40rpx;
+    background: #f5f5f5;
+    border: 2rpx solid transparent;
+    font-size: 28rpx;
+    color: #666;
+
+    &.share-option-active {
+      background: rgba(48, 190, 100, 0.1);
+      border-color: #30be64;
+      color: #30be64;
+      font-weight: 500;
+    }
+  }
+
+  .share-modal-actions {
+    display: flex;
+    gap: 24rpx;
+  }
+
+  .share-modal-cancel {
+    flex: 1;
+    height: 80rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 40rpx;
+    background: #f5f5f5;
+    font-size: 28rpx;
+    color: #999;
+  }
+
+  .share-modal-confirm {
+    flex: 1;
+    height: 80rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 40rpx;
+    background: #30be64;
+    font-size: 28rpx;
+    color: #fff;
+    font-weight: 500;
+  }
 }
 </style>
