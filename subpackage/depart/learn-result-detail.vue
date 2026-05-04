@@ -18,7 +18,7 @@
       <template v-else-if="resultData">
         <!-- 状态信息 -->
         <view class="status-bar" :class="'status-bar-' + resultData.status">
-          <view class="status-dot" :class="resultData.status === 'pending' ? 'dot-pending' : resultData.status === 'success' ? 'dot-success' : 'dot-error'"></view>
+          <view class="status-dot" :class="{ 'dot-pending': resultData.status === 'pending', 'dot-success': resultData.status === 'success', 'dot-error': resultData.status === 'error' }"></view>
           <text class="status-text">{{ statusText(resultData.status) }}</text>
           <text v-if="resultData.complete_time" class="status-time text-xs">
             {{ formatTime(resultData.complete_time) }}
@@ -100,8 +100,8 @@
 <script>
 import { getLearnResultDetail } from "@/api/aiLearn.js";
 import { callGenerateShareLink } from "@/api/share.js";
+import { downloadMarkdown } from "@/utils/download";
 import { formatTime } from "@/utils/format";
-import moment from "moment";
 
 export default {
   data() {
@@ -176,10 +176,6 @@ export default {
       const map = { pending: 'AI 生成中...', success: '已完成', error: '生成失败' };
       return map[status] || '';
     },
-    statusClass(status) {
-      const map = { pending: 'dot-pending', success: 'dot-success', error: 'dot-error' };
-      return map[status] || '';
-    },
     formatTime(timestamp) {
       return formatTime(timestamp, 'YYYY-MM-DD HH:mm');
     },
@@ -188,103 +184,7 @@ export default {
         uni.showToast({ title: '暂无内容可下载', icon: 'none' });
         return;
       }
-
-      uni.showLoading({ title: '准备下载...', mask: true });
-      const fileName = `AI辅导_${moment().format('YYYYMMDD_HHmmss')}.md`;
-      const content = this.resultData.ai_result;
-
-      // 复用 detail.vue 的下载逻辑
-      const cloudPath = `downloads/${moment().unix()}_${fileName}`;
-      const fs = uni.getFileSystemManager();
-      let userDataPath = '';
-      try {
-        if (typeof wx !== 'undefined' && wx.env && wx.env.USER_DATA_PATH) {
-          userDataPath = wx.env.USER_DATA_PATH;
-        }
-      } catch (e) {
-        console.warn('无法获取USER_DATA_PATH：', e);
-      }
-
-      if (!userDataPath) {
-        this.copyToClipboard(content);
-        return;
-      }
-
-      const tempFilePath = `${userDataPath}/${fileName}`;
-      fs.writeFile({
-        filePath: tempFilePath,
-        data: content,
-        encoding: 'utf8',
-        success: () => {
-          uniCloud.uploadFile({
-            cloudPath: cloudPath,
-            filePath: tempFilePath,
-            cloudPathAsRealPath: true,
-            success: (uploadRes) => {
-              uni.downloadFile({
-                url: uploadRes.fileID,
-                success: (downloadRes) => {
-                  if (downloadRes.statusCode === 200) {
-                    this.saveFileToLocal(downloadRes.tempFilePath, fileName);
-                  } else {
-                    uni.hideLoading();
-                    this.copyToClipboard(content);
-                  }
-                },
-                fail: () => {
-                  uni.hideLoading();
-                  this.copyToClipboard(content);
-                }
-              });
-            },
-            fail: () => {
-              uni.hideLoading();
-              this.copyToClipboard(content);
-            }
-          });
-        },
-        fail: () => {
-          uni.hideLoading();
-          this.copyToClipboard(content);
-        }
-      });
-    },
-    copyToClipboard(content) {
-      uni.showModal({
-        title: '提示',
-        content: '由于平台限制，建议复制内容后手动保存。是否复制到剪贴板？',
-        success: (res) => {
-          uni.hideLoading();
-          if (res.confirm) {
-            uni.setClipboardData({
-              data: content,
-              success: () => {
-                uni.showToast({ title: '已复制到剪贴板', icon: 'success' });
-              }
-            });
-          }
-        }
-      });
-    },
-    saveFileToLocal(tempFilePath, fileName) {
-      uni.saveFile({
-        tempFilePath: tempFilePath,
-        success: (saveRes) => {
-          uni.hideLoading();
-          uni.showToast({ title: '保存成功', icon: 'success' });
-          uni.openDocument({
-            filePath: saveRes.savedFilePath,
-            showMenu: true,
-            fail: () => {
-              uni.showToast({ title: '打开文件失败', icon: 'none' });
-            }
-          });
-        },
-        fail: () => {
-          uni.hideLoading();
-          uni.showToast({ title: '保存失败', icon: 'none' });
-        }
-      });
+      downloadMarkdown('AI辅导', this.resultData.ai_result);
     }
   }
 };

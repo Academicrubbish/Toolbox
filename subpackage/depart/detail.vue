@@ -60,18 +60,20 @@
           <view class="summary-title">
             <text class="text-lg text-bold">总结内容</text>
           </view>
-          <view v-if="summaryContent && !isExampleRecord" class="download-btn" @click="downloadDocument">
-            <text class="cuIcon-downloadfill text-blue"></text>
-            <text class="download-text text-xs">下载</text>
-          </view>
-          <view v-if="summaryContent && !isExampleRecord" class="ai-btn" :class="{ 'ai-btn-disabled': aiLoading || hasPendingAi }" @click="handleAiLearn">
-            <text class="ai-btn-icon" :class="(aiLoading || hasPendingAi) ? 'cuIcon-loading1 text-gray' : 'cuIcon-creativefill text-orange'"></text>
-            <text class="ai-btn-text text-xs">{{ (aiLoading || hasPendingAi) ? '生成中...' : 'AI辅导' }}</text>
-          </view>
-          <view v-if="summaryContent && !isExampleRecord" class="share-btn" :class="{ 'share-btn-disabled': shareLoading }" @click="showShareModal = true">
-            <text class="share-btn-icon" :class="shareLoading ? 'cuIcon-loading1 text-gray' : 'cuIcon-share text-green'"></text>
-            <text class="share-btn-text text-xs">{{ shareLoading ? '生成中...' : '分享' }}</text>
-          </view>
+          <template v-if="summaryContent && !isExampleRecord">
+            <view class="download-btn" @click="downloadDocument">
+              <text class="cuIcon-downloadfill text-blue"></text>
+              <text class="download-text text-xs">下载</text>
+            </view>
+            <view class="ai-btn" :class="{ 'ai-btn-disabled': aiLoading || hasPendingAi }" @click="handleAiLearn">
+              <text class="ai-btn-icon" :class="(aiLoading || hasPendingAi) ? 'cuIcon-loading1 text-gray' : 'cuIcon-creativefill text-orange'"></text>
+              <text class="ai-btn-text text-xs">{{ (aiLoading || hasPendingAi) ? '生成中...' : 'AI辅导' }}</text>
+            </view>
+            <view class="share-btn" :class="{ 'share-btn-disabled': shareLoading }" @click="showShareModal = true">
+              <text class="share-btn-icon" :class="shareLoading ? 'cuIcon-loading1 text-gray' : 'cuIcon-share text-green'"></text>
+              <text class="share-btn-text text-xs">{{ shareLoading ? '生成中...' : '分享' }}</text>
+            </view>
+          </template>
         </view>
         <view class="summary-content">
           <view v-if="towxmlData" class="towxml-wrapper">
@@ -255,65 +257,41 @@ export default {
       downloadMarkdown(this.recordData.title, this.summaryContent);
     },
     loadRecordDetail(id) {
-      // 使用 Promise 链式调用，避免 async/await 依赖 regenerator-runtime
       getRecord(id)
         .then((recordRes) => {
-          if (recordRes.result && recordRes.result.data && recordRes.result.data.length > 0) {
-            this.recordData = recordRes.result.data[0];
+          if (!recordRes.result?.data?.length) {
+            this.showNotFound();
+            return;
+          }
 
-            // 查询该记录的AI学习结果数量
-            this.loadAiResultCount(this.recordData._id);
+          this.recordData = recordRes.result.data[0];
+          this.loadAiResultCount(this.recordData._id);
 
-            // 根据总结ID查询并汇总信息
-            if (this.recordData.summarizeId) {
-              return getSummarize(this.recordData.summarizeId).then((summarizeRes) => {
-                // 检查查询结果并更新汇总数据
-                if (summarizeRes.result && summarizeRes.result.data && summarizeRes.result.data.length > 0) {
-                  let summarizeData = summarizeRes.result.data[0];
-
-                  // 保存原始Markdown内容，用于下载
-                  this.summaryContent = summarizeData.content || "";
-
-                  // 直接使用 towxml 解析 Markdown，支持所有插件（latex、yuml、echarts 等）
-                  // 与 md-editor 保持一致，确保所有功能都能正常渲染
-                  this.towxmlData = this.towxml(summarizeData.content, "markdown", {
-                    events: {
-                      tap: (e) => {
-                        console.log("tap", e);
-                      },
-                    },
-                  });
-                } else {
-                  // 表示没有找到汇总数据
-                  this.summaryContent = "";
-                  this.towxmlData = this.towxml("", "markdown");
-                }
-              });
-            } else {
-              // 没有总结ID
-              this.summaryContent = "";
-              this.towxmlData = "";
-            }
-          } else {
-            uni.showToast({
-              title: "记录不存在",
-              icon: "none",
-            });
-            setTimeout(() => {
-              uni.navigateBack();
-            }, 1500);
+          if (this.recordData.summarizeId) {
+            this.loadSummarize(this.recordData.summarizeId);
           }
         })
         .catch((error) => {
           console.error("Error in loadRecordDetail:", error);
-          uni.showToast({
-            title: "加载失败，请稍后重试",
-            icon: "none",
-          });
-          setTimeout(() => {
-            uni.navigateBack();
-          }, 1500);
+          uni.showToast({ title: "加载失败，请稍后重试", icon: "none" });
+          setTimeout(() => uni.navigateBack(), 1500);
         });
+    },
+    loadSummarize(summarizeId) {
+      getSummarize(summarizeId).then((res) => {
+        const data = res.result?.data;
+        if (data?.length) {
+          const content = data[0].content || "";
+          this.summaryContent = content;
+          this.towxmlData = this.towxml(content, "markdown", {
+            events: { tap: (e) => console.log("tap", e) }
+          });
+        }
+      });
+    },
+    showNotFound() {
+      uni.showToast({ title: "记录不存在", icon: "none" });
+      setTimeout(() => uni.navigateBack(), 1500);
     },
   },
 };
