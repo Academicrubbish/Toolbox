@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>文章分享</title>
+  <!-- marked.js - Markdown 解析 -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <!-- highlight.js - 代码高亮 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/styles/default.min.css">
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/highlight.min.js"></script>
+  <!-- KaTeX - LaTeX 公式渲染 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <!-- Mermaid - 流程图/时序图 -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.3/dist/mermaid.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #333; background: #f5f5f5; line-height: 1.8; }
+
+    .container { max-width: 750px; margin: 0 auto; background: #fff; min-height: 100vh; padding: 32px 24px; }
+
+    /* 加载状态 */
+    .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 120px 0; }
+    .spinner { width: 36px; height: 36px; border: 3px solid #e0e0e0; border-top-color: #007aff; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { color: #999; font-size: 14px; }
+
+    /* 错误状态 */
+    .error { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 120px 24px; text-align: center; }
+    .error-icon { font-size: 48px; margin-bottom: 16px; }
+    .error-msg { color: #666; font-size: 15px; }
+
+    /* 文章头部 */
+    .article-header { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #eee; }
+    .article-title { font-size: 22px; font-weight: 600; color: #1a1a1a; line-height: 1.4; margin-bottom: 12px; }
+    .article-meta { display: flex; gap: 16px; color: #999; font-size: 13px; }
+
+    /* Markdown 内容 */
+    .article-content { font-size: 15px; color: #333; word-wrap: break-word; }
+    .article-content h1, .article-content h2, .article-content h3, .article-content h4, .article-content h5, .article-content h6 { margin: 24px 0 12px; font-weight: 600; color: #1a1a1a; line-height: 1.4; }
+    .article-content h1 { font-size: 20px; }
+    .article-content h2 { font-size: 18px; }
+    .article-content h3 { font-size: 16px; }
+    .article-content p { margin-bottom: 12px; }
+    .article-content ul, .article-content ol { padding-left: 24px; margin-bottom: 12px; }
+    .article-content li { margin-bottom: 4px; }
+    .article-content code { background: #f5f5f5; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: "SF Mono", Menlo, Monaco, Consolas, monospace; }
+    .article-content pre { background: #f8f8f8; padding: 16px; border-radius: 8px; overflow-x: auto; margin-bottom: 16px; }
+    .article-content pre code { background: none; padding: 0; font-size: 13px; }
+    .article-content blockquote { border-left: 4px solid #007aff; padding: 8px 16px; margin-bottom: 12px; color: #666; background: #f8f9fa; border-radius: 0 8px 8px 0; }
+    .article-content img { max-width: 100%; height: auto; border-radius: 8px; margin: 8px 0; }
+    .article-content table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 14px; }
+    .article-content th, .article-content td { border: 1px solid #e0e0e0; padding: 8px 12px; text-align: left; }
+    .article-content th { background: #f5f5f5; font-weight: 600; }
+    .article-content a { color: #007aff; text-decoration: none; }
+    .article-content hr { border: none; border-top: 1px solid #e0e0e0; margin: 24px 0; }
+    .article-content strong { font-weight: 600; }
+
+    /* KaTeX 公式样式 */
+    .article-content .katex-display { margin: 16px 0; overflow-x: auto; }
+    .article-content .katex { font-size: 1.1em; }
+
+    /* 页脚 */
+    .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #eee; text-align: center; color: #ccc; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- 加载状态 -->
+    <div id="state-loading" class="loading">
+      <div class="spinner"></div>
+      <div class="loading-text">加载中...</div>
+    </div>
+
+    <!-- 错误状态 -->
+    <div id="state-error" class="error" style="display:none;">
+      <div class="error-icon">📄</div>
+      <div id="error-msg" class="error-msg"></div>
+    </div>
+
+    <!-- 文章内容 -->
+    <div id="state-content" style="display:none;">
+      <div class="article-header">
+        <h1 id="article-title" class="article-title"></h1>
+        <div class="article-meta">
+          <span id="article-author"></span>
+          <span id="article-time"></span>
+        </div>
+      </div>
+      <div id="article-content" class="article-content"></div>
+      <div class="footer">由 Toolbox 学习工具箱分享</div>
+    </div>
+  </div>
+
+  <script>
+  var GET_ARTICLE_URL = 'http://api.coptis.top/getShareArticle';
+
+  // 初始化 Mermaid
+  mermaid.initialize({ startOnLoad: false, theme: 'default' });
+
+  // 配置 marked（mermaid 代码块特殊处理）
+  var renderer = new marked.Renderer();
+  renderer.code = function(code, lang) {
+    if (lang === 'mermaid') {
+      return '<div class="mermaid">' + code + '</div>';
+    }
+    var highlighted = code;
+    if (lang && hljs.getLanguage(lang)) {
+      highlighted = hljs.highlight(code, { language: lang }).value;
+    } else {
+      highlighted = hljs.highlightAuto(code).value;
+    }
+    return '<pre><code class="hljs language-' + (lang || '') + '">' + highlighted + '</code></pre>';
+  };
+  marked.setOptions({ renderer: renderer, breaks: true, gfm: true });
+
+  // LaTeX 公式渲染
+  function renderKatex(html) {
+    // 块级公式 $$...$$
+    html = html.replace(/\$\$([\s\S]*?)\$\$/g, function(match, formula) {
+      try {
+        return katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false });
+      } catch (e) { return match; }
+    });
+    // 行内公式 $...$（不匹配 $$ 和标签内的内容）
+    html = html.replace(/(?<!\$)\$(?!\$)([^\$\n]+?)\$(?!\$)/g, function(match, formula) {
+      try {
+        return katex.renderToString(formula.trim(), { displayMode: false, throwOnError: false });
+      } catch (e) { return match; }
+    });
+    return html;
+  }
+
+  function showState(state) {
+    document.getElementById('state-loading').style.display = state === 'loading' ? 'flex' : 'none';
+    document.getElementById('state-error').style.display = state === 'error' ? 'flex' : 'none';
+    document.getElementById('state-content').style.display = state === 'content' ? 'block' : 'none';
+  }
+
+  function showError(msg) {
+    document.getElementById('error-msg').textContent = msg;
+    showState('error');
+  }
+
+  async function loadArticle() {
+    var params = new URLSearchParams(window.location.search);
+    var sid = params.get('sid');
+
+    if (!sid) {
+      showError('链接无效');
+      return;
+    }
+
+    try {
+      var controller = new AbortController();
+      var timeoutId = setTimeout(function() { controller.abort(); }, 10000);
+
+      var res = await fetch(GET_ARTICLE_URL + '?sid=' + encodeURIComponent(sid), {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      var data = await res.json();
+
+      if (data.code !== 0) {
+        showError(data.message || '加载失败');
+        return;
+      }
+
+      var article = data.data;
+      document.getElementById('article-title').textContent = article.title || '无标题';
+      document.getElementById('article-author').textContent = article.author || '匿名';
+      document.getElementById('article-time').textContent = article.createTime || '';
+
+      // 先渲染 Markdown，再渲染 LaTeX 公式
+      var html = marked.parse(article.content || '');
+      html = renderKatex(html);
+      document.getElementById('article-content').innerHTML = html;
+
+      // 先让容器可见，Mermaid 需要计算布局尺寸
+      showState('content');
+      document.title = article.title || '文章分享';
+
+      // 渲染 Mermaid 流程图（失败不影响页面）
+      try {
+        var mermaidEls = document.querySelectorAll('.mermaid');
+        if (mermaidEls.length > 0) {
+          await mermaid.run({ querySelector: '.mermaid' });
+        }
+      } catch (e) {
+        console.warn('Mermaid 渲染失败：', e);
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        showError('网络超时，请刷新重试');
+      } else {
+        showError('加载失败，请检查网络后刷新');
+      }
+    }
+  }
+
+  loadArticle();
+  </script>
+</body>
+</html>
