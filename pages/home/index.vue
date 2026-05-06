@@ -128,6 +128,12 @@
 							<text class="text-grey">联系客服</text>
 						</button>
 					</view>
+					<!-- 交流提示 -->
+					<view class="qq-group-bar">
+						<text class="qq-group-desc">「个人作品，功能建议、Bug 反馈、使用交流都欢迎」</text>
+						<text class="qq-group-label">QQ 交流群：</text>
+						<text class="qq-group-number" @tap="copyGroupNumber">1092487718</text>
+					</view>
 					<!-- 版本号 -->
 					<view class="version-footer">
 						<text class="version-text">v{{ appVersion }}</text>
@@ -509,7 +515,7 @@ export default {
 
 	.search-reset-text {
 		font-size: 26rpx;
-		color: #666;
+		color: #ccc;
 	}
 }
 
@@ -684,17 +690,33 @@ export default {
 	cursor: pointer;
 }
 
+.qq-group-bar {
+	padding: 24rpx;
+}
+.qq-group-desc {
+	font-size: 22rpx;
+	color: #ccc;
+}
+.qq-group-label {
+	font-size: 22rpx;
+	color: #ccc;
+}
+.qq-group-number {
+	font-size: 22rpx;
+	color: #ccc;
+}
+
 .version-footer {
-		padding: 40rpx 32rpx 20rpx;
-		text-align: center;
-	}
+	padding: 0rpx 32rpx 20rpx;
+	text-align: center;
+}
 
-	.version-text {
-		font-size: 22rpx;
-		color: #ccc;
-	}
+.version-text {
+	font-size: 22rpx;
+	color: #ccc;
+}
 
-	.auth-failed-error-btn-rpx {
+.auth-failed-error-btn-rpx {
 	font-size: 28rpx;
 	padding: 8rpx 24rpx;
 	border-radius: 6rpx;
