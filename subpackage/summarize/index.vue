@@ -64,6 +64,16 @@ export default {
         }
       })
     }
+    // 检查是否有预填充内容
+    const prefill = this.$store.state.summarize.prefillContent
+    if (prefill) {
+      if (this.textareaData && this.textareaData !== "# 标题") {
+        this.textareaData = this.textareaData + "\n\n---\n\n" + prefill
+      } else {
+        this.textareaData = prefill
+      }
+      this.$store.dispatch("clearPrefill")
+    }
   },
   methods: {
     submit: debounce(async function (e) {
