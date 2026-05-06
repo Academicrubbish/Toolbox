@@ -438,9 +438,111 @@ watch: {
 }
 ```
 
+## 学习专区（规划中）
+
+独立于现有 AI 辅导的新模块，提供**多来源内容采集 → 预览编辑 → 用户选择处理模式（保存或 AI 处理） → AI 智能处理**的完整工作流。
+
+多来源输入能力（OCR 拍照、链接导入）同时下沉到现有 depart 文档新增流程中，作为基础能力被所有场景复用。
+
+### 目录结构（规划）
+
+```
+subpackage/learnZone/       # 学习专区分包
+  index/                    # 专区首页（文档列表）
+  source/                   # 内容来源选择页
+  preview/                  # 预览编辑页（复用 md-editor）
+  result/                   # AI 处理结果页
+api/learnDocument.js        # 学习文档 API（集合：learn_document）
+store/modules/learnZone.js  # 学习专区 Vuex 模块（规划中）
+```
+
+### 数据库集合（规划）
+
+**`learn_document`** — 学习文档
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `title` | string | 文档标题 |
+| `source_type` | string | 来源类型：`note`（已有笔记）/ `ocr`（拍照识别）/ `link`（链接解析） |
+| `source_ref` | string | 来源引用（recordId / OCR批次ID / 链接URL） |
+| `content` | string | 文档内容（Markdown） |
+| `ai_options` | array | 已使用的 AI 处理选项列表 |
+| `status` | string | `draft` / `confirmed` / `processing` / `completed` |
+| `createTime` | string | 创建时间 |
+| `updateTime` | string | 修改时间 |
+| `createBy` | string | 创建人 openid |
+
+**`learn_ocr_log`** — OCR 识别日志（depart 和学习专区共用）
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `document_id` | string | 关联 learn_document ID（学习专区场景），depart 场景为空 |
+| `image_urls` | array | 原始图片云存储路径列表 |
+| `raw_results` | array | GLM 视觉模型原始返回列表 |
+| `merged_content` | string | 合并后的 Markdown 内容 |
+| `status` | string | `pending` / `processing` / `done` / `failed` |
+| `error_msg` | string | 错误信息 |
+| `create_time` | number | 创建时间戳 |
+
+**`learn_ai_result`** — 学习专区 AI 处理结果
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `document_id` | string | 关联 learn_document ID |
+| `process_type` | string | 处理类型：`review`（归纳复习）/ `preview_expand`（预习扩展）等 |
+| `ai_result` | string | AI 生成结果（Markdown） |
+| `source_content` | string | 处理时的文档快照 |
+| `status` | string | `pending` / `success` / `error` |
+| `error_msg` | string | 错误信息 |
+| `create_time` | number | 创建时间戳 |
+| `complete_time` | number | 完成时间戳 |
+| `create_by` | string | 创建人 openid |
+
+### 云函数（规划）
+
+| 名称 | 说明 | 调用方式 |
+|------|------|---------|
+| `processOcr` | 调用 GLM-4.6V 视觉模型批量识别图片 → 合并输出 Markdown | `api/learnDocument.js` |
+| `parseWechatArticle` | 解析微信公众号文章链接 → 提取正文转为 Markdown | `api/learnDocument.js` |
+| `processLearnDocument` | 学习专区 AI 处理（归纳复习等），复用定时触发器 + 任务队列模式 | 定时触发器 |
+
+### 学习专区工作流
+
+```
+用户进入学习专区
+       │
+       ▼
+  ┌─────────────────────────────────────┐
+  │  第一步：内容采集                      │
+  │  ├── 从已有笔记选择（引用 record）       │
+  │  ├── OCR 批量拍照（GLM-4.6V-Flash）   │
+  │  └── 微信公众号链接（白名单解析）         │
+  └─────────────┬───────────────────────┘
+                ▼
+  ┌─────────────────────────────────────┐
+  │  第二步：预览编辑                      │
+  │  ├── 展示解析/识别后的 Markdown 内容    │
+  │  ├── 用户编辑修改（复用 md-editor）     │
+  │  └── 用户确认内容                      │
+  └─────────────┬───────────────────────┘
+                ▼
+  ┌─────────────────────────────────────┐
+  │  第三步：选择操作                      │
+  │  ├── 保存文档到学习专区                 │
+  │  └── AI 处理（v1：归纳复习）            │
+  │       ├── 生成精选笔记                  │
+  │       └── 生成针对性练习题              │
+  └─────────────────────────────────────┘
+```
+
+### 与现有模块的关系
+
+- **独立数据层**：学习专区使用 `learn_document` 等独立集合，不写入 `daily_record` 或 `ai_learn_logs`
+- **引用而非复制**：选择"已有笔记"时，只存储 `source_ref`（recordId），不复制内容
+- **复用组件**：预览编辑页复用 `md-editor` 组件
+- **复用架构**：AI 异步处理复用现有的定时触发器 + 任务队列模式
+- **复用 GLM**：OCR 使用 GLM-4.6V 视觉模型，无需新增供应商
+
 ---
 <!-- codemap-meta
 commit: bf3e7d09ed6c5f91a8c8ec2e1aecf6d9214e0ffb
-updated: 2026-04-14
-note: 增量更新 - 新增云函数(3个)、数据库表结构、AI异步架构
+updated: 2026-05-06
+note: 增量更新 - 新增学习专区规划（数据模型、云函数、工作流、目录结构）
 -->
