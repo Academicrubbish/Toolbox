@@ -242,8 +242,10 @@ form.vue → store.cachePrefill({ content, source }) → summarize/index.vue
 | `wx.chooseMedia` 失败 | 用户取消时不做处理；权限拒绝提示"请在设置中开启相机权限" |
 | 图片上传云存储失败 | 停止后续上传，提示"图片上传失败，请重试"，已上传的图片不删除（下次重试时复用） |
 | `processOcr` 云函数调用失败 | catch 错误，Toast 提示"识别失败，请重试或选择手动输入" |
+| OCR 客户端超时（90s） | 提示"识别超时，请减少图片数量或稍后重试" |
 | GLM 视觉模型返回空/异常 | 云函数内部检查返回内容，为空则标记 `status: failed`，返回错误码 |
 | `parseWechatArticle` 云函数调用失败 | catch 错误，Toast 提示"链接解析失败，请重试或选择手动输入" |
+| 链接解析客户端超时（60s） | 提示"解析超时，请稍后重试" |
 | 智谱网页阅读 API 超时/失败 | 云函数设置 30s 超时，失败返回 `{ code: -1, message: "文章获取失败" }` |
 | GLM 清洗失败 | 跳过清洗步骤，直接返回网页阅读 API 的原始内容 |
 | `learn_ocr_log` 写入失败 | 不影响主流程，云函数内部 try-catch，OCR 日志写入失败仍返回识别内容 |
@@ -258,13 +260,45 @@ form.vue → store.cachePrefill({ content, source }) → summarize/index.vue
 ### 客户端错误处理模式
 
 ```javascript
-// form.vue 中统一模式
+// form.vue 中统一模式（带超时保护）
+function withTimeout(promise, ms, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms))
+  ])
+}
+
+// OCR 流程示例
 try {
-  uni.showLoading({ title: '正在识别...' })
-  const res = await processOcr({ imageUrls, openid })
+  // 阶段1：逐张上传，展示上传进度
+  for (let i = 0; i < tempFiles.length; i++) {
+    uni.showLoading({ title: `正在上传第 ${i + 1}/${total} 张...`, mask: true })
+    await uniCloud.uploadFile(...)
+  }
+  // 阶段2：识别，展示预估时间
+  uni.showLoading({ title: `正在识别 ${total} 张图片（预计约${total * 4}s）`, mask: true })
+  await withTimeout(
+    callProcessOcr({ imageUrls, source: 'depart' }),
+    90000,
+    '识别超时，请减少图片数量或稍后重试'
+  )
   // 成功 → 预填充跳转
 } catch (err) {
-  uni.showToast({ title: '识别失败，请重试', icon: 'none' })
+  uni.showToast({ title: err.message || '识别失败，请重试', icon: 'none' })
+} finally {
+  uni.hideLoading()
+}
+
+// 链接导入流程示例
+try {
+  uni.showLoading({ title: '正在解析文章（预计约15s）', mask: true })
+  await withTimeout(
+    callParseWechatArticle({ url }),
+    60000,
+    '解析超时，请稍后重试'
+  )
+} catch (err) {
+  uni.showToast({ title: err.message || '解析失败，请重试', icon: 'none' })
 } finally {
   uni.hideLoading()
 }
@@ -275,3 +309,4 @@ try {
 | 日期 | 作者 | 变更内容 |
 |------|------|---------|
 | 2026-05-06 | yuanchuang | 初始版本 |
+| 2026-05-07 | yuanchuang | 更新客户端错误处理模式：增加 withTimeout 超时保护、分阶段 loading 进度展示 |
