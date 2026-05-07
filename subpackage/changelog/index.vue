@@ -17,6 +17,15 @@
 
       <!-- 日志列表 -->
       <view v-else-if="logList.length > 0" class="log-list">
+        <!-- 交流提示 -->
+        <view class="qq-group-bar">
+          <text class="qq-group-desc">「个人作品，功能建议、Bug 反馈、使用交流都欢迎」</text>
+          <view class="qq-group-row">
+            <text class="cuIcon-group text-blue margin-right-xs"></text>
+            <text class="qq-group-label">QQ 交流群：</text>
+            <text class="qq-group-number" @tap="copyGroupNumber">1092487718</text>
+          </view>
+        </view>
         <view v-for="item in logList" :key="item._id" class="log-card">
           <!-- 顶部：版本号 + 日期 -->
           <view class="log-header">
@@ -55,6 +64,12 @@ export default {
     this.loadChangelog();
   },
   methods: {
+    copyGroupNumber() {
+      uni.setClipboardData({
+        data: '1092487718',
+        success: () => uni.showToast({ title: '已复制群号', icon: 'success' })
+      });
+    },
     loadChangelog() {
       this.loading = true;
       getChangelogList()
@@ -82,7 +97,7 @@ export default {
 };
 </script>
 
-<style lang="scss" scoped>
+<style lang="scss">
 .changelog-container {
   min-height: 100vh;
   background: #ffffff;
@@ -135,6 +150,39 @@ export default {
   color: #ffffff;
   font-size: 24rpx;
   font-weight: 500;
+}
+
+/* QQ 交流群提示 */
+.qq-group-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24rpx;
+  margin-bottom: 24rpx;
+  background: #eef6ff;
+  border-radius: 16rpx;
+}
+
+.qq-group-desc {
+  font-size: 26rpx;
+  color: #333;
+  margin-bottom: 16rpx;
+}
+
+.qq-group-row {
+  display: flex;
+  align-items: center;
+}
+
+.qq-group-label {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.qq-group-number {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #007aff;
 }
 
 .log-date {

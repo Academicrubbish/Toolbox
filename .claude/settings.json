@@ -24,14 +24,5 @@
       "Bash(git clean *)",
       "Bash(git branch -D *)"
     ]
-  },
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "command": "bash .claude/scripts/update-docs-index.sh \"$CLAUDE_FILE_PATH\"",
-        "description": "自动更新 docs/INDEX.md"
-      }
-    ]
   }
 }

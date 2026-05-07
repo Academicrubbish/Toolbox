@@ -77,10 +77,10 @@
                 <text class="text-red margin-left-xs">*</text>
               </view>
               <view class="form-item-content">
-                <view class="rich-text-entry" @tap="goSummarize">
+                <view class="rich-text-entry" @tap="handleAddSummarize">
                   <view class="rich-text-content">
                     <text v-if="formData.summarizeId" class="text-gray">查看/编辑总结内容</text>
-                    <text v-else class="text-gray">点击添加富文本总结</text>
+                    <text v-else class="text-gray">添加总结内容</text>
                   </view>
                   <view class="rich-text-icon">
                     <text class="cuIcon-right text-gray"></text>
@@ -106,6 +106,9 @@
 <script>
 import { addRecord, getRecord, updateRecord } from "@/api/record";
 import { getDictCategoryList } from "@/api/dictCategory";
+import { callProcessOcr, callParseWechatArticle } from "@/api/ocr";
+import { callGenerateLearnNote } from "@/api/aiLearn";
+import { getSummarize } from "@/api/summarize";
 import { tagColorClasses } from "@/utils/tagColors";
 import { debounce } from "lodash-es";
 import moment from "moment";
@@ -178,6 +181,107 @@ export default {
     },
   },
   methods: {
+    // AI 辅导引导
+    async goAiLearn(recordId) {
+      if (!recordId) {
+        uni.navigateBack({ delta: 1 });
+        return;
+      }
+      try {
+        uni.showLoading({ title: "正在提交...", mask: true });
+        const sumRes = await getSummarize(this.formData.summarizeId);
+        const content = sumRes.result && sumRes.result.data && sumRes.result.data[0] ? sumRes.result.data[0].content : "";
+        await callGenerateLearnNote({ content, recordId });
+        uni.hideLoading();
+        uni.showToast({ title: "已提交，AI 正在生成...", icon: "none" });
+        setTimeout(() => uni.navigateBack({ delta: 1 }), 1500);
+      } catch (err) {
+        uni.hideLoading();
+        uni.showToast({ title: "提交失败，可稍后在详情页触发", icon: "none" });
+        setTimeout(() => uni.navigateBack({ delta: 1 }), 1500);
+      }
+    },
+    // 选择输入方式
+    handleAddSummarize() {
+      if (this.formData.summarizeId) {
+        this.goSummarize();
+        return;
+      }
+      uni.showActionSheet({
+        itemList: ['手动输入', '拍照识别', '导入链接'],
+        success: (res) => {
+          if (res.tapIndex === 0) this.goSummarize();
+          else if (res.tapIndex === 1) this.handleOcr();
+          else if (res.tapIndex === 2) this.handleLinkImport();
+        }
+      });
+    },
+    // OCR 拍照识别
+    async handleOcr() {
+      try {
+        const res = await new Promise((resolve, reject) => {
+          uni.chooseMedia({ count: 9, mediaType: ['image'], success: resolve, fail: reject });
+        });
+        if (!res.tempFiles || res.tempFiles.length === 0) return;
+
+        uni.showLoading({ title: '正在上传图片...', mask: true });
+        const imageUrls = [];
+        for (const file of res.tempFiles) {
+          const uploadRes = await uniCloud.uploadFile({
+            filePath: file.tempFilePath,
+            cloudPath: 'ocr/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.jpg'
+          });
+          imageUrls.push(uploadRes.fileID);
+        }
+
+        uni.showLoading({ title: '正在识别 ' + imageUrls.length + ' 张图片...', mask: true });
+        const ocrRes = await callProcessOcr({ imageUrls, source: 'depart' });
+        uni.hideLoading();
+
+        this.$store.dispatch('cachePrefill', {
+          content: ocrRes.data.content,
+          source: 'ocr',
+          ocrLogId: ocrRes.data.logId
+        });
+        this.goSummarize();
+      } catch (err) {
+        uni.hideLoading();
+        if (err && err.errMsg && err.errMsg.includes('cancel')) return;
+        uni.showToast({ title: (err && err.message) || '识别失败，请重试', icon: 'none' });
+      }
+    },
+    // 链接导入
+    async handleLinkImport() {
+      try {
+        const res = await new Promise((resolve) => {
+          uni.showModal({ title: '导入链接', editable: true, placeholderText: '请粘贴微信公众号文章链接', success: resolve });
+        });
+        if (!res.confirm || !res.content) return;
+        const url = res.content.trim();
+
+        if (!url.includes('mp.weixin.qq.com')) {
+          uni.showToast({ title: '暂不支持该链接，目前仅支持微信公众号文章', icon: 'none' });
+          return;
+        }
+
+        uni.showLoading({ title: '正在解析文章...', mask: true });
+        const parseRes = await callParseWechatArticle({ url });
+        uni.hideLoading();
+
+        this.$store.dispatch('cachePrefill', {
+          content: parseRes.data.content,
+          source: 'link',
+          title: parseRes.data.title
+        });
+        if (parseRes.data.title && !this.formData.title.trim()) {
+          this.formData.title = parseRes.data.title;
+        }
+        this.goSummarize();
+      } catch (err) {
+        uni.hideLoading();
+        uni.showToast({ title: (err && err.message) || '解析失败，请重试', icon: 'none' });
+      }
+    },
     // 加载标签列表
     loadTagList() {
       getDictCategoryList()
@@ -314,16 +418,20 @@ export default {
             addRecord(data)
               .then((res) => {
                 if (res.result && (res.result.code === 0 || res.result.code === undefined)) {
-                  uni.showToast({
-                    title: "添加成功",
-                    icon: "success",
-                    mask: true,
+                  const recordId = res.result.id || res.result.data;
+                  uni.showModal({
+                    title: "记录保存成功",
+                    content: "是否使用 AI 辅导学习？",
+                    confirmText: "立即辅导",
+                    cancelText: "稍后再说",
+                    success: (modalRes) => {
+                      if (modalRes.confirm) {
+                        this.goAiLearn(recordId);
+                      } else {
+                        uni.navigateBack({ delta: 1 });
+                      }
+                    }
                   });
-                  setTimeout(() => {
-                    uni.navigateBack({
-                      delta: 1,
-                    });
-                  }, 1000);
                 } else {
                   uni.showToast({
                     title: res.result?.msg || "添加失败",
