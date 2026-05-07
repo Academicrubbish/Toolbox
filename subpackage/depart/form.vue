@@ -107,6 +107,7 @@
 import { addRecord, getRecord, updateRecord } from "@/api/record";
 import { getDictCategoryList } from "@/api/dictCategory";
 import { callProcessOcr, callParseWechatArticle } from "@/api/ocr";
+import { fetchWebPage } from "@/utils/web-reader.js";
 import { callGenerateLearnNote } from "@/api/aiLearn";
 import { getSummarize } from "@/api/summarize";
 import { tagColorClasses } from "@/utils/tagColors";
@@ -181,6 +182,13 @@ export default {
     },
   },
   methods: {
+    // 带超时的 Promise 包装
+    withTimeout(promise, ms, message) {
+      return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms))
+      ]);
+    },
     // AI 辅导引导
     async goAiLearn(recordId) {
       if (!recordId) {
@@ -224,22 +232,35 @@ export default {
         });
         if (!res.tempFiles || res.tempFiles.length === 0) return;
 
-        uni.showLoading({ title: '正在上传图片...', mask: true });
+        const total = res.tempFiles.length;
         const imageUrls = [];
-        for (const file of res.tempFiles) {
+
+        // 阶段1：逐张上传，展示上传进度
+        for (let i = 0; i < total; i++) {
+          uni.showLoading({ title: `正在上传第 ${i + 1}/${total} 张...`, mask: true });
           const uploadRes = await uniCloud.uploadFile({
-            filePath: file.tempFilePath,
+            filePath: res.tempFiles[i].tempFilePath,
             cloudPath: 'ocr/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.jpg'
           });
           imageUrls.push(uploadRes.fileID);
         }
 
-        uni.showLoading({ title: '正在识别 ' + imageUrls.length + ' 张图片...', mask: true });
-        const ocrRes = await callProcessOcr({ imageUrls, source: 'depart' });
+        // 阶段2：识别，展示预估时间
+        const estimatedSeconds = total * 4;
+        uni.showLoading({ title: `正在识别 ${total} 张图片（预计约${estimatedSeconds}s）`, mask: true });
+        const ocrRes = await this.withTimeout(
+          callProcessOcr({ imageUrls, source: 'depart' }),
+          90000,
+          '识别超时，请减少图片数量或稍后重试'
+        );
         uni.hideLoading();
 
+        // 将原图拼成 Markdown 图片语法，放在识别文本上方
+        const imageMarkdown = imageUrls.map(url => '![](' + url + ')').join('\n\n')
+        const fullContent = imageMarkdown + '\n\n---\n\n' + ocrRes.data.content
+
         this.$store.dispatch('cachePrefill', {
-          content: ocrRes.data.content,
+          content: fullContent,
           source: 'ocr',
           ocrLogId: ocrRes.data.logId
         });
@@ -264,8 +285,25 @@ export default {
           return;
         }
 
-        uni.showLoading({ title: '正在解析文章...', mask: true });
-        const parseRes = await callParseWechatArticle({ url });
+        uni.showLoading({ title: '正在获取文章...', mask: true });
+
+        // 客户端直接请求 + 解析（不走云函数）
+        const article = await this.withTimeout(
+          fetchWebPage(url),
+          15000,
+          '获取文章超时，请检查网络'
+        );
+
+        // 用云函数 GLM 清洗噪声
+        uni.showLoading({ title: '正在清洗文章（约10s）', mask: true });
+        const parseRes = await this.withTimeout(
+          callParseWechatArticle({
+            html: article.content,
+            title: article.title
+          }),
+          60000,
+          '清洗超时，请稍后重试'
+        );
         uni.hideLoading();
 
         this.$store.dispatch('cachePrefill', {
