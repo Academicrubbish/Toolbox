@@ -540,9 +540,64 @@ store/modules/learnZone.js  # 学习专区 Vuex 模块（规划中）
 - **复用架构**：AI 异步处理复用现有的定时触发器 + 任务队列模式
 - **复用 GLM**：OCR 使用 GLM-4.6V 视觉模型，无需新增供应商
 
+## UI 全站重构（规划中）
+
+基于 Apple HIG 设计语言，对全部 9 个页面进行视觉和交互重构。不涉及后端改动。
+
+详细文档：[spec](ui-redesign/spec.md) / [design](ui-redesign/design.md) / [PRD](../ui-redesign-prd.md)
+
+### 核心改动
+
+- **Design Tokens**：新建 `styles/tokens.scss`，统一颜色/圆角/间距/字体/阴影/动画变量
+- **导航栏统一**：新建 `component/nav-bar/index.vue`（毛玻璃），替代全站 cu-custom
+- **侧边栏**：新建 `component/sidebar/index.vue`，替代首页左侧抽屉
+- **Sheet 快速创建**：新建 `component/create-sheet/index.vue`，FAB 触发，替代跳转表单页
+- **record-card 改造**：左侧色条 + 独立色值标签 + 长按菜单
+- **详情页重构**：Tip 工具栏 + AI 笔记内联展示 + 代码块样式
+
+### 文件变更清单
+
+**新建文件**
+
+| 文件 | 说明 |
+|------|------|
+| `styles/tokens.scss` | Design Tokens（颜色/圆角/间距/字体/阴影/动画） |
+| `component/nav-bar/index.vue` | 毛玻璃导航栏（替代 cu-custom） |
+| `component/sidebar/index.vue` | 侧边栏（替代首页抽屉） |
+| `component/create-sheet/index.vue` | 快速创建 Sheet |
+
+**改造文件**
+
+| 文件 | 改动程度 |
+|------|---------|
+| `pages/home/index.vue` | 重构 |
+| `subpackage/depart/detail.vue` | 重构 |
+| `subpackage/depart/form.vue` | 样式更新 |
+| `subpackage/summarize/index.vue` | 样式更新 |
+| `subpackage/dictCategory/index.vue` | 布局+样式重构 |
+| `subpackage/dictCategory/form.vue` | 样式更新 |
+| `subpackage/depart/learn-result.vue` | 样式更新 |
+| `subpackage/depart/learn-result-detail.vue` | 样式更新 |
+| `subpackage/changelog/index.vue` | 样式更新 |
+| `component/record-card/index.vue` | 样式改造 |
+| `component/fab-button/index.vue` | 样式改造 |
+| `utils/tagColors.js` | 色板从 ColorUI 类名→独立色值对象 |
+| `utils/format.js` | 新增 formatRelativeTime/formatSmartDate |
+| `uni.scss` | 引入 tokens.scss |
+
+### 实施分期
+
+```
+P0 (Tokens + nav-bar)  →  P1 (首页重构)  →  P2 (Sheet)
+                            ↓                   ↓
+                       P4 (子页面视觉)      P3 (详情页)
+                            ↓
+                       P5 (ColorUI 清理)
+```
+
 ---
 <!-- codemap-meta
 commit: bf3e7d09ed6c5f91a8c8ec2e1aecf6d9214e0ffb
-updated: 2026-05-06
-note: 增量更新 - 新增学习专区规划（数据模型、云函数、工作流、目录结构）
+updated: 2026-05-13
+note: 增量更新 - 新增 UI 全站重构规划（Design Tokens、导航栏、侧边栏、Sheet、详情页重构）
 -->
