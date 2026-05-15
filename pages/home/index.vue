@@ -3,7 +3,7 @@
 
 		<view class="record-container">
 
-			<z-paging ref="paging" v-model="recordList" @query="queryList">
+			<z-paging ref="paging" v-model="flatRecordList" @query="queryList">
 				<view slot="top">
 					<cu-custom bgColor="bg-gradual-blue">
 						<view slot="left" class="action" @tap="handleShowDrawer">
@@ -46,7 +46,7 @@
 				</view>
 
 				<!-- 记录列表 -->
-				<view v-for="item in recordList" :key="item.date" class="date-group">
+				<view v-for="item in groupedRecordList" :key="item.date" class="date-group">
 					<!-- 日期标题 -->
 					<view class="date-header">
 						<view class="date-icon">
@@ -174,7 +174,7 @@ export default {
 			StatusBar: this.StatusBar || 0,
 			CustomBar: this.CustomBar || 0,
 			modalName: null,
-			recordList: [],
+			flatRecordList: [],
 			tagMap: {},
 			popButton: ["编辑", "删除"],
 			pickerRecordItem: null,
@@ -200,6 +200,9 @@ export default {
 		},
 		isGuest() {
 			return this.$store.state.user.isGuest;
+		},
+		groupedRecordList() {
+			return groupRecordsByDate(this.flatRecordList);
 		}
 	},
 
@@ -276,8 +279,7 @@ export default {
 					this.isLoadFailed = false;
 					const list = res.result.data || [];
 					this.fetchAiResults(list);
-					const groupedRecords = groupRecordsByDate(list);
-					this.$refs.paging.complete(groupedRecords);
+					this.$refs.paging.complete(list);
 				})
 				.catch((err) => {
 					const errorMessage = err?.message || err?.errMsg || String(err || '');
