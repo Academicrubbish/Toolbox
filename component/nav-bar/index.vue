@@ -10,7 +10,7 @@
         <view class="nav-bar__left">
           <slot name="left">
             <view v-if="showMenu" class="nav-bar__menu" @tap="handleMenuClick">
-              <text class="cuIcon-sort"></text>
+              <text class="iconfont icon-menus"></text>
             </view>
             <view v-if="showBack" class="nav-bar__back" @tap="handleBack">
               <text class="nav-bar__back-arrow">←</text>

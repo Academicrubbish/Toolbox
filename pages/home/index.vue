@@ -103,12 +103,9 @@
 			<!-- 侧边栏 -->
 			<sidebar
 				:visible="sidebarVisible"
-				:tagList="tagListArray"
-				:recordCount="totalRecordCount"
 				:isGuest="isGuest"
 				:appVersion="appVersion"
 				@close="sidebarVisible = false"
-				@tag-select="handleTagFilter"
 				@quick-action="handleQuickAction"
 				@navigate="handleNavigate"
 				@login="handleAuthorize"

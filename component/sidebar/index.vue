@@ -1,17 +1,6 @@
 <template>
   <view v-if="domVisible" class="sidebar-overlay" :class="{ 'sidebar-overlay--visible': showPanel }" @tap="handleClose">
     <view class="sidebar" :class="{ 'sidebar--visible': showPanel }" @tap.stop @transitionend="onTransitionEnd">
-      <!-- 头部 -->
-      <view class="sidebar-header">
-        <view class="sidebar-avatar">
-          <text class="cuIcon-avatarfill"></text>
-        </view>
-        <view class="sidebar-info">
-          <text class="sidebar-title">我的知识库</text>
-          <text class="sidebar-stat">{{ recordCount }} 条记录</text>
-        </view>
-      </view>
-
       <!-- 游客提示 -->
       <view v-if="isGuest" class="guest-tip">
         <view class="guest-tip-content">
@@ -21,35 +10,8 @@
         <view class="guest-tip-btn" @tap="handleLogin">授权登录</view>
       </view>
 
-      <!-- 标签筛选 -->
-      <view class="sidebar-section">
-        <view class="sidebar-section-title">
-          <text class="text-gray text-xs">标签筛选</text>
-        </view>
-        <view
-          class="sidebar-tag-item"
-          :class="{ 'sidebar-tag-item--active': selectedTagId === '' }"
-          @tap="handleTagSelect('')"
-        >
-          <view class="sidebar-tag-dot" :style="'background:#8E8E93'"></view>
-          <text class="sidebar-tag-name">全部记录</text>
-          <text class="sidebar-tag-count">{{ recordCount }}</text>
-        </view>
-        <view
-          v-for="tag in tagList"
-          :key="tag._id"
-          class="sidebar-tag-item"
-          :class="{ 'sidebar-tag-item--active': selectedTagId === tag._id }"
-          @tap="handleTagSelect(tag._id)"
-        >
-          <view class="sidebar-tag-dot" :style="'background:' + getTagDotColor(tag._id)"></view>
-          <text class="sidebar-tag-name">{{ tag.name }}</text>
-          <text class="sidebar-tag-count">{{ getTagRecordCount(tag._id) }}</text>
-        </view>
-      </view>
-
       <!-- 快捷操作 -->
-      <view class="sidebar-section">
+      <view class="sidebar-section" style="margin-top: 80rpx;">
         <view class="sidebar-section-title">
           <text class="text-gray text-xs">快捷操作</text>
         </view>
@@ -110,22 +72,12 @@
 </template>
 
 <script>
-import { getTagColor } from '@/utils/tagColors.js';
-
 export default {
   name: 'Sidebar',
   props: {
     visible: {
       type: Boolean,
       default: false
-    },
-    tagList: {
-      type: Array,
-      default: () => []
-    },
-    recordCount: {
-      type: Number,
-      default: 0
     },
     isGuest: {
       type: Boolean,
@@ -138,7 +90,6 @@ export default {
   },
   data() {
     return {
-      selectedTagId: '',
       domVisible: false,
       showPanel: false
     };
@@ -154,11 +105,6 @@ export default {
         this.domVisible = false;
       }
     },
-    handleTagSelect(tagId) {
-      this.selectedTagId = tagId;
-      this.$emit('tag-select', tagId);
-      this.$emit('close');
-    },
     handleQuickAction(action) {
       this.$emit('quick-action', action);
       this.$emit('close');
@@ -170,16 +116,6 @@ export default {
     handleLogin() {
       this.$emit('login');
       this.$emit('close');
-    },
-    getTagDotColor(tagId) {
-      const index = this.tagList.findIndex(t => t._id === tagId);
-      if (index === -1) return '#8E8E93';
-      return getTagColor(index).bar;
-    },
-    getTagRecordCount(tagId) {
-      // 由父组件通过 tagList 传入的 recordCount 字段提供
-      const tag = this.tagList.find(t => t._id === tagId);
-      return tag?.recordCount || 0;
     },
     copyGroupNumber() {
       uni.setClipboardData({
@@ -245,45 +181,6 @@ export default {
     transform: translateX(0);
   }
 
-  &-header {
-    display: flex;
-    align-items: center;
-    padding: $spacing-lg $spacing-lg $spacing-md;
-    padding-top: calc(#{$spacing-lg} + constant(safe-area-inset-top));
-    padding-top: calc(#{$spacing-lg} + env(safe-area-inset-top));
-    border-bottom: 0.5px solid $color-divider;
-
-    .sidebar-avatar {
-      width: 48px;
-      height: 48px;
-      border-radius: $radius-avatar;
-      background: $color-primary-light;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-      color: $color-primary;
-    }
-
-    .sidebar-info {
-      margin-left: $spacing-md;
-
-      .sidebar-title {
-        font-size: 17px;
-        font-weight: 600;
-        color: $color-text-primary;
-        display: block;
-      }
-
-      .sidebar-stat {
-        font-size: 13px;
-        color: $color-text-tertiary;
-        margin-top: 2px;
-        display: block;
-      }
-    }
-  }
-
   // 游客提示
   .guest-tip {
     margin: $spacing-md $spacing-md 0;
@@ -328,47 +225,6 @@ export default {
     &-title {
       padding: 0 $spacing-sm;
       margin-bottom: $spacing-sm;
-    }
-  }
-
-  &-tag-item {
-    display: flex;
-    align-items: center;
-    padding: $spacing-sm $spacing-sm;
-    border-radius: $radius-button;
-    transition: background $duration-fast;
-
-    &:active {
-      background: $color-bg-input;
-    }
-
-    &--active {
-      background: $color-primary-light;
-
-      .sidebar-tag-name {
-        color: $color-primary;
-        font-weight: 600;
-      }
-    }
-
-    .sidebar-tag-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      margin-right: $spacing-sm;
-      flex-shrink: 0;
-    }
-
-    .sidebar-tag-name {
-      flex: 1;
-      font-size: 15px;
-      color: $color-text-primary;
-    }
-
-    .sidebar-tag-count {
-      font-size: 12px;
-      color: $color-text-tertiary;
-      margin-left: auto;
     }
   }
 
