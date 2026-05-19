@@ -15,22 +15,26 @@ export default {
 <style lang="scss" scoped>
 .fab-button {
   position: fixed;
-  bottom: 40rpx;
-  right: 40rpx;
-  width: 112rpx;
-  height: 112rpx;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #39b54a 0%, #8dc63f 100%);
-  box-shadow: 0 8rpx 24rpx rgba(57, 181, 74, 0.4);
+  bottom: $spacing-xl;
+  right: $spacing-xl;
+  width: 56px;
+  height: 56px;
+  border-radius: $radius-card;
+  background: $color-primary;
+  box-shadow: $shadow-fab;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 99;
-  transition: all 0.3s ease;
+  z-index: $z-fab;
+  transition: all 0.2s ease;
+
+  &:active {
+    transform: scale(0.95);
+  }
 
   .fab-icon {
     color: #ffffff;
-    font-size: 48rpx;
+    font-size: 28px;
     font-weight: 300;
   }
 }

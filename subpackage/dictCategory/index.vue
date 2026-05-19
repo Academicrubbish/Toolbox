@@ -9,10 +9,7 @@
 -->
 <template>
   <view class="tag-container">
-    <cu-custom bgColor="bg-gradual-pink" :isBack="true">
-      <block slot="backText">返回</block>
-      <block slot="content">标签管理</block>
-    </cu-custom>
+    <nav-bar title="标签管理" showBack />
 
     <!-- 标签列表 -->
     <view class="tag-list-container">
@@ -28,27 +25,60 @@
       </view>
       
       <!-- 标签卡片列表 -->
-      <view v-else class="tag-card-list">
-        <view 
-          v-for="(item, index) in tagList" 
-          :key="item._id" 
-          class="tag-card shadow-warp"
-          :class="{ 'tag-card-public': isPublicTag(item) }"
-          @tap="handleTagClick(item)"
-          @longpress="handleLongPress($event, item)"
-        >
-          <view class="tag-card-header">
-            <view class="tag-badge" :class="tagColorClasses[index % tagColorClasses.length]">
-              <text class="tag-name">{{ item.name }}</text>
-              <text v-if="isPublicTag(item)" class="tag-public-badge">公共</text>
+      <view v-else class="tag-list">
+        <!-- 公共标签区域 -->
+        <view v-if="publicTags.length > 0" class="section">
+          <text class="section-title text-gray text-xs">公共标签</text>
+          <view
+            v-for="(item, index) in publicTags"
+            :key="item._id"
+            class="tag-item"
+            @tap="handleTagClick(item)"
+          >
+            <view class="tag-dot" :style="'background:' + getTagColor(index).bar"></view>
+            <view class="tag-item-content">
+              <view class="tag-item-header">
+                <text class="tag-item-name">{{ item.name }}</text>
+                <view class="public-badge">
+                  <text class="text-xs">公共</text>
+                </view>
+              </view>
+              <view class="tag-item-meta">
+                <text class="text-gray text-xs">公共标签，不可操作</text>
+              </view>
+            </view>
+            <view class="tag-item-arrow">
+              <text class="cuIcon-right text-gray"></text>
             </view>
           </view>
-          <view v-if="item.description" class="tag-card-body">
-            <text class="tag-desc text-gray text-sm">{{ item.description }}</text>
-          </view>
-          <view class="tag-card-footer">
-            <text v-if="isPublicTag(item)" class="text-gray text-xs">公共标签，不可操作</text>
-            <text v-else class="text-gray text-xs">点击编辑 · 长按删除</text>
+        </view>
+
+        <!-- 个人标签区域 -->
+        <view v-if="personalTags.length > 0" class="section">
+          <text v-if="publicTags.length > 0" class="section-title text-gray text-xs">个人标签</text>
+          <view
+            v-for="(item, index) in personalTags"
+            :key="item._id"
+            class="tag-item"
+            :class="{ 'tag-item-public': isPublicTag(item) }"
+            @tap="handleTagClick(item)"
+            @longpress="handleLongPress($event, item)"
+          >
+            <view class="tag-dot" :style="'background:' + getTagColor(index).bar"></view>
+            <view class="tag-item-content">
+              <view class="tag-item-header">
+                <text class="tag-item-name">{{ item.name }}</text>
+              </view>
+              <view v-if="item.description" class="tag-item-desc">
+                <text class="text-gray text-xs">{{ item.description }}</text>
+              </view>
+              <view class="tag-item-meta">
+                <text class="text-gray text-xs">点击编辑 · 长按删除</text>
+              </view>
+            </view>
+            <view class="tag-item-arrow">
+              <text class="cuIcon-right text-gray"></text>
+            </view>
           </view>
         </view>
       </view>
@@ -77,14 +107,16 @@
 
 <script>
 import { getDictCategoryList, delDictCategory } from "@/api/dictCategory.js";
-import { tagColorClasses } from "@/utils/tagColors";
+import { getTagColor } from "@/utils/tagColors";
 import ContextPopup from '@/component/context-popup/index.vue';
 import FabButton from '@/component/fab-button/index.vue';
+import NavBar from '@/component/nav-bar/index.vue';
 
 export default {
   components: {
     ContextPopup,
-    FabButton
+    FabButton,
+    NavBar,
   },
   data() {
     return {
@@ -105,9 +137,13 @@ export default {
     isTagListArray() {
       return Array.isArray(this.tagList);
     },
-    // 标签颜色类数组（从公共工具文件导入）
-    tagColorClasses() {
-      return tagColorClasses;
+    // 公共标签
+    publicTags() {
+      return this.tagList.filter(item => this.isPublicTag(item));
+    },
+    // 个人标签
+    personalTags() {
+      return this.tagList.filter(item => !this.isPublicTag(item));
     },
   },
   onLoad() {
@@ -118,6 +154,7 @@ export default {
     this.loadTagList();
   },
   methods: {
+    getTagColor,
     // 加载标签列表
     loadTagList() {
       getDictCategoryList()
@@ -263,12 +300,86 @@ export default {
 .tag-container {
   position: relative;
   min-height: 100vh;
-  background: linear-gradient(to bottom, #f5f7fa 0%, #f1f1f1 100%);
+  background: $color-bg-page;
   padding-bottom: 160rpx;
 }
 
 .tag-list-container {
   padding: 30rpx 30rpx 0;
+}
+
+/* 标签列表 - 单列布局 */
+.tag-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+  padding-bottom: 40rpx;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.section-title {
+  padding: 8rpx 4rpx;
+  font-weight: 500;
+}
+
+/* 标签项 */
+.tag-item {
+  background: $color-bg-card;
+  border-radius: $radius-card;
+  padding: 24rpx 28rpx;
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  box-shadow: $shadow-card;
+}
+
+.tag-dot {
+  width: 12rpx;
+  height: 40rpx;
+  border-radius: 6rpx;
+  flex-shrink: 0;
+}
+
+.tag-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.tag-item-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 4rpx;
+}
+
+.tag-item-name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: $color-text-primary;
+}
+
+.public-badge {
+  background: $color-bg-input;
+  padding: 2rpx 12rpx;
+  border-radius: $radius-pill;
+  color: $color-text-tertiary;
+}
+
+.tag-item-desc {
+  margin-bottom: 8rpx;
+}
+
+.tag-item-meta {
+  font-size: 24rpx;
+}
+
+.tag-item-arrow {
+  flex-shrink: 0;
 }
 
 /* 空状态样式 */
@@ -279,114 +390,33 @@ export default {
   justify-content: center;
   padding: 200rpx 60rpx;
   text-align: center;
-  
+
   .empty-icon {
     width: 160rpx;
     height: 160rpx;
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.02);
+    background: $color-bg-input;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 40rpx;
-    
+
     .cuIcon-tagfill {
       font-size: 80rpx;
+      color: $color-text-tertiary;
       opacity: 0.5;
     }
   }
-  
+
   .empty-text {
     display: flex;
     flex-direction: column;
-    
+
     text {
       &:not(:first-child) {
         margin-top: 20rpx;
       }
     }
-  }
-}
-
-/* 标签卡片列表 */
-.tag-card-list {
-  display: flex;
-  flex-wrap: wrap;
-  padding-bottom: 40rpx;
-  margin: 0 -12rpx;
-  
-  .tag-card {
-    flex: 0 0 calc(50% - 24rpx);
-    max-width: calc(50% - 24rpx);
-    margin: 0 12rpx 24rpx;
-  }
-}
-
-/* 标签卡片 */
-.tag-card {
-  background: #ffffff;
-  border-radius: 24rpx;
-  padding: 32rpx 24rpx 24rpx;
-  position: relative;
-  overflow: hidden;
-
-  /* 公共标签样式 */
-  &.tag-card-public {
-    background: #fafafa;
-  }
-
-  /* 卡片头部 */
-  .tag-card-header {
-    margin-bottom: 20rpx;
-    
-    .tag-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8rpx;
-      padding: 12rpx 24rpx;
-      border-radius: 40rpx;
-      font-size: 28rpx;
-      font-weight: 500;
-      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
-      position: relative;
-      
-      .tag-name {
-        font-weight: 600;
-      }
-      
-      .tag-public-badge {
-        font-size: 20rpx;
-        padding: 2rpx 8rpx;
-        background: rgba(255, 255, 255, 0.8);
-        border-radius: 8rpx;
-        color: #666;
-        font-weight: 400;
-        margin-left: 4rpx;
-      }
-    }
-  }
-  
-  /* 卡片主体 */
-  .tag-card-body {
-    min-height: 60rpx;
-    margin-bottom: 16rpx;
-    
-    .tag-desc {
-      line-height: 1.6;
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
-      line-clamp: 2;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-  }
-  
-  /* 卡片底部 */
-  .tag-card-footer {
-    padding-top: 16rpx;
-    border-top: 1rpx solid rgba(0, 0, 0, 0.05);
-    opacity: 0.6;
   }
 }
 

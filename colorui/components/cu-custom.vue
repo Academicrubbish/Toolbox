@@ -1,6 +1,6 @@
 <template>
 	<view>
-		<view class="cu-custom" :style="[{height:CustomBar + 'px'}]">
+		<view class="cu-custom" :style="'height:' + CustomBar + 'px'">
 			<view class="cu-bar fixed" :style="style" :class="[bgImage!=''?'none-bg text-white bg-img':'',bgColor]">
 				<view class="action" @tap="BackPage" v-if="isBack">
 					<text class="cuIcon-back"></text>
@@ -9,7 +9,7 @@
 				<view class="action" v-else>
 					<slot name="left"></slot>
 				</view>
-				<view class="content" :style="[{top:StatusBar + 'px'}]">
+				<view class="content" :style="'top:' + StatusBar + 'px'">
 					<slot name="content"></slot>
 				</view>
 				<slot name="right"></slot>

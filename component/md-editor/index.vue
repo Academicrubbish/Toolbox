@@ -87,9 +87,7 @@ export default {
         try {
           this.towxmlData = this.towxml(this.textareaData, "markdown", {
             events: {
-              tap: (e) => {
-                console.log("tap", e);
-              },
+              tap: () => {},
             },
           });
           
@@ -229,12 +227,15 @@ export default {
     },
   },
   watch: {
-    textareaData: function (newValue, oldValue) {
-      console.log("111", newValue);
-    },
-    textareaDataProp: function (newValue, oldValue) {
+    textareaDataProp: function (newValue) {
       this.textareaData = newValue;
     },
+  },
+  beforeDestroy() {
+    if (this.loadingTimer) {
+      clearTimeout(this.loadingTimer);
+      this.loadingTimer = null;
+    }
   },
 };
 </script>
@@ -245,7 +246,7 @@ export default {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: #fff;
+  background-color: #FFFFFF;
 }
 
 .toolbar {
@@ -253,6 +254,9 @@ export default {
   border: none;
   box-shadow: 0 0px 4px rgba(0, 0, 0, 0.157), 0 0px 4px rgba(0, 0, 0, 0.227);
   position: relative;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
 }
 
 .toolbar .iconfont {
@@ -325,7 +329,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #fff;
+  background-color: #FFFFFF;
 }
 
 .loading-content {

@@ -3,10 +3,7 @@
 -->
 <template>
   <view class="detail-container">
-    <cu-custom bgColor="bg-gradual-orange" :isBack="true">
-      <block slot="backText">返回</block>
-      <block slot="content">学习详情</block>
-    </cu-custom>
+    <nav-bar title="学习详情" showBack />
 
     <view class="detail-wrapper">
       <!-- 加载中 -->
@@ -26,7 +23,7 @@
         </view>
 
         <!-- AI生成内容 -->
-        <view v-if="resultData.status === 'success' && towxmlData" class="content-card shadow-warp">
+        <view v-if="resultData.status === 'success' && towxmlData" class="content-card">
           <view class="content-header">
             <view class="content-icon">
               <text class="cuIcon-creativefill text-orange"></text>
@@ -51,7 +48,7 @@
         </view>
 
         <!-- 错误信息 -->
-        <view v-if="resultData.status === 'error'" class="error-card shadow-warp">
+        <view v-if="resultData.status === 'error'" class="error-card">
           <text class="cuIcon-warnfill text-red" style="font-size: 60rpx;"></text>
           <text class="text-red margin-top">生成失败</text>
           <text class="text-gray text-sm margin-top-sm">{{ resultData.error_msg || '未知错误' }}</text>
@@ -102,8 +99,12 @@ import { getLearnResultDetail } from "@/api/aiLearn.js";
 import { callGenerateShareLink } from "@/api/share.js";
 import { downloadMarkdown } from "@/utils/download";
 import { formatTime } from "@/utils/format";
+import NavBar from "@/component/nav-bar/index.vue";
 
 export default {
+  components: {
+    NavBar,
+  },
   data() {
     return {
       logId: "",
@@ -193,7 +194,7 @@ export default {
 <style lang="scss" scoped>
 .detail-container {
   min-height: 100vh;
-  background: linear-gradient(to bottom, #f5f7fa 0%, #f1f1f1 100%);
+  background: $color-bg-page;
 }
 
 .detail-wrapper {
@@ -213,19 +214,19 @@ export default {
   display: flex;
   align-items: center;
   padding: 20rpx 28rpx;
-  border-radius: 16rpx;
+  border-radius: $radius-small;
   margin-bottom: 24rpx;
 
   &.status-bar-success {
-    background: rgba(76, 217, 100, 0.1);
+    background: $color-success-light;
   }
 
   &.status-bar-pending {
-    background: rgba(255, 157, 0, 0.1);
+    background: $color-warning-light;
   }
 
   &.status-bar-error {
-    background: rgba(255, 59, 48, 0.1);
+    background: $color-error-light;
   }
 
   .status-dot {
@@ -236,15 +237,15 @@ export default {
   }
 
   .dot-pending {
-    background: #ff9d00;
+    background: $color-warning;
   }
 
   .dot-success {
-    background: #4cd964;
+    background: $color-success;
   }
 
   .dot-error {
-    background: #999;
+    background: $color-text-tertiary;
   }
 
   .status-text {
@@ -260,9 +261,10 @@ export default {
 
 /* 内容卡片 */
 .content-card {
-  background: #ffffff;
-  border-radius: 24rpx;
+  background: $color-bg-card;
+  border-radius: $radius-card;
   overflow: hidden;
+  box-shadow: $shadow-card;
 }
 
 .content-header {
@@ -274,8 +276,8 @@ export default {
   .content-icon {
     width: 48rpx;
     height: 48rpx;
-    border-radius: 12rpx;
-    background: rgba(255, 157, 0, 0.1);
+    border-radius: $radius-button;
+    background: $color-warning-light;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -294,8 +296,8 @@ export default {
     display: flex;
     align-items: center;
     padding: 8rpx 16rpx;
-    border-radius: 8rpx;
-    background: rgba(0, 129, 255, 0.1);
+    border-radius: $radius-small;
+    background: $color-primary-light;
 
     .cuIcon-downloadfill {
       font-size: 28rpx;
@@ -303,7 +305,7 @@ export default {
     }
 
     .download-text {
-      color: #007aff;
+      color: $color-primary;
       font-weight: 500;
     }
   }
@@ -312,8 +314,8 @@ export default {
     display: flex;
     align-items: center;
     padding: 8rpx 16rpx;
-    border-radius: 8rpx;
-    background: rgba(48, 190, 100, 0.1);
+    border-radius: $radius-small;
+    background: $color-success-light;
     margin-left: 12rpx;
 
     &.share-btn-disabled {
@@ -327,7 +329,7 @@ export default {
     }
 
     .share-btn-text {
-      color: #30be64;
+      color: $color-success;
       font-weight: 500;
     }
   }
@@ -344,21 +346,23 @@ export default {
     ::v-deep img {
       max-width: 100%;
       height: auto;
-      border-radius: 8rpx;
+      border-radius: $radius-small;
     }
 
     ::v-deep pre {
-      background: #f5f5f5;
+      background: #1C1C1E;
+      color: #E5E5EA;
       padding: 20rpx;
-      border-radius: 8rpx;
+      border-radius: $radius-button;
       overflow-x: auto;
     }
 
     ::v-deep code {
-      background: #f5f5f5;
+      background: rgba(118, 118, 128, 0.12);
       padding: 4rpx 8rpx;
-      border-radius: 4rpx;
+      border-radius: $radius-tag;
       font-size: 24rpx;
+      color: $color-error;
     }
 
     ::v-deep p {
@@ -375,13 +379,14 @@ export default {
 
 /* 错误卡片 */
 .error-card {
-  background: #ffffff;
-  border-radius: 24rpx;
+  background: $color-bg-card;
+  border-radius: $radius-card;
   padding: 60rpx 40rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
+  box-shadow: $shadow-card;
 
   .error-tip {
     padding-top: 20rpx;
@@ -411,7 +416,7 @@ export default {
 .share-modal {
   width: 100%;
   background: #fff;
-  border-radius: 24rpx 24rpx 0 0;
+  border-radius: $radius-card $radius-card 0 0;
   padding: 40rpx 32rpx;
   padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
 
@@ -440,16 +445,16 @@ export default {
 
   .share-option {
     padding: 16rpx 32rpx;
-    border-radius: 40rpx;
-    background: #f5f5f5;
+    border-radius: $radius-pill;
+    background: $color-bg-page;
     border: 2rpx solid transparent;
     font-size: 28rpx;
-    color: #666;
+    color: $color-text-secondary;
 
     &.share-option-active {
-      background: rgba(48, 190, 100, 0.1);
-      border-color: #30be64;
-      color: #30be64;
+      background: $color-success-light;
+      border-color: $color-success;
+      color: $color-success;
       font-weight: 500;
     }
   }
@@ -465,10 +470,10 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 40rpx;
-    background: #f5f5f5;
+    border-radius: $radius-button;
+    background: $color-bg-page;
     font-size: 28rpx;
-    color: #999;
+    color: $color-text-tertiary;
   }
 
   .share-modal-confirm {
@@ -477,8 +482,8 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 40rpx;
-    background: #30be64;
+    border-radius: $radius-button;
+    background: $color-success;
     font-size: 28rpx;
     color: #fff;
     font-weight: 500;

@@ -10,12 +10,7 @@
 
 <template>
   <view class="summarize">
-    <cu-custom bgColor="bg-gradual-blue" :isBack="true">
-      <block slot="backText">返回</block>
-      <block slot="content">
-        {{ status == "add" ? "新增总结" : "修改总结" }}
-      </block>
-    </cu-custom>
+    <nav-bar :title="status == 'add' ? '新增总结' : '修改总结'" showBack />
     <view :style="contentHeight">
       <md-editor :textareaDataProp="textareaData" @submit="submit" />
     </view>
@@ -36,10 +31,13 @@ import {
 import loginMixin from "@/utils/login-mixin.js";
 import { debounce } from "lodash-es";
 import moment from "moment";
+import NavBar from "@/component/nav-bar/index.vue";
+
 export default {
   components: {
     mdEditor,
     LoginModal,
+    NavBar,
   },
   mixins: [loginMixin],
   data() {
@@ -57,7 +55,7 @@ export default {
     this.summarizeId = option.id;
     if (option.id) {
       getSummarize(option.id).then(res => {
-        if (res.result.data.length > 0) {
+        if (res.result && res.result.data && res.result.data.length > 0) {
           this.status = "update";
           this.form = res.result.data[0];
           this.textareaData = this.form.content;
@@ -105,7 +103,7 @@ export default {
       apiCall
         .then((res) => {
           uni.hideLoading();
-          if (res.result.code === 0) {
+          if (res.result && (res.result.code === 0 || res.result.code === undefined)) {
             if (!isUpdate) {
               this.$store.dispatch("cacheSummary", { id: res.result.id, status: 'add' });
             }
@@ -202,5 +200,6 @@ export default {
 <style>
 .summarize {
   height: 100vh;
+  background: #FFFFFF;
 }
 </style>

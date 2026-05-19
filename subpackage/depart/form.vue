@@ -9,14 +9,11 @@
 -->
 <template>
   <view class="form-container">
-    <cu-custom bgColor="bg-gradual-blue" :isBack="true">
-      <block slot="backText">返回</block>
-      <block slot="content">记录{{ type === 'add' ? '新增' : '修改' }}</block>
-    </cu-custom>
+    <nav-bar :title="type === 'add' ? '新增记录' : '编辑记录'" showBack />
 
     <view class="form-wrapper">
       <!-- 表单卡片 -->
-      <view class="form-card shadow-warp">
+      <view class="form-card">
         <view class="form-header">
           <view class="form-icon">
             <text class="cuIcon-creativefill text-blue"></text>
@@ -59,7 +56,7 @@
                 <view v-else class="tag-select-wrapper">
                   <view v-for="(tag, index) in tagList" :key="tag._id" class="tag-option"
                     :class="isTagSelected(tag._id) ? 'tag-selected' : ''" @tap="toggleTag(tag._id)">
-                    <view class="tag-option-badge" :class="tagColorClasses[index % 12]">
+                    <view class="tag-option-badge" :style="'background:' + getTagColor(index).bg + ';color:' + getTagColor(index).text">
                       <text class="tag-option-name">{{ tag.name }}</text>
                     </view>
                     <view v-if="isTagSelected(tag._id)" class="tag-check-icon">
@@ -94,7 +91,7 @@
 
       <!-- 提交按钮 -->
       <view class="form-footer">
-        <button class="submit-btn bg-gradual-blue shadow-lg" @click="submit('valiForm')">
+        <button class="submit-btn" @click="submit('valiForm')">
           <text class="cuIcon-check text-white margin-right-xs"></text>
           <text class="text-white text-bold">提交</text>
         </button>
@@ -106,21 +103,23 @@
 <script>
 import { addRecord, getRecord, updateRecord } from "@/api/record";
 import { getDictCategoryList } from "@/api/dictCategory";
-import { callProcessOcr, callParseWechatArticle } from "@/api/ocr";
-import { fetchWebPage } from "@/utils/web-reader.js";
 import { callGenerateLearnNote } from "@/api/aiLearn";
 import { getSummarize } from "@/api/summarize";
-import { tagColorClasses } from "@/utils/tagColors";
+import { getTagColor } from "@/utils/tagColors";
+import { processOcr, processLinkImport } from "@/utils/record-create.js";
 import { debounce } from "lodash-es";
 import moment from "moment";
+import NavBar from "@/component/nav-bar/index.vue";
 
 export default {
+  components: {
+    NavBar,
+  },
   data() {
     return {
       type: "add",
       recordId: null,
       tagList: [],
-      tagColorClasses, // 从公共工具文件导入
       formData: {
         title: '', // 初始化为空字符串，避免显示 undefined
         tags: [],
@@ -182,13 +181,7 @@ export default {
     },
   },
   methods: {
-    // 带超时的 Promise 包装
-    withTimeout(promise, ms, message) {
-      return Promise.race([
-        promise,
-        new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms))
-      ]);
-    },
+    getTagColor,
     // AI 辅导引导
     async goAiLearn(recordId) {
       if (!recordId) {
@@ -226,98 +219,17 @@ export default {
     },
     // OCR 拍照识别
     async handleOcr() {
-      try {
-        const res = await new Promise((resolve, reject) => {
-          uni.chooseMedia({ count: 9, mediaType: ['image'], success: resolve, fail: reject });
-        });
-        if (!res.tempFiles || res.tempFiles.length === 0) return;
-
-        const total = res.tempFiles.length;
-        const imageUrls = [];
-
-        // 阶段1：逐张上传，展示上传进度
-        for (let i = 0; i < total; i++) {
-          uni.showLoading({ title: `正在上传第 ${i + 1}/${total} 张...`, mask: true });
-          const uploadRes = await uniCloud.uploadFile({
-            filePath: res.tempFiles[i].tempFilePath,
-            cloudPath: 'ocr/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.jpg'
-          });
-          imageUrls.push(uploadRes.fileID);
-        }
-
-        // 阶段2：识别，展示预估时间
-        const estimatedSeconds = total * 4;
-        uni.showLoading({ title: `正在识别 ${total} 张图片（预计约${estimatedSeconds}s）`, mask: true });
-        const ocrRes = await this.withTimeout(
-          callProcessOcr({ imageUrls, source: 'depart' }),
-          90000,
-          '识别超时，请减少图片数量或稍后重试'
-        );
-        uni.hideLoading();
-
-        // 将原图拼成 Markdown 图片语法，放在识别文本上方
-        const imageMarkdown = imageUrls.map(url => '![](' + url + ')').join('\n\n')
-        const fullContent = imageMarkdown + '\n\n---\n\n' + ocrRes.data.content
-
-        this.$store.dispatch('cachePrefill', {
-          content: fullContent,
-          source: 'ocr',
-          ocrLogId: ocrRes.data.logId
-        });
-        this.goSummarize();
-      } catch (err) {
-        uni.hideLoading();
-        if (err && err.errMsg && err.errMsg.includes('cancel')) return;
-        uni.showToast({ title: (err && err.message) || '识别失败，请重试', icon: 'none' });
-      }
+      const ok = await processOcr(this.$store);
+      if (ok) this.goSummarize();
     },
     // 链接导入
     async handleLinkImport() {
-      try {
-        const res = await new Promise((resolve) => {
-          uni.showModal({ title: '导入链接', editable: true, placeholderText: '请粘贴微信公众号文章链接', success: resolve });
-        });
-        if (!res.confirm || !res.content) return;
-        const url = res.content.trim();
-
-        if (!url.includes('mp.weixin.qq.com')) {
-          uni.showToast({ title: '暂不支持该链接，目前仅支持微信公众号文章', icon: 'none' });
-          return;
-        }
-
-        uni.showLoading({ title: '正在获取文章...', mask: true });
-
-        // 客户端直接请求 + 解析（不走云函数）
-        const article = await this.withTimeout(
-          fetchWebPage(url),
-          15000,
-          '获取文章超时，请检查网络'
-        );
-
-        // 用云函数 GLM 清洗噪声
-        uni.showLoading({ title: '正在清洗文章（约10s）', mask: true });
-        const parseRes = await this.withTimeout(
-          callParseWechatArticle({
-            html: article.content,
-            title: article.title
-          }),
-          60000,
-          '清洗超时，请稍后重试'
-        );
-        uni.hideLoading();
-
-        this.$store.dispatch('cachePrefill', {
-          content: parseRes.data.content,
-          source: 'link',
-          title: parseRes.data.title
-        });
-        if (parseRes.data.title && !this.formData.title.trim()) {
-          this.formData.title = parseRes.data.title;
+      const result = await processLinkImport(this.$store);
+      if (result) {
+        if (result.title && !this.formData.title.trim()) {
+          this.formData.title = result.title;
         }
         this.goSummarize();
-      } catch (err) {
-        uni.hideLoading();
-        uni.showToast({ title: (err && err.message) || '解析失败，请重试', icon: 'none' });
       }
     },
     // 加载标签列表
@@ -552,7 +464,7 @@ export default {
 <style lang="scss" scoped>
 .form-container {
   min-height: 100vh;
-  background: linear-gradient(to bottom, #f5f7fa 0%, #f1f1f1 100%);
+  background: $color-bg-page;
   padding-bottom: 40rpx;
 }
 
@@ -562,10 +474,11 @@ export default {
 
 /* 表单卡片 */
 .form-card {
-  background: #ffffff;
-  border-radius: 24rpx;
+  background: $color-bg-card;
+  border-radius: $radius-card;
   overflow: hidden;
   margin-bottom: 30rpx;
+  box-shadow: $shadow-card;
 }
 
 /* 表单头部 */
@@ -578,8 +491,8 @@ export default {
   .form-icon {
     width: 80rpx;
     height: 80rpx;
-    border-radius: 16rpx;
-    background: linear-gradient(135deg, rgba(0, 129, 255, 0.1) 0%, rgba(28, 187, 180, 0.1) 100%);
+    border-radius: $radius-card;
+    background: $color-primary-light;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -632,7 +545,7 @@ export default {
   z-index: 10;
   background: rgba(255, 255, 255, 0.95);
   padding: 6rpx 12rpx;
-  border-radius: 8rpx;
+  border-radius: $radius-small;
   backdrop-filter: blur(4rpx);
 }
 
@@ -672,7 +585,7 @@ export default {
   .tag-option-badge {
     display: inline-block;
     padding: 12rpx 24rpx;
-    border-radius: 40rpx;
+    border-radius: $radius-pill;
     font-size: 26rpx;
     font-weight: 500;
     box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
@@ -691,11 +604,11 @@ export default {
     width: 32rpx;
     height: 32rpx;
     border-radius: 50%;
-    background: linear-gradient(135deg, #39b54a 0%, #8dc63f 100%);
+    background: $color-success;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2rpx 8rpx rgba(57, 181, 74, 0.4);
+    box-shadow: 0 2rpx 8rpx rgba(52, 199, 89, 0.4);
     opacity: 0;
     transform: scale(0);
     transition: all 0.3s ease;
@@ -712,9 +625,9 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 24rpx;
-  background: #fafafa;
+  background: $color-bg-input;
   border: 2rpx solid #e5e5e5;
-  border-radius: 16rpx;
+  border-radius: $radius-card;
 
   .rich-text-content {
     flex: 1;
@@ -744,16 +657,16 @@ export default {
 }
 
 ::v-deep .uni-easyinput__content {
-  border-radius: 16rpx !important;
+  border-radius: $radius-card !important;
   border: 2rpx solid #e5e5e5 !important;
   transition: all 0.3s ease;
-  background: #fafafa !important;
+  background: $color-bg-input !important;
 
   &:focus-within,
   &.is-focused {
-    border-color: #0081ff !important;
+    border-color: $color-primary !important;
     background: #ffffff !important;
-    box-shadow: 0 0 0 4rpx rgba(0, 129, 255, 0.1);
+    box-shadow: 0 0 0 4rpx $color-primary-light;
   }
 }
 
@@ -783,12 +696,13 @@ export default {
 .submit-btn {
   width: 100%;
   height: 96rpx;
-  border-radius: 48rpx;
+  border-radius: $radius-pill;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 32rpx;
   border: none;
+  background: $color-primary;
   transition: all 0.3s ease;
 
   &::after {
@@ -807,7 +721,7 @@ export default {
   }
 
   .form-card {
-    border-radius: 20rpx;
+    border-radius: $radius-card;
   }
 
   .form-header {

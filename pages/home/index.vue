@@ -1,20 +1,15 @@
 <template>
-	<view>
-
+	<view class="home-page">
 		<view class="record-container">
 
 			<z-paging ref="paging" v-model="flatRecordList" @query="queryList">
 				<view slot="top">
-					<cu-custom bgColor="bg-gradual-blue">
-						<view slot="left" class="action" @tap="handleShowDrawer">
-							<text class="iconfont icon-menus text-white text-bold"></text>
-						</view>
-						<block slot="content">markdown</block>
-					</cu-custom>
-
+					<nav-bar showMenu @menu-click="sidebarVisible = true" title="markdown">
+					</nav-bar>
 				</view>
+
 				<!-- 搜索框 -->
-				<view v-if="!isGuest" slot="top" class="search-container">
+				<view slot="top" class="search-container">
 					<view class="search-box">
 						<view class="search-icon">
 							<text class="cuIcon-search text-gray"></text>
@@ -30,9 +25,33 @@
 						<text class="search-reset-text">重置</text>
 					</view>
 				</view>
+
+				<!-- 标签筛选横滑条 -->
+				<view slot="top" class="tag-filter-bar">
+					<scroll-view scroll-x class="tag-scroll" show-scrollbar="false">
+						<view class="tag-scroll-content">
+							<view
+								class="tag-filter-item"
+								:class="{ 'tag-filter-item--active': selectedTagId === '' }"
+								@tap="handleTagFilter('')"
+							>
+								<text>全部</text>
+							</view>
+							<view
+								v-for="tag in tagList"
+								:key="tag._id"
+								class="tag-filter-item"
+								:class="{ 'tag-filter-item--active': selectedTagId === tag._id }"
+								@tap="handleTagFilter(tag._id)"
+							>
+								<text>{{ tag.name }}</text>
+							</view>
+						</view>
+					</scroll-view>
+				</view>
+
 				<!-- 自定义授权失败页面 -->
 				<view slot="empty" slot-scope="{ isLoadFailed: slotIsLoadFailed }">
-					<!-- 授权失败时显示自定义页面 -->
 					<view v-if="showAuthFailed" class="auth-failed-container auth-failed-container-fixed">
 						<view class="auth-failed-main">
 							<image class="auth-failed-image-rpx" :src="zStatic.base64Error" mode="aspectFit" />
@@ -41,7 +60,6 @@
 							<text class="auth-failed-error-btn auth-failed-error-btn-rpx" @click.stop="handleAuthorize">授权登录</text>
 						</view>
 					</view>
-					<!-- 非授权失败时显示默认失败页 -->
 					<z-paging-empty-view v-else :isLoadFailed="slotIsLoadFailed || isLoadFailed" @reload="handleDefaultReload" />
 				</view>
 
@@ -49,13 +67,8 @@
 				<view v-for="item in groupedRecordList" :key="item.date" class="date-group">
 					<!-- 日期标题 -->
 					<view class="date-header">
-						<view class="date-icon">
-							<text class="cuIcon-calendar text-blue"></text>
-						</view>
-						<view class="date-text">
-							<text class="text-lg text-bold">{{ item.date }}</text>
-							<text class="text-sm text-gray margin-left-sm">{{ item.count }} 条记录</text>
-						</view>
+						<text class="section-date-title">{{ item.date }}</text>
+						<text class="date-count text-gray text-xs">{{ item.count }} 条记录</text>
 					</view>
 
 					<!-- 记录卡片列表 -->
@@ -65,10 +78,10 @@
 							:key="record._id"
 							:record="record"
 							:tagMap="tagMap"
+							:tagList="tagListArray"
 							:aiNoteCount="getAiNoteCount(record)"
-							:showMore="!isExampleRecord(record)"
 							@card-tap="goDetail"
-							@more-click="onIconClick"
+							@card-longpress="onCardLongPress"
 							@ai-note-click="goLearnResult"
 						/>
 					</view>
@@ -86,60 +99,31 @@
 				<uni-popup-dialog type="warn" title="提醒" :content="dialogContent" cancelText="取消" confirmText="确定"
 					@confirm="dialogConfirm" @close="dialogClose" />
 			</uni-popup>
-		</view>
 
-		<!-- 左侧抽屉模态框 -->
-		<view class="cu-modal drawer-modal justify-start" :class="modalName == 'DrawerModal' ? 'show' : ''"
-			@tap="hideModal">
-			<view class="cu-dialog basis-lg" @tap.stop="" :style="drawerStyle">
-				<view class="cu-list menu text-left drawer-content">
-					<!-- 游客状态显示 -->
-					<view v-if="isGuest" class="guest-status-item">
-						<view class="guest-status-content">
-							<view class="guest-status-icon">
-								<text class="cuIcon-info text-orange"></text>
-							</view>
-							<view class="guest-status-text">
-								<text class="text-grey">登录后可保存和管理您的记录</text>
-							</view>
-						</view>
-						<button class="guest-status-btn" @click="handleAuthorizeFromDrawer">
-							授权登录
-						</button>
-					</view>
-					<!-- 标签管理 -->
-					<view class="cu-item arrow" @tap="goDictCategoryFromDrawer">
-						<view class="content">
-							<text class="cuIcon-tagfill text-red margin-right-xs"></text>
-							<text class="text-grey">标签管理</text>
-						</view>
-					</view>
-					<!-- 更新日志 -->
-					<view class="cu-item arrow" @tap="goChangelog">
-						<view class="content">
-							<text class="cuIcon-newsfill text-blue margin-right-xs"></text>
-							<text class="text-grey">更新日志</text>
-						</view>
-					</view>
-					<!-- 联系客服 -->
-					<view class="cu-item arrow">
-						<button class="cu-btn content" open-type="contact" @tap="hideModal">
-							<text class="cuIcon-btn text-olive"></text>
-							<text class="text-grey">联系客服</text>
-						</button>
-					</view>
-					<!-- 交流提示 -->
-					<view class="qq-group-bar">
-						<text class="qq-group-desc">「个人作品，功能建议、Bug 反馈、使用交流都欢迎」</text>
-						<text class="qq-group-label">QQ 交流群：</text>
-						<text class="qq-group-number" @tap="copyGroupNumber">1092487718</text>
-					</view>
-					<!-- 版本号 -->
-					<view class="version-footer">
-						<text class="version-text">v{{ appVersion }}</text>
-					</view>
-				</view>
-			</view>
+			<!-- 侧边栏 -->
+			<sidebar
+				:visible="sidebarVisible"
+				:tagList="tagListArray"
+				:recordCount="totalRecordCount"
+				:isGuest="isGuest"
+				:appVersion="appVersion"
+				@close="sidebarVisible = false"
+				@tag-select="handleTagFilter"
+				@quick-action="handleQuickAction"
+				@navigate="handleNavigate"
+				@login="handleAuthorize"
+			/>
+
+			<!-- 快速创建 Sheet -->
+			<create-sheet
+				:visible="sheetVisible"
+				:tagMap="tagMap"
+				:summarizeId="pendingSummarizeId"
+				:summaryPreview="summaryPreview"
+				@close="handleSheetClose"
+				@method-select="handleMethodSelect"
+				@submit="handleSheetSubmit"
+			/>
 		</view>
 
 		<!-- 登录授权弹窗 -->
@@ -147,9 +131,9 @@
 	</view>
 </template>
 <script>
-import { getRecordList, delRecord, searchRecord } from "@/api/record.js";
+import { getRecordList, delRecord, searchRecord, addRecord } from "@/api/record.js";
 import { getDictCategoryList } from "@/api/dictCategory.js";
-import { delSummarize } from "@/api/summarize";
+import { delSummarize, getSummarize } from "@/api/summarize";
 import { batchQueryAiResults } from "@/api/aiLearn.js";
 import { groupRecordsByDate } from "@/utils/format";
 import zStatic from '@/uni_modules/z-paging/components/z-paging/js/z-paging-static.js';
@@ -159,7 +143,12 @@ import LoginModal from '@/component/login-modal/index.vue'
 import ContextPopup from '@/component/context-popup/index.vue'
 import FabButton from '@/component/fab-button/index.vue'
 import RecordCard from '@/component/record-card/index.vue'
+import NavBar from '@/component/nav-bar/index.vue'
+import Sidebar from '@/component/sidebar/index.vue'
+import CreateSheet from '@/component/create-sheet/index.vue'
 import { setLoginModalRef } from '@/utils/api-auth.js'
+import { processOcr, processLinkImport } from '@/utils/record-create.js'
+import moment from 'moment'
 
 export default {
 	components: {
@@ -167,6 +156,9 @@ export default {
 		ContextPopup,
 		FabButton,
 		RecordCard,
+		NavBar,
+		Sidebar,
+		CreateSheet,
 		zPagingEmptyView
 	},
 	data() {
@@ -176,6 +168,7 @@ export default {
 			modalName: null,
 			flatRecordList: [],
 			tagMap: {},
+			tagList: [],
 			popButton: ["编辑", "删除"],
 			pickerRecordItem: null,
 			dialogContent: "",
@@ -188,27 +181,36 @@ export default {
 			isSearchMode: false,
 			aiResultMap: {},
 			appVersion: "1.0.0",
+			sidebarVisible: false,
+			sheetVisible: false,
+			selectedTagId: '',
+			totalRecordCount: 0,
+			sheetCreationMode: false,
+			pendingSummarizeId: '',
+			summaryPreview: '',
 		};
 	},
 	computed: {
-		drawerStyle() {
-			const CustomBar = this.CustomBar || 0;
-			return {
-				top: CustomBar + 'px',
-				height: `calc(100vh - ${CustomBar}px)`
-			};
-		},
 		isGuest() {
 			return this.$store.state.user.isGuest;
 		},
+		tagListArray() {
+			return this.tagList;
+		},
+		filteredRecordList() {
+			if (!this.selectedTagId) return this.flatRecordList;
+			return this.flatRecordList.filter(record =>
+				record.tags && record.tags.includes(this.selectedTagId)
+			);
+		},
 		groupedRecordList() {
-			return groupRecordsByDate(this.flatRecordList);
+			return groupRecordsByDate(this.filteredRecordList);
 		}
 	},
 
 	mounted() {
 		this.loadTagList();
-			try {
+		try {
 			const accountInfo = uni.getAccountInfoSync();
 			this.appVersion = accountInfo.miniProgram.version || '开发版';
 		} catch (e) {
@@ -232,6 +234,17 @@ export default {
 			this.lastAuthStateVersion = currentAuthStateVersion;
 			this.lastIsGuest = currentIsGuest;
 		}
+
+		// Sheet 创建模式：编辑器返回后持有 summarizeId，Sheet 自动进入 Phase 2
+		if (this.sheetCreationMode) {
+			const sid = this.$store.state.summarize.summarizeId;
+			if (sid) {
+				this.pendingSummarizeId = sid;
+				this.fetchSummaryPreview(sid);
+				this.$store.dispatch('deleteSummary');
+				this.sheetCreationMode = false;
+			}
+		}
 	},
 	watch: {
 		'$store.state.user.authStateVersion': {
@@ -246,13 +259,11 @@ export default {
 		}
 	},
 	methods: {
-		handleShowDrawer() {
-			this.showDrawer();
-		},
 		loadTagList() {
 			getDictCategoryList()
 				.then((res) => {
 					if (res?.result?.data && Array.isArray(res.result.data)) {
+						this.tagList = res.result.data;
 						this.tagMap = res.result.data.reduce((map, tag) => {
 							map[tag._id] = tag;
 							return map;
@@ -278,6 +289,7 @@ export default {
 					this.showAuthFailed = false;
 					this.isLoadFailed = false;
 					const list = res.result.data || [];
+					this.totalRecordCount = list.length;
 					this.fetchAiResults(list);
 					this.$refs.paging.complete(list);
 				})
@@ -332,7 +344,7 @@ export default {
 					break;
 			}
 		},
-		onIconClick(e, record) {
+		onCardLongPress(e, record) {
 			this.pickerRecordItem = record;
 			this.$refs.contextPopup.show(e, record);
 		},
@@ -342,7 +354,72 @@ export default {
 			}
 		},
 		addRecord() {
-			uni.navigateTo({ url: "/subpackage/depart/form?type=add" });
+			this.pendingSummarizeId = '';
+			this.summaryPreview = '';
+			this.sheetVisible = true;
+		},
+		handleSheetClose() {
+			this.sheetVisible = false;
+			this.pendingSummarizeId = '';
+			this.summaryPreview = '';
+		},
+		fetchSummaryPreview(summarizeId) {
+			getSummarize(summarizeId).then((res) => {
+				const d = res.result && res.result.data && res.result.data[0];
+				const content = d ? d.content : '';
+				const text = content.replace(/[#*`\[\]()>_~-]/g, '').replace(/\n+/g, ' ').trim();
+				this.summaryPreview = text.substring(0, 60) + (text.length > 60 ? '...' : '');
+			}).catch(() => { this.summaryPreview = ''; });
+		},
+		async handleMethodSelect(method) {
+			this.sheetCreationMode = true;
+			if (method === 'manual') {
+				uni.navigateTo({ url: '/subpackage/summarize/index?id=' });
+			} else if (method === 'ocr') {
+				const ok = await processOcr(this.$store);
+				if (ok) {
+					uni.navigateTo({ url: '/subpackage/summarize/index?id=' });
+				} else {
+					this.sheetCreationMode = false;
+				}
+			} else if (method === 'link') {
+				const result = await processLinkImport(this.$store);
+				if (result) {
+					uni.navigateTo({ url: '/subpackage/summarize/index?id=' });
+				} else {
+					this.sheetCreationMode = false;
+				}
+			} else if (method === 'reedit') {
+				this.sheetCreationMode = true;
+				uni.navigateTo({ url: `/subpackage/summarize/index?id=${this.pendingSummarizeId}` });
+			}
+		},
+		handleSheetSubmit({ title, tags }) {
+			this.sheetVisible = false;
+			const data = {
+				title,
+				tags,
+				summarizeId: this.pendingSummarizeId,
+				createTime: moment().format('YYYY-MM-DD HH:mm:ss'),
+				updateTime: moment().format('YYYY-MM-DD HH:mm:ss'),
+				createBy: this.$store.state.user.openid,
+			};
+			addRecord(data)
+				.then((res) => {
+					if (res.result && (res.result.code === 0 || res.result.code === undefined)) {
+						this.pendingSummarizeId = '';
+			this.summaryPreview = '';
+						uni.showToast({ title: '保存成功', icon: 'success' });
+						if (this.$refs.paging) {
+							this.$refs.paging.refresh();
+						}
+					} else {
+						uni.showToast({ title: res.result?.msg || '保存失败', icon: 'none' });
+					}
+				})
+				.catch(() => {
+					uni.showToast({ title: '保存失败', icon: 'none' });
+				});
 		},
 		goDetail(row) {
 			uni.navigateTo({ url: `/subpackage/depart/detail?id=${row._id}` });
@@ -376,10 +453,6 @@ export default {
 			}
 		},
 		dialogClose() { },
-		handleAuthorizeFromDrawer() {
-			this.hideModal();
-			this.handleAuthorize();
-		},
 		handleLoginSuccess() {
 			this.$store.commit('SET_IS_GUEST', false);
 			uni.showToast({ title: "登录成功", icon: "success" });
@@ -401,20 +474,6 @@ export default {
 			}
 		},
 		handleLoginCancel() {},
-			goDictCategoryFromDrawer() {
-				this.hideModal();
-				uni.navigateTo({ url: "/subpackage/dictCategory/index" });
-			},
-			goChangelog() {
-				this.hideModal();
-				uni.navigateTo({ url: "/subpackage/changelog/index" });
-			},
-			showDrawer() {
-			this.modalName = 'DrawerModal';
-		},
-		hideModal() {
-			this.modalName = null;
-		},
 		onSearchInput(e) {
 			this.searchKeyword = e.detail.value || '';
 		},
@@ -437,66 +496,93 @@ export default {
 		},
 		resetSearch() {
 			this.clearSearch();
+		},
+		handleTagFilter(tagId) {
+			this.selectedTagId = tagId;
+		},
+		handleQuickAction(action) {
+			switch (action) {
+				case 'ocr':
+					this.addRecord();
+					break;
+				case 'link':
+					this.addRecord();
+					break;
+				case 'ai-history':
+					uni.navigateTo({ url: '/subpackage/depart/learn-result' });
+					break;
+			}
+		},
+		handleNavigate(url) {
+			uni.navigateTo({ url });
 		}
 	},
 };
 </script>
 
 <style lang="scss" scoped>
+.home-page {
+	min-height: 100vh;
+	background: $color-bg-page;
+}
+
+.record-container {
+	position: relative;
+	min-height: 100vh;
+	padding-bottom: 80px;
+}
+
 /* 搜索框容器 */
 .search-container {
-	padding: 20rpx 30rpx;
-	background: #fff;
-	border-bottom: 1rpx solid #f0f0f0;
+	padding: $spacing-sm $spacing-md;
+	background: $color-bg-card;
 	display: flex;
 	align-items: center;
-	gap: 16rpx;
+	gap: $spacing-sm;
 }
 
 .search-box {
 	flex: 1;
 	display: flex;
 	align-items: center;
-	background: #f5f7fa;
-	border-radius: 50rpx;
-	padding: 0 24rpx;
-	height: 72rpx;
+	background: $color-bg-input;
+	border-radius: $radius-pill;
+	padding: 0 $spacing-md;
+	height: 36px;
 	position: relative;
-}
 
-.search-icon {
-	width: 40rpx;
-	height: 40rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	margin-right: 16rpx;
-	flex-shrink: 0;
+	.search-icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-right: $spacing-xs;
+		flex-shrink: 0;
 
-	.cuIcon-search {
-		font-size: 36rpx;
+		.cuIcon-search {
+			font-size: 16px;
+		}
 	}
 }
 
 .search-input {
 	flex: 1;
-	font-size: 28rpx;
-	color: #333;
-	height: 72rpx;
-	line-height: 72rpx;
+	font-size: 14px;
+	color: $color-text-primary;
+	height: 36px;
+	line-height: 36px;
 }
 
 .search-clear {
-	width: 40rpx;
-	height: 40rpx;
+	width: 24px;
+	height: 24px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	margin-left: 16rpx;
+	margin-left: $spacing-xs;
 	flex-shrink: 0;
 
 	.cuIcon-close {
-		font-size: 32rpx;
+		font-size: 14px;
 	}
 }
 
@@ -504,130 +590,82 @@ export default {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: 0 20rpx;
-	height: 72rpx;
-	background: #f5f7fa;
-	border-radius: 36rpx;
+	padding: 0 $spacing-sm;
+	height: 36px;
+	background: $color-bg-input;
+	border-radius: $radius-pill;
 	flex-shrink: 0;
 
 	.cuIcon-refresh {
-		font-size: 32rpx;
-		margin-right: 8rpx;
+		font-size: 14px;
+		margin-right: 4px;
 	}
 
 	.search-reset-text {
-		font-size: 26rpx;
-		color: #ccc;
+		font-size: 13px;
+		color: $color-text-tertiary;
 	}
 }
 
-/* 抽屉内容上侧内边距 */
-.drawer-content {
-	padding-top: 120rpx;
-	box-sizing: border-box;
+/* 标签筛选横滑条 */
+.tag-filter-bar {
+	background: $color-bg-card;
+	padding: $spacing-xs $spacing-md $spacing-sm;
+	border-bottom: 0.5px solid $color-divider;
 }
 
-/* 抽屉中的游客状态项 */
-.guest-status-item {
-	display: flex;
-	flex-direction: column;
-	padding: 32rpx 24rpx;
-	border-bottom: 1rpx solid #f0f0f0;
-	background: linear-gradient(135deg, rgba(255, 193, 7, 0.05) 0%, rgba(255, 152, 0, 0.05) 100%);
+.tag-scroll {
+	white-space: nowrap;
 }
 
-.guest-status-content {
-	display: flex;
-	align-items: flex-start;
-	margin-bottom: 20rpx;
+.tag-scroll-content {
+	display: inline-flex;
+	gap: $spacing-xs;
 }
 
-.guest-status-icon {
-	width: 36rpx;
-	height: 36rpx;
-	display: flex;
+.tag-filter-item {
+	display: inline-flex;
 	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-	margin-right: 12rpx;
-	margin-top: 2rpx;
-}
+	padding: 6px 14px;
+	border-radius: $radius-pill;
+	background: $color-bg-input;
+	font-size: 13px;
+	color: $color-text-secondary;
+	transition: all $duration-fast;
+	white-space: nowrap;
 
-.guest-status-icon .cuIcon-info {
-	font-size: 32rpx;
-}
+	&--active {
+		background: $color-primary;
+		color: #fff;
+	}
 
-.guest-status-text {
-	flex: 1;
-	line-height: 1.6;
-}
-
-.guest-status-text .text-grey {
-	font-size: 26rpx;
-	color: #666;
-}
-
-.guest-status-btn {
-	align-self: flex-start;
-	height: 56rpx;
-	padding: 0 24rpx;
-	line-height: 56rpx;
-	font-size: 26rpx;
-	font-weight: 400;
-	color: #fff;
-	background: linear-gradient(135deg, #39b54a 0%, #8dc63f 100%);
-	border-radius: 28rpx;
-	border: none;
-	box-shadow: 0 2rpx 8rpx rgba(57, 181, 74, 0.2);
-	transition: all 0.3s ease;
-}
-
-.guest-status-btn::after {
-	border: none;
-}
-
-.guest-status-btn:active {
-	opacity: 0.8;
-	transform: scale(0.98);
-}
-
-.record-container {
-	position: relative;
-	background: linear-gradient(to bottom, #f5f7fa 0%, #f1f1f1 100%);
-	padding-bottom: 160rpx;
+	:active {
+		opacity: 0.8;
+	}
 }
 
 /* 日期分组 */
 .date-group {
-	padding: 30rpx 30rpx 0;
+	padding: $spacing-md $spacing-md 0;
 }
 
 /* 日期标题 */
 .date-header {
 	display: flex;
 	align-items: center;
-	margin-bottom: 24rpx;
-	padding: 0 8rpx;
+	margin-bottom: $spacing-sm;
+	padding: 0 $spacing-xs;
 
-	.date-icon {
-		width: 48rpx;
-		height: 48rpx;
-		border-radius: 12rpx;
-		background: linear-gradient(135deg, rgba(0, 129, 255, 0.1) 0%, rgba(28, 187, 180, 0.1) 100%);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		margin-right: 16rpx;
-
-		.cuIcon-calendar {
-			font-size: 28rpx;
-		}
+	.section-date-title {
+		font-size: 11px;
+		font-weight: 700;
+		color: $color-text-tertiary;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
 	}
 
-	.date-text {
-		flex: 1;
-		display: flex;
-		align-items: center;
+	.date-count {
+		margin-left: $spacing-xs;
 	}
 }
 
@@ -635,38 +673,29 @@ export default {
 .record-card-list {
 	display: flex;
 	flex-direction: column;
-	gap: 20rpx;
+	gap: $spacing-sm;
 }
 
 /* 授权失败页面 */
 .auth-failed-container {
-	/* #ifndef APP-NVUE */
 	display: flex;
-	/* #endif */
 	align-items: center;
 	justify-content: center;
 }
 
 .auth-failed-container-fixed {
-	/* #ifndef APP-NVUE */
 	position: absolute;
 	top: 0;
 	left: 0;
 	width: 100%;
 	height: 100%;
-	/* #endif */
-	/* #ifdef APP-NVUE */
-	flex: 1;
-	/* #endif */
 }
 
 .auth-failed-main {
-	/* #ifndef APP-NVUE */
 	display: flex;
-	/* #endif */
 	flex-direction: column;
 	align-items: center;
-	padding: 50rpx 0rpx;
+	padding: 50rpx 0;
 }
 
 .auth-failed-image-rpx {
@@ -682,7 +711,7 @@ export default {
 .auth-failed-title-rpx {
 	font-size: 28rpx;
 	margin-top: 10rpx;
-	padding: 0rpx 20rpx;
+	padding: 0 20rpx;
 }
 
 .auth-failed-error-btn {
@@ -690,32 +719,6 @@ export default {
 	color: #aaaaaa;
 	text-align: center;
 	cursor: pointer;
-}
-
-.qq-group-bar {
-	padding: 24rpx;
-}
-.qq-group-desc {
-	font-size: 22rpx;
-	color: #ccc;
-}
-.qq-group-label {
-	font-size: 22rpx;
-	color: #ccc;
-}
-.qq-group-number {
-	font-size: 22rpx;
-	color: #ccc;
-}
-
-.version-footer {
-	padding: 0rpx 32rpx 20rpx;
-	text-align: center;
-}
-
-.version-text {
-	font-size: 22rpx;
-	color: #ccc;
 }
 
 .auth-failed-error-btn-rpx {

@@ -4,76 +4,76 @@
  * @LastEditors: yuanchuang 1226377893@qq.com
  * @LastEditTime: 2025-11-29 20:19:23
  * @FilePath: \Toolbox\subpackage\depart\detail.vue
- * @Description: 记录详情页面（简化版）
- * 
+ * @Description: 记录详情页面（UI 重构版）
+ *
 -->
 <template>
   <view class="detail-container">
-    <cu-custom bgColor="bg-gradual-blue" :isBack="true">
-      <block slot="backText">返回</block>
-      <block slot="content">记录详情</block>
-    </cu-custom>
-
-    <view class="detail-wrapper">
-      <!-- 记录信息卡片 -->
-      <view class="detail-card shadow-warp" v-if="recordData">
-        <view class="detail-header">
-          <view class="detail-icon">
-            <text class="cuIcon-creativefill text-blue"></text>
-          </view>
-          <view class="detail-title-wrapper">
-            <text class="detail-title text-lg text-bold">{{ recordData.title }}</text>
-            <view class="detail-meta">
-              <text class="cuIcon-timefill text-gray text-xs margin-right-xs"></text>
-              <text class="text-gray text-xs">{{ formatTime(recordData.createTime) }}</text>
-            </view>
-          </view>
+    <nav-bar title="记录详情" showBack>
+      <template #right>
+        <view class="nav-right-menu" @tap="showMoreMenu">
+          <text class="cuIcon-moreandroid text-gray"></text>
         </view>
+      </template>
+    </nav-bar>
 
-        <!-- 标签区域 -->
-        <view v-if="recordData.tags && recordData.tags.length > 0" class="detail-tags">
-          <view v-for="(tagId, index) in recordData.tags" :key="tagId" class="detail-tag"
-            :class="tagColorClasses[index % 12]">
-            <text>{{ getTagName(tagId) }}</text>
-          </view>
+    <view class="detail-wrapper" v-if="recordData">
+      <!-- 标题区域 -->
+      <view class="title-section">
+        <text class="detail-title">{{ recordData.title }}</text>
+        <view class="detail-meta">
+          <text class="meta-item text-gray text-xs">{{ formatTime(recordData.createTime) }}</text>
+          <text class="meta-divider">·</text>
+          <text class="meta-item text-gray text-xs">{{ readingTime }}</text>
         </view>
       </view>
 
-      <!-- AI学习结果入口（有成功结果或正在生成中时显示） -->
-      <view v-if="hasAiResult || hasPendingAi" class="learn-result-entry shadow-warp" @click="goLearnResult">
-        <view class="entry-icon">
-          <text class="cuIcon-creativefill text-orange"></text>
+      <!-- 标签区域 -->
+      <view v-if="recordData.tags && recordData.tags.length > 0" class="tag-section">
+        <view
+          v-for="(tagId, index) in recordData.tags"
+          :key="tagId"
+          class="tag-chip"
+          :style="'background:' + getTagColor(index).bg + ';color:' + getTagColor(index).text"
+        >
+          <text>{{ getTagName(tagId) }}</text>
         </view>
-        <view class="entry-content">
-          <text class="entry-title">AI 学习笔记</text>
-          <text class="entry-desc text-gray text-xs">{{ hasPendingAi ? 'AI 正在生成中，点击查看进度' : aiResultCount > 1 ? '查看 ' + aiResultCount + ' 条学习结果' : '查看学习结果' }}</text>
-        </view>
-        <text class="cuIcon-right text-gray"></text>
       </view>
 
-      <!-- 总结内容卡片 -->
-      <view class="summary-card shadow-warp">
+      <!-- AI 笔记内联卡片 -->
+      <view v-if="noteResults.length || exerciseResults.length || isAiProcessing" class="ai-inline-card">
+        <view v-if="isAiProcessing" class="ai-loading">
+          <text class="cuIcon-loading2 text-warning"></text>
+          <text class="text-gray text-xs margin-left-sm">AI 正在生成中...</text>
+        </view>
+        <template v-else>
+          <view class="ai-card-header">
+            <text class="cuIcon-creativefill text-warning margin-right-xs"></text>
+            <text class="text-bold">✨ AI 学习笔记</text>
+          </view>
+          <view v-for="note in noteResults" :key="note._id" class="ai-result-item">
+            <view class="ai-result-title">📖 知识点精讲</view>
+            <view class="ai-result-preview">{{ getAiSummary(note.ai_result) }}</view>
+            <view class="ai-result-link" @tap="goToAiDetail(note._id)">查看完整笔记 →</view>
+          </view>
+          <view v-for="ex in exerciseResults" :key="ex._id" class="ai-result-item">
+            <view class="ai-result-title">📝 针对性练习</view>
+            <view class="ai-result-preview">{{ getAiSummary(ex.ai_result) }}</view>
+            <view class="ai-result-link" @tap="goToAiDetail(ex._id)">查看完整练习 →</view>
+          </view>
+        </template>
+      </view>
+
+      <!-- 总结内容 -->
+      <view class="summary-section" v-if="summaryContent">
         <view class="summary-header">
-          <view class="summary-icon">
-            <text class="cuIcon-commentfill text-blue"></text>
+          <text class="text-bold text-lg">总结内容</text>
+          <view v-if="!isExampleRecord" class="summary-actions">
+            <view class="action-btn" @tap="downloadDocument">
+              <text class="cuIcon-downloadfill text-primary"></text>
+              <text class="text-xs text-primary margin-left-xs">下载</text>
+            </view>
           </view>
-          <view class="summary-title">
-            <text class="text-lg text-bold">总结内容</text>
-          </view>
-          <template v-if="summaryContent && !isExampleRecord">
-            <view class="download-btn" @click="downloadDocument">
-              <text class="cuIcon-downloadfill text-blue"></text>
-              <text class="download-text text-xs">下载</text>
-            </view>
-            <view class="ai-btn" :class="{ 'ai-btn-disabled': aiLoading || hasPendingAi }" @click="handleAiLearn">
-              <text class="ai-btn-icon" :class="(aiLoading || hasPendingAi) ? 'cuIcon-loading1 text-gray' : 'cuIcon-creativefill text-orange'"></text>
-              <text class="ai-btn-text text-xs">{{ (aiLoading || hasPendingAi) ? '生成中...' : 'AI辅导' }}</text>
-            </view>
-            <view class="share-btn" :class="{ 'share-btn-disabled': shareLoading }" @click="showShareModal = true">
-              <text class="share-btn-icon" :class="shareLoading ? 'cuIcon-loading1 text-gray' : 'cuIcon-share text-green'"></text>
-              <text class="share-btn-text text-xs">{{ shareLoading ? '生成中...' : '分享' }}</text>
-            </view>
-          </template>
         </view>
         <view class="summary-content">
           <view v-if="towxmlData" class="towxml-wrapper">
@@ -118,39 +118,62 @@
         </view>
       </view>
     </view>
+
+    <!-- 删除确认弹窗 -->
+    <uni-popup ref="alertDialog" type="dialog">
+      <uni-popup-dialog type="warn" title="提醒" :content="dialogContent" cancelText="取消" confirmText="确定"
+        @confirm="dialogConfirm" @close="dialogClose" />
+    </uni-popup>
   </view>
 </template>
 
 <script>
-import { getRecord } from "@/api/record";
-import { getSummarize } from "@/api/summarize";
+import { getRecord, delRecord } from "@/api/record";
+import { getSummarize, delSummarize } from "@/api/summarize";
 import { getDictCategoryList } from "@/api/dictCategory.js";
-import { callGenerateLearnNote, getAiResultCount } from "@/api/aiLearn.js";
+import { callGenerateLearnNote, getLearnResultList } from "@/api/aiLearn.js";
 import { callGenerateShareLink } from "@/api/share.js";
-import { tagColorClasses } from "@/utils/tagColors";
+import { getTagColor } from "@/utils/tagColors";
 import { downloadMarkdown } from "@/utils/download";
-import { formatTime } from "@/utils/format";
+import { formatTime, formatRelativeTime } from "@/utils/format";
+import NavBar from "@/component/nav-bar/index.vue";
 
 export default {
+  components: {
+    NavBar,
+  },
   computed: {
+    isGuest() {
+      return this.$store.state.user.isGuest;
+    },
     isExampleRecord() {
       return this.recordData && (!this.recordData.createBy || this.recordData.createBy === '');
+    },
+    readingTime() {
+      const content = this.summaryContent || '';
+      const charCount = content.replace(/\s/g, '').length;
+      const minutes = Math.max(1, Math.ceil(charCount / 300));
+      return `${minutes} 分钟阅读`;
     }
   },
   data() {
     return {
       recordData: null,
       towxmlData: "",
-      summaryContent: "", // 原始Markdown内容，用于下载
-      tagMap: {}, // 标签ID到标签信息的映射
-      tagColorClasses, // 从公共工具文件导入
-      aiLoading: false, // AI辅导按钮loading状态
-      hasPendingAi: false, // 是否有正在生成中的AI结果
-      hasAiResult: false, // 是否有成功的AI学习结果
-      aiResultCount: 0, // 成功的AI学习结果数量
-      showShareModal: false, // 分享弹窗显示状态
-      selectedExpire: '1d', // 默认有效期1天
-      shareLoading: false, // 分享按钮loading状态
+      summaryContent: "",
+      tagMap: {},
+      aiLoading: false,
+      showShareModal: false,
+      selectedExpire: '1d',
+      shareLoading: false,
+      // AI 结果
+      aiResults: [],
+      noteResults: [],
+      exerciseResults: [],
+      isAiProcessing: false,
+      // 删除
+      dialogContent: "",
+      pickerRecordItem: null,
     };
   },
   onLoad(option) {
@@ -158,9 +181,15 @@ export default {
     this.loadRecordDetail(option.id);
   },
   methods: {
-    // AI辅导
+    getTagColor,
+    handleEdit() {
+      if (!this.recordData || !this.recordData._id) return;
+      uni.navigateTo({
+        url: `/subpackage/depart/form?type=update&id=${this.recordData._id}`
+      });
+    },
     handleAiLearn() {
-      if (this.aiLoading || this.hasPendingAi) return;
+      if (this.aiLoading || this.isAiProcessing) return;
       if (!this.summaryContent || this.summaryContent.trim() === '') {
         uni.showToast({ title: '暂无总结内容，无法生成', icon: 'none' });
         return;
@@ -171,7 +200,7 @@ export default {
         content: this.summaryContent,
         recordId: this.recordData._id
       }).then(() => {
-        this.hasPendingAi = true;
+        this.isAiProcessing = true;
         uni.showToast({ title: '已提交，AI正在生成中...', icon: 'none' });
       }).catch((err) => {
         uni.showToast({ title: err.message || '提交失败', icon: 'none' });
@@ -179,18 +208,62 @@ export default {
         setTimeout(() => { this.aiLoading = false; }, 3000);
       });
     },
-    // 跳转学习结果列表
+    handleDelete() {
+      if (this.isExampleRecord) {
+        uni.showToast({ title: '示例记录不支持删除', icon: 'none' });
+        return;
+      }
+      this.pickerRecordItem = this.recordData;
+      this.dialogContent = `确定删除记录 '${this.recordData.title}' 吗？删除后不可恢复！`;
+      this.$refs.alertDialog.open();
+    },
+    dialogConfirm() {
+      const recordId = this.pickerRecordItem._id;
+      const summarizeId = this.pickerRecordItem.summarizeId;
+      delRecord(recordId)
+        .then((res) => {
+          if (res.result && (res.result.code === 0 || res.result.code === undefined)) {
+            if (summarizeId) {
+              delSummarize(summarizeId).finally(() => { this.showDeleteSuccess(); });
+            } else {
+              this.showDeleteSuccess();
+            }
+          } else {
+            uni.showToast({ title: res.result?.msg || "删除失败", icon: "none" });
+          }
+        })
+        .catch(() => {
+          uni.showToast({ title: "删除失败", icon: "none" });
+        });
+    },
+    dialogClose() {},
+    showDeleteSuccess() {
+      uni.showToast({ title: "删除成功", icon: "success" });
+      setTimeout(() => uni.navigateBack(), 1500);
+    },
+    showMoreMenu() {
+      uni.showActionSheet({
+        itemList: ['编辑', 'AI辅导', '下载', '分享', '删除'],
+        success: (res) => {
+          const actions = ['edit', 'ai', 'download', 'share', 'delete'];
+          const action = actions[res.tapIndex];
+          if (action === 'edit') this.handleEdit();
+          else if (action === 'ai') this.handleAiLearn();
+          else if (action === 'download') this.downloadDocument();
+          else if (action === 'share') this.showShareModal = true;
+          else if (action === 'delete') this.handleDelete();
+        }
+      });
+    },
     goLearnResult() {
       if (!this.recordData || !this.recordData._id) return;
       uni.navigateTo({
         url: `/subpackage/depart/learn-result?recordId=${this.recordData._id}`
       });
     },
-    // 关闭分享弹窗
     closeShareModal() {
       this.showShareModal = false;
     },
-    // 生成分享链接
     handleShare() {
       if (this.shareLoading) return;
       this.shareLoading = true;
@@ -213,27 +286,44 @@ export default {
         this.shareLoading = false;
       });
     },
-    // 加载AI学习结果数量
-    loadAiResultCount(recordId) {
-      getAiResultCount(recordId)
+    downloadDocument() {
+      if (!this.summaryContent) {
+        uni.showToast({ title: '暂无内容可下载', icon: 'none' });
+        return;
+      }
+      downloadMarkdown(this.recordData.title, this.summaryContent);
+    },
+    goToAiDetail(logId) {
+      uni.navigateTo({
+        url: `/subpackage/depart/learn-result-detail?id=${logId}`
+      });
+    },
+    getAiSummary(content, maxLen = 80) {
+      if (!content) return '';
+      const text = content.replace(/[#*`>\-\[\]]/g, '').trim();
+      return text.length > maxLen ? text.substring(0, maxLen) + '...' : text;
+    },
+    loadAiResults() {
+      if (!this.recordData || !this.recordData._id) return;
+      getLearnResultList({ recordId: this.recordData._id })
         .then((res) => {
-          this.hasAiResult = res.hasAiResult;
-          this.aiResultCount = res.aiResultCount;
-          this.hasPendingAi = res.hasPending;
+          this.aiResults = res.result?.data || [];
+          this.noteResults = this.aiResults.filter(r => r.type === 'note' && r.status === 'success');
+          this.exerciseResults = this.aiResults.filter(r => r.type === 'exercise' && r.status === 'success');
+          this.isAiProcessing = this.aiResults.some(r => r.status === 'pending' || r.status === 'processing');
         })
         .catch(() => {
-          this.hasAiResult = false;
-          this.aiResultCount = 0;
-          this.hasPendingAi = false;
+          this.aiResults = [];
+          this.noteResults = [];
+          this.exerciseResults = [];
+          this.isAiProcessing = false;
         });
     },
-    // 加载标签列表
     loadTagList() {
       getDictCategoryList()
         .then((res) => {
           if (res && res.result && res.result.data) {
             const tags = Array.isArray(res.result.data) ? res.result.data : [];
-            // 构建标签映射
             this.tagMap = {};
             tags.forEach(tag => {
               this.tagMap[tag._id] = tag;
@@ -244,17 +334,11 @@ export default {
           console.error("加载标签列表失败：", err);
         });
     },
-    // 获取标签名称
     getTagName(tagId) {
       return this.tagMap[tagId] ? this.tagMap[tagId].name : '未知标签';
     },
-    // 格式化时间（复用 utils/format.js）
     formatTime(timeStr) {
       return formatTime(timeStr, 'YYYY-MM-DD HH:mm');
-    },
-    // 下载文档
-    downloadDocument() {
-      downloadMarkdown(this.recordData.title, this.summaryContent);
     },
     loadRecordDetail(id) {
       getRecord(id)
@@ -265,7 +349,7 @@ export default {
           }
 
           this.recordData = recordRes.result.data[0];
-          this.loadAiResultCount(this.recordData._id);
+          this.loadAiResults();
 
           if (this.recordData.summarizeId) {
             this.loadSummarize(this.recordData.summarizeId);
@@ -300,214 +384,204 @@ export default {
 <style lang="scss" scoped>
 .detail-container {
   min-height: 100vh;
-  background: linear-gradient(to bottom, #f5f7fa 0%, #f1f1f1 100%);
-  padding-bottom: 40rpx;
+  background: $color-bg-page;
+}
+
+.nav-right-menu {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: $radius-button;
 }
 
 .detail-wrapper {
-  padding: 30rpx;
+  padding: 0 $spacing-md $spacing-xl;
 }
 
-/* 详情卡片 */
-.detail-card {
-  background: #ffffff;
-  border-radius: 24rpx;
-  padding: 32rpx;
-  margin-bottom: 30rpx;
-}
+/* 标题区域 */
+.title-section {
+  margin-top: $spacing-md;
+  margin-bottom: $spacing-md;
 
-/* 详情头部 */
-.detail-header {
-  display: flex;
-  align-items: flex-start;
-  margin-bottom: 24rpx;
-
-  .detail-icon {
-    width: 80rpx;
-    height: 80rpx;
-    border-radius: 16rpx;
-    background: linear-gradient(135deg, rgba(0, 129, 255, 0.1) 0%, rgba(28, 187, 180, 0.1) 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 24rpx;
-    flex-shrink: 0;
-
-    .cuIcon-creativefill {
-      font-size: 40rpx;
-    }
+  .detail-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: $color-text-primary;
+    line-height: 1.3;
+    display: block;
+    margin-bottom: $spacing-xs;
   }
 
-  .detail-title-wrapper {
-    flex: 1;
+  .detail-meta {
     display: flex;
-    flex-direction: column;
+    align-items: center;
 
-    .detail-title {
-      margin-bottom: 12rpx;
-      color: #333;
-      word-break: break-all;
-    }
-
-    .detail-meta {
-      display: flex;
-      align-items: center;
-      opacity: 0.7;
+    .meta-divider {
+      margin: 0 $spacing-xs;
+      color: $color-text-placeholder;
     }
   }
 }
 
 /* 标签区域 */
-.detail-tags {
+.tag-section {
   display: flex;
   flex-wrap: wrap;
-  gap: 12rpx;
-  padding-top: 24rpx;
-  border-top: 1rpx solid rgba(0, 0, 0, 0.05);
+  gap: $spacing-xs;
+  margin-bottom: $spacing-md;
 
-  .detail-tag {
-    display: inline-block;
-    padding: 8rpx 16rpx;
-    border-radius: 20rpx;
-    font-size: 24rpx;
+  .tag-chip {
+    padding: 4px 12px;
+    border-radius: $radius-pill;
+    font-size: 12px;
     font-weight: 500;
-    box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.08);
   }
 }
 
-/* 总结卡片 */
-.summary-card {
-  background: #ffffff;
-  border-radius: 24rpx;
-  overflow: hidden;
-}
 
-/* 总结头部 */
-.summary-header {
-  display: flex;
-  align-items: center;
-  padding: 32rpx 32rpx 24rpx;
-  border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+/* AI 内联卡片 */
+.ai-inline-card {
+  background: $color-warning-light;
+  border: 1px solid rgba(255, 149, 0, 0.12);
+  border-radius: $radius-card;
+  padding: $spacing-md;
+  margin-bottom: $spacing-md;
 
-  .summary-icon {
-    width: 48rpx;
-    height: 48rpx;
-    border-radius: 12rpx;
-    background: linear-gradient(135deg, rgba(0, 129, 255, 0.1) 0%, rgba(28, 187, 180, 0.1) 100%);
+  .ai-loading {
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 16rpx;
+    padding: $spacing-md;
 
-    .cuIcon-commentfill {
-      font-size: 28rpx;
+    .cuIcon-loading2 {
+      font-size: 20px;
+      animation: spin 1s linear infinite;
     }
   }
 
-  .summary-title {
-    flex: 1;
-  }
-
-  .download-btn {
+  .ai-card-header {
     display: flex;
     align-items: center;
-    padding: 8rpx 16rpx;
-    border-radius: 8rpx;
-    background: rgba(0, 129, 255, 0.1);
+    margin-bottom: $spacing-sm;
+    font-size: 15px;
+    color: $color-text-primary;
 
-    .cuIcon-downloadfill {
-      font-size: 28rpx;
-      margin-right: 8rpx;
-    }
-
-    .download-text {
-      color: #007aff;
-      font-weight: 500;
+    .cuIcon-creativefill {
+      font-size: 18px;
+      color: $color-warning;
     }
   }
 
-  .ai-btn {
-    display: flex;
-    align-items: center;
-    padding: 8rpx 16rpx;
-    border-radius: 8rpx;
-    background: rgba(255, 157, 0, 0.1);
-    margin-left: 12rpx;
+  .ai-result-item {
+    padding: $spacing-sm 0;
+    border-top: 0.5px solid rgba(255, 149, 0, 0.1);
 
-    &.ai-btn-disabled {
-      opacity: 0.6;
-      pointer-events: none;
+    &:first-child {
+      border-top: none;
     }
 
-    .ai-btn-icon {
-      font-size: 28rpx;
-      margin-right: 8rpx;
+    .ai-result-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: $color-text-primary;
+      margin-bottom: $spacing-xs;
     }
 
-    .ai-btn-text {
-      color: #ff9d00;
-      font-weight: 500;
-    }
-  }
-
-  .share-btn {
-    display: flex;
-    align-items: center;
-    padding: 8rpx 16rpx;
-    border-radius: 8rpx;
-    background: rgba(48, 190, 100, 0.1);
-    margin-left: 12rpx;
-
-    &.share-btn-disabled {
-      opacity: 0.6;
-      pointer-events: none;
+    .ai-result-preview {
+      font-size: 13px;
+      color: $color-text-secondary;
+      line-height: 1.6;
+      margin-bottom: $spacing-xs;
     }
 
-    .share-btn-icon {
-      font-size: 28rpx;
-      margin-right: 8rpx;
-    }
-
-    .share-btn-text {
-      color: #30be64;
+    .ai-result-link {
+      font-size: 13px;
+      color: $color-warning;
       font-weight: 500;
     }
   }
 }
 
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* 总结内容 */
+.summary-section {
+  background: $color-bg-card;
+  border-radius: $radius-card;
+  overflow: hidden;
+
+  .summary-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $spacing-md;
+    border-bottom: 0.5px solid $color-divider;
+
+    .summary-actions {
+      display: flex;
+      gap: $spacing-sm;
+    }
+
+    .action-btn {
+      display: flex;
+      align-items: center;
+      padding: 6px 12px;
+      border-radius: $radius-button;
+      background: $color-primary-light;
+
+      .cuIcon-downloadfill {
+        font-size: 16px;
+      }
+    }
+  }
+}
+
 .summary-content {
-  padding: 32rpx;
-  min-height: 200rpx;
+  padding: $spacing-md;
+  min-height: 200px;
 
   .towxml-wrapper {
-    font-size: 28rpx;
+    font-size: 15px;
     line-height: 1.8;
-    color: #333;
+    color: $color-text-primary;
 
-    // 优化 towxml 渲染样式
     ::v-deep img {
       max-width: 100%;
       height: auto;
-      border-radius: 8rpx;
+      border-radius: $radius-small;
     }
 
     ::v-deep pre {
-      background: #f5f5f5;
-      padding: 20rpx;
-      border-radius: 8rpx;
+      background: #1C1C1E;
+      color: #E5E5EA;
+      padding: $spacing-md;
+      border-radius: $radius-button;
       overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.6;
     }
 
     ::v-deep code {
-      background: #f5f5f5;
-      padding: 4rpx 8rpx;
-      border-radius: 4rpx;
-      font-size: 24rpx;
+      background: rgba(118, 118, 128, 0.12);
+      padding: 2px 6px;
+      border-radius: $radius-tag;
+      font-size: 13px;
+      color: $color-error;
+    }
+
+    ::v-deep pre code {
+      background: none;
+      color: inherit;
+      padding: 0;
     }
 
     ::v-deep p {
-      margin-bottom: 16rpx;
+      margin-bottom: $spacing-sm;
     }
 
     ::v-deep h1,
@@ -516,9 +590,23 @@ export default {
     ::v-deep h4,
     ::v-deep h5,
     ::v-deep h6 {
-      margin-top: 32rpx;
-      margin-bottom: 16rpx;
-      font-weight: bold;
+      margin-top: $spacing-md;
+      margin-bottom: $spacing-sm;
+      font-weight: 700;
+      color: $color-text-primary;
+    }
+
+    ::v-deep ul,
+    ::v-deep ol {
+      padding-left: $spacing-md;
+      margin-bottom: $spacing-sm;
+    }
+
+    ::v-deep blockquote {
+      border-left: 3px solid $color-primary;
+      padding-left: $spacing-md;
+      color: $color-text-tertiary;
+      margin: $spacing-sm 0;
     }
   }
 
@@ -526,84 +614,8 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 80rpx 0;
+    padding: 60px 0;
     text-align: center;
-  }
-}
-
-/* 查看学习结果入口 */
-.learn-result-entry {
-  display: flex;
-  align-items: center;
-  background: #ffffff;
-  border-radius: 24rpx;
-  padding: 24rpx 32rpx;
-  margin-bottom: 24rpx;
-  .entry-icon {
-    width: 48rpx;
-    height: 48rpx;
-    border-radius: 12rpx;
-    background: rgba(255, 157, 0, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 16rpx;
-    flex-shrink: 0;
-
-    .cuIcon-creativefill {
-      font-size: 28rpx;
-    }
-  }
-
-  .entry-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .entry-title {
-    font-size: 28rpx;
-    font-weight: 500;
-    color: #333;
-  }
-
-  .entry-desc {
-    margin-top: 4rpx;
-  }
-
-  .cuIcon-right {
-    font-size: 28rpx;
-    color: #999;
-    flex-shrink: 0;
-    margin-left: 12rpx;
-  }
-}
-
-/* 响应式优化 */
-@media screen and (max-width: 750rpx) {
-  .detail-wrapper {
-    padding: 20rpx;
-  }
-
-  .detail-card,
-  .summary-card {
-    border-radius: 20rpx;
-  }
-
-  .detail-header {
-    .detail-icon {
-      width: 64rpx;
-      height: 64rpx;
-      margin-right: 20rpx;
-
-      .cuIcon-creativefill {
-        font-size: 32rpx;
-      }
-    }
-  }
-
-  .summary-content {
-    padding: 24rpx;
   }
 }
 
@@ -624,50 +636,50 @@ export default {
 .share-modal {
   width: 100%;
   background: #fff;
-  border-radius: 24rpx 24rpx 0 0;
-  padding: 40rpx 32rpx;
-  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+  border-radius: $radius-card $radius-card 0 0;
+  padding: $spacing-xl $spacing-md;
+  padding-bottom: calc(#{$spacing-xl} + env(safe-area-inset-bottom));
 
   .share-modal-title {
-    font-size: 32rpx;
+    font-size: 18px;
     font-weight: 600;
-    color: #333;
+    color: $color-text-primary;
     text-align: center;
-    margin-bottom: 8rpx;
+    margin-bottom: 4px;
   }
 
   .share-modal-subtitle {
-    font-size: 26rpx;
-    color: #999;
+    font-size: 13px;
+    color: $color-text-tertiary;
     text-align: center;
-    margin-bottom: 32rpx;
+    margin-bottom: $spacing-lg;
   }
 
   .share-options {
     display: flex;
     flex-wrap: wrap;
-    gap: 16rpx;
+    gap: $spacing-sm;
     justify-content: center;
-    margin-bottom: 40rpx;
+    margin-bottom: $spacing-xl;
   }
 
   .share-option {
-    padding: 16rpx 32rpx;
-    border-radius: 40rpx;
-    background: #f5f5f5;
-    border: 2rpx solid transparent;
+    padding: 10px 24px;
+    border-radius: $radius-pill;
+    background: $color-bg-page;
+    border: 2px solid transparent;
 
     .share-option-text {
-      font-size: 28rpx;
-      color: #666;
+      font-size: 14px;
+      color: $color-text-secondary;
     }
 
     &.share-option-active {
-      background: rgba(48, 190, 100, 0.1);
-      border-color: #30be64;
+      background: $color-success-light;
+      border-color: $color-success;
 
       .share-option-text {
-        color: #30be64;
+        color: $color-success;
         font-weight: 500;
       }
     }
@@ -675,35 +687,35 @@ export default {
 
   .share-modal-actions {
     display: flex;
-    gap: 24rpx;
+    gap: $spacing-md;
   }
 
   .share-modal-cancel {
     flex: 1;
-    height: 80rpx;
+    height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 40rpx;
-    background: #f5f5f5;
+    border-radius: $radius-button;
+    background: $color-bg-page;
 
     text {
-      font-size: 28rpx;
-      color: #999;
+      font-size: 15px;
+      color: $color-text-tertiary;
     }
   }
 
   .share-modal-confirm {
     flex: 1;
-    height: 80rpx;
+    height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 40rpx;
-    background: #30be64;
+    border-radius: $radius-button;
+    background: $color-success;
 
     text {
-      font-size: 28rpx;
+      font-size: 15px;
       color: #fff;
       font-weight: 500;
     }

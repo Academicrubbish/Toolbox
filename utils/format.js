@@ -12,6 +12,52 @@ export function formatTime(timeStr, format = 'HH:mm') {
 }
 
 /**
+ * 智能日期分组：今天/昨天/本周/更早
+ * @param {string} dateStr - 日期字符串
+ * @returns {string}
+ */
+export function formatSmartDate(dateStr) {
+	if (!dateStr) return '更早';
+
+	const date = moment(dateStr);
+	const today = moment().startOf('day');
+	const diff = today.diff(date.startOf('day'), 'days');
+
+	if (diff < 0) return '今天';
+	if (diff === 0) return '今天';
+	if (diff === 1) return '昨天';
+	if (diff < 7) return '本周';
+	return '更早';
+}
+
+/**
+ * 相对时间格式化
+ * - <1分钟 → '刚刚'
+ * - <60分钟 → 'X分钟前'
+ * - 今天 → 'HH:mm'
+ * - 昨天 → '昨天 HH:mm'
+ * - <7天 → 'X天前'
+ * - 更早 → 'MM-DD'
+ * @param {string} dateStr - 日期字符串
+ * @returns {string}
+ */
+export function formatRelativeTime(dateStr) {
+	if (!dateStr) return '';
+
+	const date = moment(dateStr);
+	const now = moment();
+	const diffMinutes = now.diff(date, 'minutes');
+	const diffDays = moment().startOf('day').diff(date.clone().startOf('day'), 'days');
+
+	if (diffMinutes < 1) return '刚刚';
+	if (diffMinutes < 60) return `${diffMinutes}分钟前`;
+	if (diffDays === 0) return date.format('HH:mm');
+	if (diffDays === 1) return `昨天 ${date.format('HH:mm')}`;
+	if (diffDays < 7) return `${diffDays}天前`;
+	return date.format('MM-DD');
+}
+
+/**
  * 格式化总结内容（简单处理markdown，保留文本内容）
  * @param {string} content - Markdown 内容
  * @returns {string}
@@ -37,25 +83,27 @@ export function formatSummaryContent(content) {
 }
 
 /**
- * 按日期分组记录
+ * 按日期分组记录（智能分组：今天/昨天/本周/更早）
  * @param {Array} list - 记录列表
  * @returns {Array} 分组后的记录 [{ date, children, count }]
  */
 export function groupRecordsByDate(list) {
-	return list.reduce((groups, element) => {
-		const groupDate = moment(element.createTime).format("YYYY-MM-DD");
-		const existingGroup = groups.find(group => group.date === groupDate);
+	const groups = {};
+	const order = ['今天', '昨天', '本周', '更早'];
 
-		if (existingGroup) {
-			existingGroup.children.push(element);
-			existingGroup.count++;
-		} else {
-			groups.push({
-				date: groupDate,
-				children: [element],
-				count: 1,
-			});
+	list.forEach(element => {
+		const group = formatSmartDate(element.createTime);
+		if (!groups[group]) {
+			groups[group] = [];
 		}
-		return groups;
-	}, []);
+		groups[group].push(element);
+	});
+
+	return order
+		.filter(label => groups[label])
+		.map(label => ({
+			date: label,
+			children: groups[label],
+			count: groups[label].length
+		}));
 }
