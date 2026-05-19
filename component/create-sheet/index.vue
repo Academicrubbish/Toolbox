@@ -18,7 +18,7 @@
           <view class="method-grid">
             <view class="method-card" @tap="handleMethodTap('manual')">
               <view class="method-icon">
-                <text class="cuIcon-editfill"></text>
+                <text class="cuIcon-writefill"></text>
               </view>
               <text class="method-name">手动输入</text>
             </view>

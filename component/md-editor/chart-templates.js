@@ -161,14 +161,21 @@ export const chartTemplates = {
     "type": "bar",
     "data": [5, 20, 36, 10, 10]
   }]
-}\n\`\`\`\n`
+}\n\`\`\`\n`,
 };
 
 // ECharts 图表类型选项列表（用于 showActionSheet）
-export const echartsOptions = ['折线图', '柱状图', '饼图', '散点图', '雷达图', '自定义'];
+export const echartsOptions = [
+  "折线图",
+  "柱状图",
+  "饼图",
+  "散点图",
+  "雷达图",
+  "自定义",
+];
 
 // 根据 tapIndex 获取对应的图表模板
 export function getChartTemplate(tapIndex) {
-  const keys = ['line', 'bar', 'pie', 'scatter', 'radar', 'custom'];
+  const keys = ["line", "bar", "pie", "scatter", "radar", "custom"];
   return chartTemplates[keys[tapIndex]] || chartTemplates.custom;
 }

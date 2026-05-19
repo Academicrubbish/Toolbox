@@ -17,7 +17,7 @@
         
         <view class="login-buttons">
           <button 
-            class="cu-btn bg-green shadow-blur round lg login-btn" 
+            class="login-btn" 
             @click="handleLogin" 
             :disabled="loading"
             :loading="loading">
@@ -194,6 +194,20 @@ export default {
       line-height: 88rpx;
       font-size: 32rpx;
       margin-bottom: 20rpx;
+      background: $color-success;
+      color: #ffffff;
+      border-radius: 1000rpx;
+      border: none;
+      font-weight: 500;
+      box-shadow: 0 8rpx 24rpx rgba(52, 199, 89, 0.3);
+
+      &::after {
+        border: none;
+      }
+
+      &[disabled] {
+        opacity: 0.6;
+      }
     }
     
     .cancel-btn {

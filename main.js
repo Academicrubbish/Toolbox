@@ -15,9 +15,6 @@ if (typeof global !== 'undefined') {
 	global.renderYuml = renderYuml
 }
 
-import cuCustom from './colorui/components/cu-custom.vue'
-Vue.component('cu-custom', cuCustom)
-
 // 注册全局登录弹窗组件
 import LoginModal from './component/login-modal/index.vue'
 Vue.component('login-modal', LoginModal)

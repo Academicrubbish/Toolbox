@@ -2,7 +2,7 @@
  * Markdown 编辑器 - 工具栏操作配置
  * 使用 dispatch table 模式替代 switch/case
  */
-import { echartsOptions, getChartTemplate } from './chart-templates.js';
+import { echartsOptions, getChartTemplate } from "./chart-templates.js";
 
 const headers = ["#", "##", "###", "####", "#####", "######"];
 
@@ -70,7 +70,9 @@ export const toolbarActions = {
         if (res.tapIndex === 0) {
           appendText("$E = mc^2$ ");
         } else {
-          appendText("\n$$\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}$$\n");
+          appendText(
+            "\n$$\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}$$\n",
+          );
         }
       },
     });
@@ -149,7 +151,9 @@ export function executeToolbarAction(type, ctx) {
   const action = toolbarActions[type];
   if (!action) return;
 
-  const appendText = (text) => { ctx.textareaData += text; };
+  const appendText = (text) => {
+    ctx.textareaData += text;
+  };
   const adjustIndentation = (increase) => {
     const lines = ctx.textareaData.split("\n");
     if (lines.length > 0) {
