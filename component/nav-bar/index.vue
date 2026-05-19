@@ -8,13 +8,15 @@
       <view class="nav-bar__content" :style="'height:' + (customBar - statusBarHeight) + 'px'">
         <!-- 左侧区域 -->
         <view class="nav-bar__left">
-          <view v-if="showMenu" class="nav-bar__menu" @tap="handleMenuClick">
-            <text class="cuIcon-sort"></text>
-          </view>
-          <view v-if="showBack" class="nav-bar__back" @tap="handleBack">
-            <text class="nav-bar__back-arrow">←</text>
-            <text class="nav-bar__back-text">返回</text>
-          </view>
+          <slot name="left">
+            <view v-if="showMenu" class="nav-bar__menu" @tap="handleMenuClick">
+              <text class="cuIcon-sort"></text>
+            </view>
+            <view v-if="showBack" class="nav-bar__back" @tap="handleBack">
+              <text class="nav-bar__back-arrow">←</text>
+              <text class="nav-bar__back-text">返回</text>
+            </view>
+          </slot>
         </view>
 
         <!-- 标题 -->
