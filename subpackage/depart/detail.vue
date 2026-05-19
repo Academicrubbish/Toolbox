@@ -64,24 +64,10 @@
         </template>
       </view>
 
-      <!-- 总结内容 -->
-      <view class="summary-section" v-if="summaryContent">
-        <view class="summary-header">
-          <text class="text-bold text-lg">总结内容</text>
-          <view v-if="!isExampleRecord" class="summary-actions">
-            <view class="action-btn" @tap="downloadDocument">
-              <text class="cuIcon-downloadfill text-primary"></text>
-              <text class="text-xs text-primary margin-left-xs">下载</text>
-            </view>
-          </view>
-        </view>
-        <view class="summary-content">
-          <view v-if="towxmlData" class="towxml-wrapper">
-            <towxml :nodes="towxmlData" />
-          </view>
-          <view v-else class="summary-empty">
-            <text class="text-gray text-sm">暂无总结内容</text>
-          </view>
+      <!-- 正文内容（沉浸式，无缝衔接） -->
+      <view v-if="summaryContent" class="article-body">
+        <view v-if="towxmlData" class="towxml-wrapper">
+          <towxml :nodes="towxmlData" />
         </view>
       </view>
     </view>
@@ -384,7 +370,7 @@ export default {
 <style lang="scss" scoped>
 .detail-container {
   min-height: 100vh;
-  background: $color-bg-page;
+  background: $color-bg-card;
 }
 
 .nav-right-menu {
@@ -509,51 +495,21 @@ export default {
   100% { transform: rotate(360deg); }
 }
 
-/* 总结内容 */
-.summary-section {
-  background: $color-bg-card;
-  border-radius: $radius-card;
-  overflow: hidden;
-
-  .summary-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: $spacing-md;
-    border-bottom: 0.5px solid $color-divider;
-
-    .summary-actions {
-      display: flex;
-      gap: $spacing-sm;
-    }
-
-    .action-btn {
-      display: flex;
-      align-items: center;
-      padding: 6px 12px;
-      border-radius: $radius-button;
-      background: $color-primary-light;
-
-      .cuIcon-downloadfill {
-        font-size: 16px;
-      }
-    }
-  }
-}
-
-.summary-content {
-  padding: $spacing-md;
-  min-height: 200px;
+/* 正文内容（沉浸式） */
+.article-body {
+  padding: 0;
+  padding-bottom: $spacing-xl;
 
   .towxml-wrapper {
-    font-size: 15px;
+    font-size: 17px;
     line-height: 1.8;
     color: $color-text-primary;
 
     ::v-deep img {
       max-width: 100%;
       height: auto;
-      border-radius: $radius-small;
+      border-radius: $radius-button;
+      margin: $spacing-sm 0;
     }
 
     ::v-deep pre {
@@ -562,15 +518,16 @@ export default {
       padding: $spacing-md;
       border-radius: $radius-button;
       overflow-x: auto;
-      font-size: 13px;
+      font-size: 14px;
       line-height: 1.6;
+      margin: $spacing-sm 0;
     }
 
     ::v-deep code {
       background: rgba(118, 118, 128, 0.12);
       padding: 2px 6px;
       border-radius: $radius-tag;
-      font-size: 13px;
+      font-size: 14px;
       color: $color-error;
     }
 
@@ -578,44 +535,44 @@ export default {
       background: none;
       color: inherit;
       padding: 0;
+      font-size: 14px;
     }
 
     ::v-deep p {
-      margin-bottom: $spacing-sm;
+      margin-bottom: $spacing-md;
     }
 
     ::v-deep h1,
     ::v-deep h2,
-    ::v-deep h3,
+    ::v-deep h3 {
+      margin-top: $spacing-lg;
+      margin-bottom: $spacing-sm;
+      font-weight: 700;
+      color: $color-text-primary;
+      letter-spacing: -0.3px;
+    }
+
     ::v-deep h4,
     ::v-deep h5,
     ::v-deep h6 {
       margin-top: $spacing-md;
-      margin-bottom: $spacing-sm;
-      font-weight: 700;
+      margin-bottom: $spacing-xs;
+      font-weight: 600;
       color: $color-text-primary;
     }
 
     ::v-deep ul,
     ::v-deep ol {
-      padding-left: $spacing-md;
-      margin-bottom: $spacing-sm;
+      padding-left: $spacing-lg;
+      margin-bottom: $spacing-md;
     }
 
     ::v-deep blockquote {
       border-left: 3px solid $color-primary;
       padding-left: $spacing-md;
       color: $color-text-tertiary;
-      margin: $spacing-sm 0;
+      margin: $spacing-md 0;
     }
-  }
-
-  .summary-empty {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 60px 0;
-    text-align: center;
   }
 }
 
