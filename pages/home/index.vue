@@ -20,7 +20,7 @@
 							<text class="cuIcon-close text-gray"></text>
 						</view>
 					</view>
-					<view v-if="searchKeyword && searchKeyword.trim()" class="search-reset" @tap="resetSearch">
+					<view v-if="searchKeyword && searchKeyword.trim()" class="search-reset" @tap="clearSearch">
 						<text class="cuIcon-refresh text-gray"></text>
 						<text class="search-reset-text">重置</text>
 					</view>
@@ -97,7 +97,7 @@
 			<!-- 删除提示 -->
 			<uni-popup ref="alertDialog" type="dialog">
 				<uni-popup-dialog type="warn" title="提醒" :content="dialogContent" cancelText="取消" confirmText="确定"
-					@confirm="dialogConfirm" @close="dialogClose" />
+					@confirm="dialogConfirm" />
 			</uni-popup>
 
 			<!-- 侧边栏 -->
@@ -123,14 +123,14 @@
 		</view>
 
 		<!-- 登录授权弹窗 -->
-		<login-modal ref="loginModal" @success="handleLoginSuccess" @cancel="handleLoginCancel" />
+		<login-modal ref="loginModal" @success="handleLoginSuccess" />
 	</view>
 </template>
 <script>
 import { getRecordList, delRecord, searchRecord, addRecord } from "@/api/record.js";
 import { getDictCategoryList } from "@/api/dictCategory.js";
 import { delSummarize, getSummarize } from "@/api/summarize";
-import { batchQueryAiResults } from "@/api/aiLearn.js";
+import { batchQueryAiResults, deleteAiLogsByRecordId } from "@/api/aiLearn.js";
 import { groupRecordsByDate } from "@/utils/format";
 import zStatic from '@/uni_modules/z-paging/components/z-paging/js/z-paging-static.js';
 import zPagingEmptyView from '@/uni_modules/z-paging/components/z-paging-empty-view/z-paging-empty-view.vue';
@@ -417,7 +417,7 @@ export default {
 				.then((res) => {
 					if (res.result && (res.result.code === 0 || res.result.code === undefined)) {
 						this.pendingSummarizeId = '';
-			this.summaryPreview = '';
+						this.summaryPreview = '';
 						uni.showToast({ title: '保存成功', icon: 'success' });
 						if (this.$refs.paging) {
 							this.$refs.paging.refresh();
@@ -442,6 +442,7 @@ export default {
 			delRecord(recordId)
 				.then((res) => {
 					if (res.result && (res.result.code === 0 || res.result.code === undefined)) {
+					deleteAiLogsByRecordId(recordId);
 						if (summarizeId) {
 							delSummarize(summarizeId).finally(() => { this.showDeleteSuccess(); });
 						} else {
@@ -507,16 +508,10 @@ export default {
 			this.selectedTagId = tagId;
 		},
 		handleQuickAction(action) {
-			switch (action) {
-				case 'ocr':
-					this.addRecord();
-					break;
-				case 'link':
-					this.addRecord();
-					break;
-				case 'ai-history':
-					uni.navigateTo({ url: '/subpackage/depart/ai-history' });
-					break;
+			if (action === 'ocr' || action === 'link') {
+				this.addRecord();
+			} else if (action === 'ai-history') {
+				uni.navigateTo({ url: '/subpackage/depart/ai-history' });
 			}
 		},
 		handleNavigate(url) {

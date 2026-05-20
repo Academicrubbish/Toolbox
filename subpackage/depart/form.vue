@@ -171,13 +171,8 @@ export default {
     this.loadTagList();
   },
   computed: {
-    // 获取标题长度（安全处理 null/undefined）
     getTitleLength() {
-      const title = this.formData.title;
-      if (title === null || title === undefined) {
-        return 0;
-      }
-      return String(title).length;
+      return (this.formData.title || '').length;
     },
   },
   methods: {
@@ -302,22 +297,18 @@ export default {
         url: `/subpackage/summarize/index?id=${this.formData.summarizeId || ''}`,
       });
     },
-    // 切换标签选择
     toggleTag(tagId) {
       const index = this.formData.tags.indexOf(tagId);
       if (index > -1) {
-        // 已选中，取消选择
         this.formData.tags.splice(index, 1);
       } else {
-        // 未选中，添加选择
         this.formData.tags.push(tagId);
       }
       // 触发响应式更新
       this.$set(this.formData, 'tags', [...this.formData.tags]);
     },
-    // 判断标签是否已选中
     isTagSelected(tagId) {
-      return this.formData.tags.indexOf(tagId) > -1;
+      return this.formData.tags.includes(tagId);
     },
     // 提交表单
     submit: debounce(function (form) {

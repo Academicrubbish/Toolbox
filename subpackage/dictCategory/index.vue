@@ -96,7 +96,7 @@
         cancelText="取消" 
         confirmText="确定"
         @confirm="dialogConfirm" 
-        @close="dialogClose" 
+       
       />
     </uni-popup>
   </view>
@@ -127,13 +127,6 @@ export default {
     };
   },
   computed: {
-    // 计算属性：检查 tagList 是否有效
-    tagListLength() {
-      return this.tagList && Array.isArray(this.tagList) ? this.tagList.length : 0;
-    },
-    isTagListArray() {
-      return Array.isArray(this.tagList);
-    },
     // 公共标签
     publicTags() {
       return this.tagList.filter(item => this.isPublicTag(item));
@@ -156,26 +149,8 @@ export default {
     loadTagList() {
       getDictCategoryList()
         .then((res) => {
-          // uniCloud 返回格式：{ result: { data: [...] } }
-          let data = [];
-          
-          if (res && res.result) {
-            // 如果 result.data 存在，使用它
-            if (res.result.data !== undefined) {
-              data = Array.isArray(res.result.data) ? res.result.data : [];
-            } 
-            // 如果 result 本身是数组
-            else if (Array.isArray(res.result)) {
-              data = res.result;
-            }
-            // 其他情况，返回空数组
-            else {
-              data = [];
-            }
-          }
-          
-          // 使用 Vue.set 确保响应式更新（最可靠的方法）
-          this.$set(this, 'tagList', data || []);
+          const data = res?.result?.data;
+          this.tagList = Array.isArray(data) ? data : [];
         })
         .catch((err) => {
           console.error("加载标签列表失败：", err);
@@ -288,7 +263,6 @@ export default {
           });
         });
     },
-    dialogClose() {},
   },
 };
 </script>

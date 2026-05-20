@@ -113,7 +113,7 @@
     <!-- 删除确认弹窗 -->
     <uni-popup ref="alertDialog" type="dialog">
       <uni-popup-dialog type="warn" title="提醒" :content="dialogContent" cancelText="取消" confirmText="确定"
-        @confirm="dialogConfirm" @close="dialogClose" />
+        @confirm="dialogConfirm" />
     </uni-popup>
   </view>
 </template>
@@ -122,7 +122,7 @@
 import { getRecord, delRecord } from "@/api/record";
 import { getSummarize, delSummarize } from "@/api/summarize";
 import { getDictCategoryList } from "@/api/dictCategory.js";
-import { callGenerateLearnNote, getLearnResultList } from "@/api/aiLearn.js";
+import { callGenerateLearnNote, getLearnResultList, deleteAiLogsByRecordId } from "@/api/aiLearn.js";
 import { callGenerateShareLink } from "@/api/share.js";
 import { getTagColor } from "@/utils/tagColors";
 import { downloadMarkdown } from "@/utils/download";
@@ -224,6 +224,7 @@ export default {
       delRecord(recordId)
         .then((res) => {
           if (res.result && (res.result.code === 0 || res.result.code === undefined)) {
+            deleteAiLogsByRecordId(recordId);
             if (summarizeId) {
               delSummarize(summarizeId).finally(() => { this.showDeleteSuccess(); });
             } else {
@@ -237,7 +238,6 @@ export default {
           uni.showToast({ title: "删除失败", icon: "none" });
         });
     },
-    dialogClose() {},
     showDeleteSuccess() {
       uni.showToast({ title: "删除成功", icon: "success" });
       uni.$emit('record-changed');

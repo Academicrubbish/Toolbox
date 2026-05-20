@@ -23,8 +23,7 @@ export function formatSmartDate(dateStr) {
 	const today = moment().startOf('day');
 	const diff = today.diff(date.startOf('day'), 'days');
 
-	if (diff < 0) return '今天';
-	if (diff === 0) return '今天';
+	if (diff <= 0) return '今天';
 	if (diff === 1) return '昨天';
 	if (diff < 7) return '本周';
 	return '更早';
