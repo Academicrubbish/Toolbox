@@ -127,10 +127,11 @@
 	</view>
 </template>
 <script>
-import { getRecordList, delRecord, searchRecord, addRecord } from "@/api/record.js";
+import { getRecordList, searchRecord, addRecord } from "@/api/record.js";
 import { getDictCategoryList } from "@/api/dictCategory.js";
-import { delSummarize, getSummarize } from "@/api/summarize";
-import { batchQueryAiResults, deleteAiLogsByRecordId } from "@/api/aiLearn.js";
+import { batchQueryAiResults } from "@/api/aiLearn.js";
+import { deleteRecordCascade } from "@/utils/record-delete.js";
+import { delSummarize } from "@/api/summarize";
 import { groupRecordsByDate } from "@/utils/format";
 import zStatic from '@/uni_modules/z-paging/components/z-paging/js/z-paging-static.js';
 import zPagingEmptyView from '@/uni_modules/z-paging/components/z-paging-empty-view/z-paging-empty-view.vue';
@@ -362,13 +363,16 @@ export default {
 			this.summaryPreview = '';
 			this.sheetVisible = true;
 		},
-		handleSheetClose() {
-			this.sheetVisible = false;
-			this.pendingSummarizeId = '';
-			this.summaryPreview = '';
-		},
-		fetchSummaryPreview(summarizeId) {
-			getSummarize(summarizeId).then((res) => {
+			handleSheetClose() {
+				this.sheetVisible = false;
+				if (this.pendingSummarizeId) {
+					delSummarize(this.pendingSummarizeId);
+					}
+				this.pendingSummarizeId = '';
+				this.summaryPreview = '';
+			},
+			fetchSummaryPreview(summarizeId) {
+				getSummarize(summarizeId).then((res) => {
 				const d = res.result && res.result.data && res.result.data[0];
 				const content = d ? d.content : '';
 				const text = content.replace(/[#*`\[\]()>_~-]/g, '').replace(/\n+/g, ' ').trim();
@@ -439,22 +443,11 @@ export default {
 		dialogConfirm() {
 			const recordId = this.pickerRecordItem._id;
 			const summarizeId = this.pickerRecordItem.summarizeId;
-			delRecord(recordId)
-				.then((res) => {
-					if (res.result && (res.result.code === 0 || res.result.code === undefined)) {
-					deleteAiLogsByRecordId(recordId);
-						if (summarizeId) {
-							delSummarize(summarizeId).finally(() => { this.showDeleteSuccess(); });
-						} else {
-							this.showDeleteSuccess();
-						}
-					} else {
-						uni.showToast({ title: res.result?.msg || "删除失败", icon: "none" });
-					}
-				})
-				.catch(() => {
-					uni.showToast({ title: "删除失败", icon: "none" });
-				});
+			deleteRecordCascade(recordId, summarizeId)
+					.then(() => { this.showDeleteSuccess(); })
+					.catch(() => {
+						uni.showToast({ title: "删除失败", icon: "none" });
+					});
 		},
 		showDeleteSuccess() {
 			uni.showToast({ title: "删除成功", icon: "success" });

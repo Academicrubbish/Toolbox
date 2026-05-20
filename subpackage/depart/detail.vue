@@ -119,10 +119,11 @@
 </template>
 
 <script>
-import { getRecord, delRecord } from "@/api/record";
-import { getSummarize, delSummarize } from "@/api/summarize";
+import { getRecord } from "@/api/record";
+import { getSummarize } from "@/api/summarize";
 import { getDictCategoryList } from "@/api/dictCategory.js";
-import { callGenerateLearnNote, getLearnResultList, deleteAiLogsByRecordId } from "@/api/aiLearn.js";
+import { callGenerateLearnNote, getLearnResultList } from "@/api/aiLearn.js";
+import { deleteRecordCascade } from "@/utils/record-delete.js";
 import { callGenerateShareLink } from "@/api/share.js";
 import { getTagColor } from "@/utils/tagColors";
 import { downloadMarkdown } from "@/utils/download";
@@ -221,19 +222,8 @@ export default {
     dialogConfirm() {
       const recordId = this.pickerRecordItem._id;
       const summarizeId = this.pickerRecordItem.summarizeId;
-      delRecord(recordId)
-        .then((res) => {
-          if (res.result && (res.result.code === 0 || res.result.code === undefined)) {
-            deleteAiLogsByRecordId(recordId);
-            if (summarizeId) {
-              delSummarize(summarizeId).finally(() => { this.showDeleteSuccess(); });
-            } else {
-              this.showDeleteSuccess();
-            }
-          } else {
-            uni.showToast({ title: res.result?.msg || "删除失败", icon: "none" });
-          }
-        })
+      deleteRecordCascade(recordId, summarizeId)
+        .then(() => { this.showDeleteSuccess(); })
         .catch(() => {
           uni.showToast({ title: "删除失败", icon: "none" });
         });
