@@ -159,6 +159,47 @@ export const getAiLearnHistory = function(data) {
 		});
 };
 
+/**
+ * 级联删除：删除某记录关联的所有 AI 日志 + 任务队列
+ * @param {string} recordId 记录ID
+ */
+export const deleteAiLogsByRecordId = function(recordId) {
+	if (!recordId) return Promise.resolve();
+
+	const db = uniCloud.database();
+	const dbCmd = db.command;
+
+	// 1. 查出该记录关联的所有 AI 日志 ID 和 batch_id
+	return db.collection('ai_learn_logs')
+		.where({ record_id: recordId })
+		.field({ _id: true, batch_id: true })
+		.limit(200)
+		.get()
+		.then(res => {
+			const logs = res.result?.data || [];
+			if (logs.length === 0) return { deleted: 0 };
+
+			const logIds = logs.map(l => l._id);
+			const batchIds = [...new Set(logs.map(l => l.batch_id).filter(Boolean))];
+
+			// 2. 删除 AI 日志
+			const deleteLogs = db.collection('ai_learn_logs')
+				.where({ _id: dbCmd.in(logIds) })
+				.remove();
+
+			// 3. 删除关联的任务队列
+			const deleteQueue = batchIds.length > 0
+				? db.collection('ai_task_queue')
+					.where({ batch_id: dbCmd.in(batchIds) })
+					.remove()
+				: Promise.resolve();
+
+			return Promise.all([deleteLogs, deleteQueue]).then(() => ({
+				deleted: logIds.length
+			}));
+		});
+};
+
 export const getAiResultCount = function(recordId) {
 	const db = uniCloud.database();
 
