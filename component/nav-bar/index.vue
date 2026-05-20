@@ -13,8 +13,7 @@
               <text class="iconfont icon-menus"></text>
             </view>
             <view v-if="showBack" class="nav-bar__back" @tap="handleBack">
-              <text class="nav-bar__back-arrow">←</text>
-              <text class="nav-bar__back-text">返回</text>
+              <text class="cuIcon-back"></text>
             </view>
           </slot>
         </view>
@@ -141,21 +140,14 @@ export default {
   }
 
   &__back {
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
-    gap: $spacing-xs;
+    justify-content: center;
     color: $color-primary;
-    font-size: 17px;
-    padding: $spacing-xs $spacing-sm;
+    font-size: 20px;
     border-radius: $radius-button;
-  }
-
-  &__back-arrow {
-    font-size: 17px;
-  }
-
-  &__back-text {
-    font-size: 15px;
   }
 
   &__title {

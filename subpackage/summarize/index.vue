@@ -23,7 +23,7 @@
       </template>
     </nav-bar>
     <view :style="contentHeight">
-      <md-editor ref="editor" :textareaDataProp="textareaData" @submit="submit" />
+      <md-editor ref="editor" :textareaDataProp="textareaData" :showExtraActions="false" @submit="submit" />
     </view>
 
     <!-- 登录授权弹窗 -->
@@ -92,11 +92,13 @@ export default {
     },
     handleMoreMenu() {
       uni.showActionSheet({
-        itemList: ['上传MD文件', '清空内容'],
+        itemList: ['返回', '上传MD文件', '清空内容'],
         success: (res) => {
-          if (res.tapIndex === 0 && this.$refs.editor) {
-            this.$refs.editor.uploadMdFile();
+          if (res.tapIndex === 0) {
+            uni.navigateBack({ delta: 1 });
           } else if (res.tapIndex === 1 && this.$refs.editor) {
+            this.$refs.editor.uploadMdFile();
+          } else if (res.tapIndex === 2 && this.$refs.editor) {
             this.$refs.editor.toolBarClick('clear');
           }
         }

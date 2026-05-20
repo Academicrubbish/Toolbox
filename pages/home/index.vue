@@ -106,7 +106,6 @@
 				:isGuest="isGuest"
 				:appVersion="appVersion"
 				@close="sidebarVisible = false"
-				@quick-action="handleQuickAction"
 				@navigate="handleNavigate"
 				@login="handleAuthorize"
 			/>
@@ -222,6 +221,14 @@ export default {
 		});
 	},
 	onShow() {
+		// 监听记录变更事件（详情页删除/编辑后触发）
+		if (!this._onRecordChanged) {
+			this._onRecordChanged = () => {
+				if (this.$refs.paging) this.$refs.paging.refresh();
+			};
+		}
+		uni.$on('record-changed', this._onRecordChanged);
+
 		const currentAuthStateVersion = this.$store.state.user.authStateVersion;
 		const currentIsGuest = this.$store.state.user.isGuest;
 
@@ -242,6 +249,9 @@ export default {
 				this.sheetCreationMode = false;
 			}
 		}
+	},
+	onHide() {
+		uni.$off('record-changed', this._onRecordChanged);
 	},
 	watch: {
 		'$store.state.user.authStateVersion': {
@@ -369,6 +379,11 @@ export default {
 			}).catch(() => { this.summaryPreview = ''; });
 		},
 		async handleMethodSelect(method) {
+			// 游客只能使用手动输入
+			if ((method === 'ocr' || method === 'link') && this.isGuest) {
+				uni.showToast({ title: '请先登录后再使用此功能', icon: 'none', duration: 2000 });
+				return;
+			}
 			this.sheetCreationMode = true;
 			if (method === 'manual') {
 				uni.navigateTo({ url: '/subpackage/summarize/index?id=' });

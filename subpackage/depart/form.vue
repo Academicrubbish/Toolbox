@@ -378,6 +378,7 @@ export default {
                       if (modalRes.confirm) {
                         this.goAiLearn(recordId);
                       } else {
+                        uni.$emit('record-changed');
                         uni.navigateBack({ delta: 1 });
                       }
                     }
@@ -409,6 +410,7 @@ export default {
                     icon: "success",
                     mask: true,
                   });
+                  uni.$emit('record-changed');
                   setTimeout(() => {
                     uni.navigateBack({
                       delta: 1,

@@ -420,11 +420,19 @@ export default {
   padding: $spacing-sm $spacing-md;
   background: $color-bg-input;
   border-radius: $radius-input;
+  max-height: 200rpx;
+  overflow: hidden;
 
   .summary-preview-text {
     font-size: 13px;
     color: $color-text-tertiary;
     line-height: 1.5;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-all;
   }
 }
 </style>

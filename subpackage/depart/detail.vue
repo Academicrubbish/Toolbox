@@ -9,10 +9,15 @@
 -->
 <template>
   <view class="detail-container">
-    <nav-bar title="记录详情" showBack>
-      <template #right>
-        <view class="nav-right-menu" @tap="showMoreMenu">
-          <text class="cuIcon-moreandroid text-gray"></text>
+    <nav-bar title="记录详情">
+      <template #left>
+        <view class="nav-left-actions">
+          <view class="nav-back-btn" @tap="handleBack">
+            <text class="cuIcon-back"></text>
+          </view>
+          <view v-if="!isGuest" class="nav-more-btn" @tap="showMoreMenu">
+            <text class="cuIcon-moreandroid"></text>
+          </view>
         </view>
       </template>
     </nav-bar>
@@ -144,6 +149,7 @@ export default {
   },
   data() {
     return {
+      recordId: '',
       recordData: null,
       towxmlData: "",
       summaryContent: "",
@@ -163,11 +169,20 @@ export default {
     };
   },
   onLoad(option) {
+    this.recordId = option.id;
     this.loadTagList();
     this.loadRecordDetail(option.id);
   },
+  onShow() {
+    if (this.recordId) {
+      this.loadRecordDetail(this.recordId);
+    }
+  },
   methods: {
     getTagColor,
+    handleBack() {
+      uni.navigateBack({ delta: 1 });
+    },
     handleEdit() {
       if (!this.recordData || !this.recordData._id) return;
       uni.navigateTo({
@@ -225,6 +240,7 @@ export default {
     dialogClose() {},
     showDeleteSuccess() {
       uni.showToast({ title: "删除成功", icon: "success" });
+      uni.$emit('record-changed');
       setTimeout(() => uni.navigateBack(), 1500);
     },
     showMoreMenu() {
@@ -373,13 +389,39 @@ export default {
   background: $color-bg-card;
 }
 
-.nav-right-menu {
+.nav-left-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-back-btn {
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 122, 255, 0.08);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  text {
+    font-size: 18px;
+    color: $color-primary;
+  }
+}
+
+.nav-more-btn {
   width: 36px;
   height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: $radius-button;
+
+  text {
+    font-size: 20px;
+    color: #8e8e93;
+  }
 }
 
 .detail-wrapper {

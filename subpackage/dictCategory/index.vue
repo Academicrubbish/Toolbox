@@ -2,7 +2,7 @@
  * @Author: yuanchuang 1226377893@qq.com
  * @Date: 2024-09-03 16:31:36
  * @LastEditors: yuanchuang 1226377893@qq.com
- * @LastEditTime: 2025-11-19 21:00:59
+ * @LastEditTime: 2026-05-20 11:27:27
  * @FilePath: \Toolbox\subpackage\dictCategory\index.vue
  * @Description: 标签管理
  * 
@@ -55,7 +55,7 @@
 
         <!-- 个人标签区域 -->
         <view v-if="personalTags.length > 0" class="section">
-          <text v-if="publicTags.length > 0" class="section-title text-gray text-xs">个人标签</text>
+          <text v-if="publicTags.length > 0" class="section-title text-gray text-xs">个人标签（点击编辑 · 长按删除）</text>
           <view
             v-for="(item, index) in personalTags"
             :key="item._id"
@@ -71,9 +71,6 @@
               </view>
               <view v-if="item.description" class="tag-item-desc">
                 <text class="text-gray text-xs">{{ item.description }}</text>
-              </view>
-              <view class="tag-item-meta">
-                <text class="text-gray text-xs">点击编辑 · 长按删除</text>
               </view>
             </view>
             <view class="tag-item-arrow">
@@ -332,6 +329,7 @@ export default {
   background: $color-bg-card;
   border-radius: $radius-card;
   padding: 24rpx 28rpx;
+  min-height: 150rpx;
   display: flex;
   align-items: center;
   gap: 20rpx;
