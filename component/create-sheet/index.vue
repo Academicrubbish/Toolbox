@@ -28,14 +28,13 @@
               </view>
               <text class="method-name">拍照识别</text>
             </view>
-            <!-- 链接导入功能暂未完善，暂时隐藏
-            <view class="method-card" @tap="handleMethodTap('link')">
+            <view class="method-card method-card--disabled" @tap="handleMethodTap('link')">
               <view class="method-icon">
                 <text class="cuIcon-link"></text>
               </view>
               <text class="method-name">导入链接</text>
+              <text class="method-badge">即将上线</text>
             </view>
-            -->
           </view>
         </view>
       </view>
@@ -180,6 +179,10 @@ export default {
       }
     },
     handleMethodTap(method) {
+      if (method === 'link') {
+        uni.showToast({ title: '链接导入即将上线，敬请期待', icon: 'none' });
+        return;
+      }
       this.$emit('method-select', method);
     },
     handleSubmit() {
@@ -341,9 +344,18 @@ export default {
   background: $color-bg-input;
   border-radius: $radius-card;
   transition: all $duration-fast;
+  position: relative;
 
   &:active {
     background: $color-primary-light;
+  }
+
+  &--disabled {
+    opacity: 0.6;
+
+    &:active {
+      background: $color-bg-input;
+    }
   }
 
   .method-icon {
@@ -355,6 +367,18 @@ export default {
   .method-name {
     font-size: 13px;
     color: $color-text-secondary;
+  }
+
+  .method-badge {
+    position: absolute;
+    top: -6px;
+    right: -4px;
+    font-size: 10px;
+    color: #fff;
+    background: $color-primary;
+    padding: 1px 6px;
+    border-radius: 8px;
+    transform: scale(0.85);
   }
 }
 
