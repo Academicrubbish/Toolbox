@@ -35,7 +35,7 @@ export async function processOcr(store) {
       uni.showLoading({ title: `正在上传第 ${i + 1}/${total} 张...`, mask: true });
       const uploadRes = await uniCloud.uploadFile({
         filePath: res.tempFiles[i].tempFilePath,
-        cloudPath: 'ocr/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.jpg'
+        cloudPath: 'cloudstorage/ocr/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.jpg'
       });
       imageUrls.push(uploadRes.fileID);
     }
