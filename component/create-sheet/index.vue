@@ -28,12 +28,14 @@
               </view>
               <text class="method-name">拍照识别</text>
             </view>
+            <!-- 链接导入功能暂未完善，暂时隐藏
             <view class="method-card" @tap="handleMethodTap('link')">
               <view class="method-icon">
                 <text class="cuIcon-link"></text>
               </view>
               <text class="method-name">导入链接</text>
             </view>
+            -->
           </view>
         </view>
       </view>
