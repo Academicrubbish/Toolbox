@@ -12,7 +12,7 @@
         <!-- 功能 -->
         <view class="sidebar-section">
           <text class="section-label">功能</text>
-          <view class="menu-item" @tap="handleNavigate('/subpackage/depart/learn-result')">
+          <view class="menu-item" @tap="handleNavigate('/subpackage/depart/ai-history')">
             <view class="menu-icon menu-icon--blue">
               <text class="cuIcon-creativefill"></text>
             </view>

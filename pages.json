@@ -30,6 +30,10 @@
 					"style": {}
 				},
 				{
+					"path": "depart/ai-history",
+					"style": {}
+				},
+				{
 					"path": "dictCategory/index",
 					"style": {}
 				},

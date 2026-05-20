@@ -94,6 +94,71 @@ export const batchQueryAiResults = function(recordIds) {
  * @param {string} recordId 记录ID
  * @returns {Object} { hasAiResult: boolean, aiResultCount: number, hasPending: boolean }
  */
+/**
+ * 获取当前用户所有 AI 辅导历史（跨记录，按 batch_id 分组）
+ * @param {Object} data { pageNo, pageSize }
+ * @returns {Promise<{data: Array}>} 分组后的 batch 数组
+ */
+export const getAiLearnHistory = function(data) {
+	const db = uniCloud.database();
+	const dbCmd = db.command;
+	const { pageNo = 1, pageSize = 10 } = data;
+	const skip = (pageNo - 1) * pageSize;
+	const openid = store.state.user.openid;
+
+	return db.collection('ai_learn_logs')
+		.where({
+			create_by: openid,
+			status: dbCmd.in(['success', 'pending'])
+		})
+		.orderBy('create_time', 'desc')
+		.skip(skip)
+		.limit(pageSize)
+		.get()
+		.then(res => {
+			const logs = res.result?.data || [];
+			if (logs.length === 0) return { data: [] };
+
+			// 批量查询记录标题
+			const recordIds = [...new Set(logs.map(l => l.record_id).filter(Boolean))];
+			return db.collection('daily_record')
+				.where({ _id: dbCmd.in(recordIds) })
+				.field({ _id: true, title: true })
+				.limit(100)
+				.get()
+				.then(recRes => {
+					const recordMap = {};
+					(recRes.result?.data || []).forEach(r => {
+						recordMap[r._id] = r.title || '未命名记录';
+					});
+
+					// 按 batch_id 分组，配对 note + exercise
+					const groupMap = {};
+					const groupOrder = [];
+					logs.forEach(log => {
+						const bid = log.batch_id || log._id;
+						if (!groupMap[bid]) {
+							groupMap[bid] = {
+								batchId: bid,
+								recordId: log.record_id,
+								recordTitle: recordMap[log.record_id] || '未命名记录',
+								createTime: log.create_time,
+								note: null,
+								exercise: null,
+								hasPending: false
+							};
+							groupOrder.push(bid);
+						}
+						const g = groupMap[bid];
+						if (log.type === 'note') g.note = log;
+						if (log.type === 'exercise') g.exercise = log;
+						if (log.status === 'pending') g.hasPending = true;
+					});
+					return { data: groupOrder.map(bid => groupMap[bid]) };
+				});
+		});
+};
+
 export const getAiResultCount = function(recordId) {
 	const db = uniCloud.database();
 

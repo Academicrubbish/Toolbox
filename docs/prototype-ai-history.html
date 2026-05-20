@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI辅导历史 — 3套方案</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif; background: #1c1c1e; display: flex; gap: 40px; justify-content: center; flex-wrap: wrap; padding: 40px 20px; }
+
+.page-title { width: 100%; text-align: center; margin-bottom: 8px; }
+.page-title h1 { font-size: 24px; color: #f2f2f7; font-weight: 700; }
+.page-title p { font-size: 13px; color: #636366; margin-top: 6px; }
+
+.screen-wrap { flex-shrink: 0; }
+.screen { width: 375px; height: 812px; background: #f2f2f7; border-radius: 44px; overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.08); position: relative; border: 7px solid #2c2c2e; display: flex; flex-direction: column; }
+.screen-label { text-align: center; margin-top: 14px; font-size: 14px; font-weight: 600; color: #f2f2f7; }
+.screen-sub { text-align: center; font-size: 12px; color: #636366; margin-top: 4px; max-width: 340px; margin-left: auto; margin-right: auto; line-height: 1.5; }
+
+/* 通用组件 */
+.sb { height: 50px; display: flex; align-items: flex-end; justify-content: center; padding: 0 28px 8px; background: rgba(255,255,255,0.72); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); flex-shrink: 0; position: relative; }
+.sb-t { position: absolute; left: 28px; bottom: 8px; font-size: 15px; font-weight: 600; color: #1c1c1e; }
+.sb-i { position: absolute; right: 24px; bottom: 10px; font-size: 10px; letter-spacing: 2px; color: #1c1c1e; }
+
+.nav { display: flex; align-items: center; justify-content: space-between; padding: 6px 16px 10px; background: rgba(255,255,255,0.72); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-bottom: 0.5px solid rgba(60,60,67,0.08); flex-shrink: 0; }
+.nav-back { color: #007aff; font-size: 17px; }
+.nav-title { font-size: 17px; font-weight: 600; color: #1c1c1e; }
+.nav-ph { width: 50px; }
+
+.scroll { flex: 1; overflow-y: auto; padding-bottom: 40px; }
+.scroll::-webkit-scrollbar { display: none; }
+
+.sec { font-size: 11px; font-weight: 700; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.8px; padding: 16px 20px 6px; }
+
+.home-bar { height: 34px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.home-bar-in { width: 134px; height: 5px; background: #1c1c1e; border-radius: 3px; opacity: 0.2; }
+
+/* ========== 方案 A：AI Card 复用（详情页同款） ========== */
+
+/* ai-card 橙色底卡片，完全复用详情页样式 */
+.a-card { margin: 0 16px 12px; background: rgba(255,149,0,0.05); border-radius: 16px; padding: 14px 16px; border: 1px solid rgba(255,149,0,0.1); }
+.a-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; cursor: pointer; }
+.a-head:active { opacity: 0.7; }
+.a-head-left { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; }
+.a-head-icon { font-size: 14px; }
+.a-head-title { font-size: 15px; font-weight: 600; color: #ff9500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.a-head-time { font-size: 12px; color: #8e8e93; flex-shrink: 0; }
+/* ai-ri 内部白卡片，复用详情页 */
+.a-ri { background: rgba(255,255,255,0.85); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; border: 0.5px solid rgba(255,149,0,0.06); cursor: pointer; transition: background 0.12s; }
+.a-ri:last-child { margin-bottom: 0; }
+.a-ri:active { background: rgba(255,255,255,0.6); }
+.a-rt { font-size: 14px; font-weight: 600; color: #1c1c1e; display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
+.a-rp { font-size: 13px; color: #8e8e93; line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.a-rl { font-size: 13px; color: #007aff; margin-top: 6px; }
+/* 处理中 */
+.a-ri.loading .a-rp { color: #ff9500; font-style: italic; }
+.dot { display: inline-block; animation: d 1.4s infinite; }
+.dot:nth-child(2) { animation-delay: .2s; }
+.dot:nth-child(3) { animation-delay: .4s; }
+@keyframes d { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
+
+/* ========== 方案 B：白底卡片 + 内嵌子卡片 ========== */
+
+.b-card { margin: 0 16px 10px; background: #fff; border-radius: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.03); overflow: hidden; }
+.b-head { padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border-bottom: 0.5px solid rgba(60,60,67,0.06); }
+.b-head:active { background: rgba(0,0,0,0.02); }
+.b-head-left { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.b-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; background: rgba(255,149,0,0.08); }
+.b-title { font-size: 16px; font-weight: 600; color: #1c1c1e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.b-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 8px; }
+.b-time { font-size: 13px; color: #8e8e93; }
+.b-arrow { color: #c7c7cc; font-size: 14px; }
+.b-body { padding: 8px 10px 10px; }
+.b-sub { background: rgba(255,149,0,0.05); border: 0.5px solid rgba(255,149,0,0.08); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; }
+.b-sub:last-child { margin-bottom: 0; }
+.b-sub:active { background: rgba(255,149,0,0.1); }
+.b-sub-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
+.b-sub-type { font-size: 13px; font-weight: 600; color: #1c1c1e; display: flex; align-items: center; gap: 4px; }
+.b-sub-arrow { color: #007aff; font-size: 12px; }
+.b-sub-preview { font-size: 13px; color: #8e8e93; line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.b-sub.loading .b-sub-preview { color: #ff9500; }
+/* badge */
+.b-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; background: rgba(255,149,0,0.1); color: #ff9500; }
+
+/* ========== 方案 C：极简列表行 ========== */
+
+.c-section { margin: 0 16px 6px; }
+.c-item { background: #fff; border-radius: 14px; padding: 14px 16px; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.03); }
+.c-item-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.c-item-title { font-size: 16px; font-weight: 600; color: #1c1c1e; cursor: pointer; }
+.c-item-title:active { opacity: 0.6; }
+.c-item-time { font-size: 12px; color: #8e8e93; }
+.c-rows { display: flex; gap: 8px; }
+.c-row { flex: 1; padding: 10px 12px; border-radius: 10px; cursor: pointer; transition: background 0.12s; }
+.c-row:active { opacity: 0.7; }
+.c-row-note { background: rgba(0,122,255,0.06); border: 0.5px solid rgba(0,122,255,0.08); }
+.c-row-exer { background: rgba(255,149,0,0.06); border: 0.5px solid rgba(255,149,0,0.08); }
+.c-row-icon { font-size: 14px; margin-bottom: 3px; }
+.c-row-label { font-size: 12px; font-weight: 600; color: #1c1c1e; margin-bottom: 2px; }
+.c-row-preview { font-size: 11px; color: #8e8e93; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.c-row.loading .c-row-preview { color: #ff9500; }
+</style>
+</head>
+<body>
+
+<div class="page-title">
+  <h1>AI辅导历史 — 3 套方案</h1>
+  <p>方案A 复用详情页AI卡片样式 · 方案B 白底+橙色子卡片 · 方案C 双列并排极简</p>
+</div>
+
+<!-- ═══════════ 方案 A ═══════════ -->
+<div class="screen-wrap">
+<div class="screen">
+  <div class="sb"><span class="sb-t">9:41</span><span class="sb-i">● ● ● ●</span></div>
+  <div class="nav">
+    <span class="nav-back">&#8592; 返回</span>
+    <span class="nav-title">AI辅导历史</span>
+    <span class="nav-ph"></span>
+  </div>
+  <div class="scroll">
+
+    <div class="sec">今天</div>
+
+    <div class="a-card">
+      <div class="a-head">
+        <div class="a-head-left">
+          <span class="a-head-icon">✨</span>
+          <span class="a-head-title">Vue3 组合式 API 学习笔记</span>
+        </div>
+        <span class="a-head-time">14:30</span>
+      </div>
+      <div class="a-ri">
+        <div class="a-rt">📖 知识点精讲</div>
+        <div class="a-rp">· ref 用于基本类型的响应式数据，reactive 用于对象类型<br>· computed 返回只读的响应式引用</div>
+        <div class="a-rl">查看完整笔记 →</div>
+      </div>
+      <div class="a-ri">
+        <div class="a-rt">✏️ 针对性练习</div>
+        <div class="a-rp">· 题目一（20分）：使用 ref 创建响应式计数器<br>· 题目二（30分）：实现 computed 计算属性</div>
+        <div class="a-rl">查看完整练习 →</div>
+      </div>
+    </div>
+
+    <div class="a-card">
+      <div class="a-head">
+        <div class="a-head-left">
+          <span class="a-head-icon">✨</span>
+          <span class="a-head-title">CSS Grid 布局实战总结</span>
+        </div>
+        <span style="font-size:11px;color:#ff9500;font-weight:600;">⏳ 生成中</span>
+      </div>
+      <div class="a-ri loading">
+        <div class="a-rt">📖 知识点精讲</div>
+        <div class="a-rp">AI 正在生成中<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
+      </div>
+      <div class="a-ri loading">
+        <div class="a-rt">✏️ 针对性练习</div>
+        <div class="a-rp">AI 正在生成中<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
+      </div>
+    </div>
+
+    <div class="sec">昨天</div>
+
+    <div class="a-card">
+      <div class="a-head">
+        <div class="a-head-left">
+          <span class="a-head-icon">✨</span>
+          <span class="a-head-title">JavaScript 闭包与作用域</span>
+        </div>
+        <span class="a-head-time">20:15</span>
+      </div>
+      <div class="a-ri">
+        <div class="a-rt">📖 知识点精讲</div>
+        <div class="a-rp">· 闭包核心：函数创建时捕获所在环境的变量引用<br>· 常见应用包括数据封装、工厂函数、回调</div>
+        <div class="a-rl">查看完整笔记 →</div>
+      </div>
+      <div class="a-ri">
+        <div class="a-rt">✏️ 针对性练习</div>
+        <div class="a-rp">· 题目一（20分）：写计数器 createCounter<br>· 题目二（25分）：实现私有变量的计数器</div>
+        <div class="a-rl">查看完整练习 →</div>
+      </div>
+    </div>
+
+    <div class="sec">更早</div>
+
+    <div class="a-card">
+      <div class="a-head">
+        <div class="a-head-left">
+          <span class="a-head-icon">✨</span>
+          <span class="a-head-title">React Hooks 入门到进阶</span>
+        </div>
+        <span class="a-head-time">3天前</span>
+      </div>
+      <div class="a-ri">
+        <div class="a-rt">📖 知识点精讲</div>
+        <div class="a-rp">· Hooks 是 React 16.8 引入的特性<br>· useState 接受初始值，返回状态变量和更新函数</div>
+        <div class="a-rl">查看完整笔记 →</div>
+      </div>
+      <div class="a-ri">
+        <div class="a-rt">✏️ 针对性练习</div>
+        <div class="a-rp">· 题目一（20分）：用 useState 实现开关组件<br>· 题目二（25分）：用 useEffect 实现数据获取</div>
+        <div class="a-rl">查看完整练习 →</div>
+      </div>
+    </div>
+
+    <div class="a-card">
+      <div class="a-head">
+        <div class="a-head-left">
+          <span class="a-head-icon">✨</span>
+          <span class="a-head-title">二叉树遍历算法总结</span>
+        </div>
+        <span class="a-head-time">5天前</span>
+      </div>
+      <div class="a-ri">
+        <div class="a-rt">📖 知识点精讲</div>
+        <div class="a-rp">· 二叉树三种遍历的递归与迭代实现<br>· 层序遍历使用队列，Morris 遍历 O(1) 空间</div>
+        <div class="a-rl">查看完整笔记 →</div>
+      </div>
+      <div class="a-ri">
+        <div class="a-rt">✏️ 针对性练习</div>
+        <div class="a-rp">· 实现前序遍历（递归+迭代）<br>· 从遍历序列还原二叉树</div>
+        <div class="a-rl">查看完整练习 →</div>
+      </div>
+    </div>
+
+  </div>
+  <div class="home-bar"><div class="home-bar-in"></div></div>
+</div>
+<div class="screen-label">方案 A — AI Card 复用</div>
+<div class="screen-sub">完全复用详情页 ai-card 样式，橙色底+白色内卡片，视觉一致性强</div>
+</div>
+
+<!-- ═══════════ 方案 B ═══════════ -->
+<div class="screen-wrap">
+<div class="screen">
+  <div class="sb"><span class="sb-t">9:41</span><span class="sb-i">● ● ● ●</span></div>
+  <div class="nav">
+    <span class="nav-back">&#8592; 返回</span>
+    <span class="nav-title">AI辅导历史</span>
+    <span class="nav-ph"></span>
+  </div>
+  <div class="scroll">
+
+    <div class="sec">今天</div>
+
+    <div class="b-card">
+      <div class="b-head">
+        <div class="b-head-left">
+          <div class="b-icon">🤖</div>
+          <span class="b-title">Vue3 组合式 API 学习笔记</span>
+        </div>
+        <div class="b-right">
+          <span class="b-time">14:30</span>
+          <span class="b-arrow">&#8250;</span>
+        </div>
+      </div>
+      <div class="b-body">
+        <div class="b-sub">
+          <div class="b-sub-head">
+            <span class="b-sub-type">📖 知识点精讲</span>
+            <span class="b-sub-arrow">查看 →</span>
+          </div>
+          <div class="b-sub-preview">· ref 用于基本类型的响应式数据，reactive 用于对象类型 · computed 返回只读的…</div>
+        </div>
+        <div class="b-sub">
+          <div class="b-sub-head">
+            <span class="b-sub-type">✏️ 针对性练习</span>
+            <span class="b-sub-arrow">查看 →</span>
+          </div>
+          <div class="b-sub-preview">· 题目一（20分）：使用 ref 创建响应式计数器 · 题目二（30分）：…</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="b-card">
+      <div class="b-head">
+        <div class="b-head-left">
+          <div class="b-icon">🤖</div>
+          <span class="b-title">CSS Grid 布局实战总结</span>
+        </div>
+        <div class="b-right">
+          <span class="b-badge">⏳ 生成中</span>
+          <span class="b-arrow">&#8250;</span>
+        </div>
+      </div>
+      <div class="b-body">
+        <div class="b-sub loading">
+          <div class="b-sub-head">
+            <span class="b-sub-type">📖 知识点精讲</span>
+          </div>
+          <div class="b-sub-preview">AI 正在生成中<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
+        </div>
+        <div class="b-sub loading">
+          <div class="b-sub-head">
+            <span class="b-sub-type">✏️ 针对性练习</span>
+          </div>
+          <div class="b-sub-preview">AI 正在生成中<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">昨天</div>
+
+    <div class="b-card">
+      <div class="b-head">
+        <div class="b-head-left">
+          <div class="b-icon">🤖</div>
+          <span class="b-title">JavaScript 闭包与作用域</span>
+        </div>
+        <div class="b-right">
+          <span class="b-time">20:15</span>
+          <span class="b-arrow">&#8250;</span>
+        </div>
+      </div>
+      <div class="b-body">
+        <div class="b-sub">
+          <div class="b-sub-head">
+            <span class="b-sub-type">📖 知识点精讲</span>
+            <span class="b-sub-arrow">查看 →</span>
+          </div>
+          <div class="b-sub-preview">· 闭包核心：函数创建时捕获所在环境的变量引用 · 常见应用包括…</div>
+        </div>
+        <div class="b-sub">
+          <div class="b-sub-head">
+            <span class="b-sub-type">✏️ 针对性练习</span>
+            <span class="b-sub-arrow">查看 →</span>
+          </div>
+          <div class="b-sub-preview">· 题目一（20分）：写计数器 createCounter · 题目二（25分）：…</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">更早</div>
+
+    <div class="b-card">
+      <div class="b-head">
+        <div class="b-head-left">
+          <div class="b-icon">🤖</div>
+          <span class="b-title">React Hooks 入门到进阶</span>
+        </div>
+        <div class="b-right">
+          <span class="b-time">3天前</span>
+          <span class="b-arrow">&#8250;</span>
+        </div>
+      </div>
+      <div class="b-body">
+        <div class="b-sub">
+          <div class="b-sub-head">
+            <span class="b-sub-type">📖 知识点精讲</span>
+            <span class="b-sub-arrow">查看 →</span>
+          </div>
+          <div class="b-sub-preview">· Hooks 是 React 16.8 引入的特性 · useState 接受初始值，返回…</div>
+        </div>
+        <div class="b-sub">
+          <div class="b-sub-head">
+            <span class="b-sub-type">✏️ 针对性练习</span>
+            <span class="b-sub-arrow">查看 →</span>
+          </div>
+          <div class="b-sub-preview">· 题目一（20分）：用 useState 实现开关组件 · 题目二（25分）…</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="b-card">
+      <div class="b-head">
+        <div class="b-head-left">
+          <div class="b-icon">🤖</div>
+          <span class="b-title">二叉树遍历算法总结</span>
+        </div>
+        <div class="b-right">
+          <span class="b-time">5天前</span>
+          <span class="b-arrow">&#8250;</span>
+        </div>
+      </div>
+      <div class="b-body">
+        <div class="b-sub">
+          <div class="b-sub-head">
+            <span class="b-sub-type">📖 知识点精讲</span>
+            <span class="b-sub-arrow">查看 →</span>
+          </div>
+          <div class="b-sub-preview">· 二叉树三种遍历的递归与迭代实现 · 层序遍历使用队列…</div>
+        </div>
+        <div class="b-sub">
+          <div class="b-sub-head">
+            <span class="b-sub-type">✏️ 针对性练习</span>
+            <span class="b-sub-arrow">查看 →</span>
+          </div>
+          <div class="b-sub-preview">· 实现前序遍历（递归+迭代）· 从遍历序列还原二叉树</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="home-bar"><div class="home-bar-in"></div></div>
+</div>
+<div class="screen-label">方案 B — 白底卡片 + 橙色子卡片</div>
+<div class="screen-sub">白底外卡片，内部笔记/练习用淡橙色子卡片，层次分明</div>
+</div>
+
+<!-- ═══════════ 方案 C ═══════════ -->
+<div class="screen-wrap">
+<div class="screen">
+  <div class="sb"><span class="sb-t">9:41</span><span class="sb-i">● ● ● ●</span></div>
+  <div class="nav">
+    <span class="nav-back">&#8592; 返回</span>
+    <span class="nav-title">AI辅导历史</span>
+    <span class="nav-ph"></span>
+  </div>
+  <div class="scroll">
+
+    <div class="sec">今天</div>
+
+    <div class="c-item">
+      <div class="c-item-top">
+        <span class="c-item-title">Vue3 组合式 API 学习笔记</span>
+        <span class="c-item-time">14:30</span>
+      </div>
+      <div class="c-rows">
+        <div class="c-row c-row-note">
+          <div class="c-row-icon">📖</div>
+          <div class="c-row-label">知识点精讲</div>
+          <div class="c-row-preview">ref/reactive/computed 核心概念讲解与最佳实践…</div>
+        </div>
+        <div class="c-row c-row-exer">
+          <div class="c-row-icon">✏️</div>
+          <div class="c-row-label">针对性练习</div>
+          <div class="c-row-preview">4道递进练习题，从基础到进阶共计100分…</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="c-item">
+      <div class="c-item-top">
+        <span class="c-item-title">CSS Grid 布局实战总结</span>
+        <span style="font-size:11px;color:#ff9500;font-weight:600;">⏳ 生成中</span>
+      </div>
+      <div class="c-rows">
+        <div class="c-row c-row-note loading">
+          <div class="c-row-icon">📖</div>
+          <div class="c-row-label">知识点精讲</div>
+          <div class="c-row-preview">AI 生成中<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
+        </div>
+        <div class="c-row c-row-exer loading">
+          <div class="c-row-icon">✏️</div>
+          <div class="c-row-label">针对性练习</div>
+          <div class="c-row-preview">AI 生成中<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">昨天</div>
+
+    <div class="c-item">
+      <div class="c-item-top">
+        <span class="c-item-title">JavaScript 闭包与作用域</span>
+        <span class="c-item-time">20:15</span>
+      </div>
+      <div class="c-rows">
+        <div class="c-row c-row-note">
+          <div class="c-row-icon">📖</div>
+          <div class="c-row-label">知识点精讲</div>
+          <div class="c-row-preview">闭包核心原理与数据封装、工厂函数等常见应用…</div>
+        </div>
+        <div class="c-row c-row-exer">
+          <div class="c-row-icon">✏️</div>
+          <div class="c-row-label">针对性练习</div>
+          <div class="c-row-preview">计数器函数实现与私有变量封装练习…</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">更早</div>
+
+    <div class="c-item">
+      <div class="c-item-top">
+        <span class="c-item-title">React Hooks 入门到进阶</span>
+        <span class="c-item-time">3天前</span>
+      </div>
+      <div class="c-rows">
+        <div class="c-row c-row-note">
+          <div class="c-row-icon">📖</div>
+          <div class="c-row-label">知识点精讲</div>
+          <div class="c-row-preview">Hooks 核心原理，useState/useEffect 深入…</div>
+        </div>
+        <div class="c-row c-row-exer">
+          <div class="c-row-icon">✏️</div>
+          <div class="c-row-label">针对性练习</div>
+          <div class="c-row-preview">自定义 Hook 实现与状态管理练习…</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="c-item">
+      <div class="c-item-top">
+        <span class="c-item-title">二叉树遍历算法总结</span>
+        <span class="c-item-time">5天前</span>
+      </div>
+      <div class="c-rows">
+        <div class="c-row c-row-note">
+          <div class="c-row-icon">📖</div>
+          <div class="c-row-label">知识点精讲</div>
+          <div class="c-row-preview">三种遍历方式递归/迭代实现与 Morris 遍历…</div>
+        </div>
+        <div class="c-row c-row-exer">
+          <div class="c-row-icon">✏️</div>
+          <div class="c-row-label">针对性练习</div>
+          <div class="c-row-preview">前序遍历实现与序列还原二叉树练习…</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="home-bar"><div class="home-bar-in"></div></div>
+</div>
+<div class="screen-label">方案 C — 双列并排极简</div>
+<div class="screen-sub">笔记/练习左右并排，紧凑高效，适合快速浏览大量历史</div>
+</div>
+
+</body>
+</html>

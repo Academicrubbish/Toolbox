@@ -78,7 +78,7 @@
 							:key="record._id"
 							:record="record"
 							:tagMap="tagMap"
-							:tagList="tagListArray"
+							:tagList="tagList"
 							:aiNoteCount="getAiNoteCount(record)"
 							@card-tap="goDetail"
 							@card-longpress="onCardLongPress"
@@ -189,9 +189,6 @@ export default {
 	computed: {
 		isGuest() {
 			return this.$store.state.user.isGuest;
-		},
-		tagListArray() {
-			return this.tagList;
 		},
 		filteredRecordList() {
 			if (!this.selectedTagId) return this.flatRecordList;
@@ -506,9 +503,6 @@ export default {
 				this.$refs.paging.reload();
 			}
 		},
-		resetSearch() {
-			this.clearSearch();
-		},
 		handleTagFilter(tagId) {
 			this.selectedTagId = tagId;
 		},
@@ -521,7 +515,7 @@ export default {
 					this.addRecord();
 					break;
 				case 'ai-history':
-					uni.navigateTo({ url: '/subpackage/depart/learn-result' });
+					uni.navigateTo({ url: '/subpackage/depart/ai-history' });
 					break;
 			}
 		},
