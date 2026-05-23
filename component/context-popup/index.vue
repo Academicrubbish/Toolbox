@@ -3,8 +3,9 @@
     <!-- 遮罩 -->
     <view class="shade" v-show="showShade" @tap="hide">
       <view class="pop" :style="popStyle" :class="{ show: showPop }">
-        <view v-for="item in buttons" :key="item" @tap="onMenuClick(item)">
-          {{ item }}
+        <view v-for="btn in menuItems" :key="btn.label" class="pop-item" :class="btn.danger ? 'pop-item--danger' : ''" @tap="onMenuClick(btn.label)">
+          <text class="pop-icon" :class="btn.icon"></text>
+          <text>{{ btn.label }}</text>
         </view>
       </view>
     </view>
@@ -35,8 +36,12 @@ export default {
      * @param {*} item - 当前操作的数据项
      */
     show(e, item) {
-      const clientX = (e.detail?.x ?? e.touches?.[0]?.clientX ?? 300) - 100;
-      const clientY = e.detail?.y ?? e.touches?.[0]?.clientY ?? 200;
+      const sysInfo = uni.getSystemInfoSync();
+      const screenWidth = sysInfo.windowWidth || 375;
+      const rawX = e.detail?.x ?? e.touches?.[0]?.clientX ?? 300;
+      const rawY = e.detail?.y ?? e.touches?.[0]?.clientY ?? 200;
+      const clientX = Math.max(8, Math.min(rawX - 70, screenWidth - 160));
+      const clientY = Math.max(8, rawY);
 
       this.currentItem = item;
       this.popStyle = `top:${clientY}px;left:${clientX}px`;
@@ -60,6 +65,22 @@ export default {
       this.$emit("select", { action: item, item: this.currentItem });
       this.hide();
     }
+  },
+  computed: {
+    menuItems() {
+      const iconMap = {
+        '编辑': 'cuIcon-edit',
+        '删除': 'cuIcon-delete',
+        '分享': 'cuIcon-share',
+        '复制': 'cuIcon-copy',
+        '收藏': 'cuIcon-favor',
+      };
+      return this.buttons.map(label => ({
+        label,
+        icon: iconMap[label] || 'cuIcon-round',
+        danger: label === '删除'
+      }));
+    }
   }
 };
 </script>
@@ -67,29 +88,30 @@ export default {
 <style lang="scss" scoped>
 .shade {
   position: fixed;
-  z-index: 100;
+  z-index: $z-modal;
   top: 0;
   right: 0;
   bottom: 0;
   left: 0;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(4rpx);
+  background: $color-bg-overlay;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   -webkit-touch-callout: none;
-  animation: fadeIn 0.2s ease;
+  animation: fadeIn $duration-fast $ease-out;
 
   .pop {
     position: fixed;
-    z-index: 101;
-    min-width: 240rpx;
+    z-index: $z-modal + 1;
+    min-width: 140px;
     box-sizing: border-box;
-    font-size: 28rpx;
+    font-size: 15px;
     text-align: left;
-    color: #333;
-    background-color: #fff;
-    border-radius: 16rpx;
-    box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
+    color: $color-text-primary;
+    background-color: $color-bg-card;
+    border-radius: $radius-card;
+    box-shadow: $shadow-modal;
     overflow: hidden;
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform $duration-fast $ease-spring;
     user-select: none;
     -webkit-touch-callout: none;
     transform: scale(0, 0);
@@ -99,18 +121,39 @@ export default {
       transform: scale(1, 1);
     }
 
-    & > view {
-      padding: 24rpx 32rpx;
+    .pop-item {
+      padding: 12px 20px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       user-select: none;
       -webkit-touch-callout: none;
-      border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+      border-bottom: 0.5px solid $color-divider;
 
       &:last-child {
         border-bottom: none;
       }
+
+      &:active {
+        background: $color-primary-light;
+      }
+
+      &--danger {
+        color: $color-error;
+
+        .pop-icon {
+          color: $color-error;
+        }
+      }
+    }
+
+    .pop-icon {
+      font-size: 16px;
+      color: $color-text-tertiary;
     }
   }
 }

@@ -1,12 +1,20 @@
 <!--
- * @Description: AI辅导学习结果详情页
+ * @Description: AI辅导学习结果详情页（沉浸式重构版）
 -->
 <template>
   <view class="detail-container">
-    <cu-custom bgColor="bg-gradual-orange" :isBack="true">
-      <block slot="backText">返回</block>
-      <block slot="content">学习详情</block>
-    </cu-custom>
+    <nav-bar title="学习详情">
+      <template #left>
+        <view class="nav-left-actions">
+          <view class="nav-back-btn" @tap="handleBack">
+            <text class="cuIcon-back"></text>
+          </view>
+          <view v-if="resultData && resultData.status === 'success'" class="nav-more-btn" @tap="showMoreMenu">
+            <text class="cuIcon-moreandroid"></text>
+          </view>
+        </view>
+      </template>
+    </nav-bar>
 
     <view class="detail-wrapper">
       <!-- 加载中 -->
@@ -16,42 +24,22 @@
       </view>
 
       <template v-else-if="resultData">
-        <!-- 状态信息 -->
-        <view class="status-bar" :class="'status-bar-' + resultData.status">
-          <view class="status-dot" :class="{ 'dot-pending': resultData.status === 'pending', 'dot-success': resultData.status === 'success', 'dot-error': resultData.status === 'error' }"></view>
+        <!-- 状态标签 -->
+        <view class="status-pill" :class="'status-pill-' + resultData.status">
+          <view class="status-dot"></view>
           <text class="status-text">{{ statusText(resultData.status) }}</text>
-          <text v-if="resultData.complete_time" class="status-time text-xs">
-            {{ formatTime(resultData.complete_time) }}
-          </text>
+          <text v-if="resultData.complete_time" class="status-time">{{ formatTime(resultData.complete_time) }}</text>
         </view>
 
-        <!-- AI生成内容 -->
-        <view v-if="resultData.status === 'success' && towxmlData" class="content-card shadow-warp">
-          <view class="content-header">
-            <view class="content-icon">
-              <text class="cuIcon-creativefill text-orange"></text>
-            </view>
-            <view class="content-title">
-              <text class="text-lg text-bold">AI 辅导内容</text>
-            </view>
-            <view class="download-btn" @click="downloadDocument">
-              <text class="cuIcon-downloadfill text-blue"></text>
-              <text class="download-text text-xs">下载</text>
-            </view>
-            <view class="share-btn" :class="{ 'share-btn-disabled': shareLoading }" @click="showShareModal = true">
-              <text class="share-btn-icon" :class="shareLoading ? 'cuIcon-loading1 text-gray' : 'cuIcon-share text-green'"></text>
-              <text class="share-btn-text text-xs">{{ shareLoading ? '生成中...' : '分享' }}</text>
-            </view>
-          </view>
-          <view class="content-body">
-            <view class="towxml-wrapper">
-              <towxml :nodes="towxmlData" />
-            </view>
+        <!-- AI生成内容（沉浸式） -->
+        <view v-if="resultData.status === 'success' && towxmlData" class="article-body">
+          <view class="towxml-wrapper">
+            <towxml :nodes="towxmlData" />
           </view>
         </view>
 
         <!-- 错误信息 -->
-        <view v-if="resultData.status === 'error'" class="error-card shadow-warp">
+        <view v-if="resultData.status === 'error'" class="error-section">
           <text class="cuIcon-warnfill text-red" style="font-size: 60rpx;"></text>
           <text class="text-red margin-top">生成失败</text>
           <text class="text-gray text-sm margin-top-sm">{{ resultData.error_msg || '未知错误' }}</text>
@@ -102,8 +90,12 @@ import { getLearnResultDetail } from "@/api/aiLearn.js";
 import { callGenerateShareLink } from "@/api/share.js";
 import { downloadMarkdown } from "@/utils/download";
 import { formatTime } from "@/utils/format";
+import NavBar from "@/component/nav-bar/index.vue";
 
 export default {
+  components: {
+    NavBar,
+  },
   data() {
     return {
       logId: "",
@@ -120,6 +112,18 @@ export default {
     this.loadDetail();
   },
   methods: {
+    handleBack() {
+      uni.navigateBack({ delta: 1 });
+    },
+    showMoreMenu() {
+      uni.showActionSheet({
+        itemList: ['下载', '分享'],
+        success: (res) => {
+          if (res.tapIndex === 0) this.downloadDocument();
+          else if (res.tapIndex === 1) this.showShareModal = true;
+        }
+      });
+    },
     loadDetail() {
       if (!this.logId) return;
       this.loading = true;
@@ -193,11 +197,46 @@ export default {
 <style lang="scss" scoped>
 .detail-container {
   min-height: 100vh;
-  background: linear-gradient(to bottom, #f5f7fa 0%, #f1f1f1 100%);
+  background: $color-bg-card;
+}
+
+.nav-left-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-back-btn {
+  width: 44px;
+  height: 44px;
+  background: $color-primary-light;
+  border-radius: $radius-small;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  text {
+    font-size: 18px;
+    color: $color-primary;
+  }
+}
+
+.nav-more-btn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: $radius-button;
+
+  text {
+    font-size: 20px;
+    color: $color-text-tertiary;
+  }
 }
 
 .detail-wrapper {
-  padding: 30rpx;
+  padding: 0 $spacing-md $spacing-xl;
 }
 
 .loading-wrapper {
@@ -208,176 +247,157 @@ export default {
   padding: 200rpx 0;
 }
 
-/* 状态栏 */
-.status-bar {
-  display: flex;
+/* 状态标签 */
+.status-pill {
+  display: inline-flex;
   align-items: center;
-  padding: 20rpx 28rpx;
-  border-radius: 16rpx;
-  margin-bottom: 24rpx;
+  gap: 10rpx;
+  padding: 12rpx 28rpx;
+  border-radius: $radius-pill;
+  margin-top: $spacing-md;
+  margin-bottom: $spacing-lg;
 
-  &.status-bar-success {
-    background: rgba(76, 217, 100, 0.1);
+  &.status-pill-success {
+    background: $color-success-light;
   }
 
-  &.status-bar-pending {
-    background: rgba(255, 157, 0, 0.1);
+  &.status-pill-pending {
+    background: $color-warning-light;
   }
 
-  &.status-bar-error {
-    background: rgba(255, 59, 48, 0.1);
+  &.status-pill-error {
+    background: $color-error-light;
   }
 
   .status-dot {
-    width: 16rpx;
-    height: 16rpx;
+    width: 12rpx;
+    height: 12rpx;
     border-radius: 50%;
-    margin-right: 12rpx;
   }
 
-  .dot-pending {
-    background: #ff9d00;
+  &.status-pill-pending .status-dot {
+    background: $color-warning;
+    animation: pulse 1.5s ease infinite;
   }
 
-  .dot-success {
-    background: #4cd964;
+  &.status-pill-success .status-dot {
+    background: $color-success;
   }
 
-  .dot-error {
-    background: #999;
+  &.status-pill-error .status-dot {
+    background: $color-text-tertiary;
   }
 
   .status-text {
-    font-size: 28rpx;
-    font-weight: 500;
-    flex: 1;
+    font-size: 26rpx;
+    font-weight: 600;
+  }
+
+  &.status-pill-success .status-text {
+    color: $color-success;
+  }
+
+  &.status-pill-pending .status-text {
+    color: $color-warning;
+  }
+
+  &.status-pill-error .status-text {
+    color: $color-text-tertiary;
   }
 
   .status-time {
-    color: #999;
+    font-size: 22rpx;
+    color: $color-text-tertiary;
+    margin-left: 8rpx;
   }
 }
 
-/* 内容卡片 */
-.content-card {
-  background: #ffffff;
-  border-radius: 24rpx;
-  overflow: hidden;
-}
-
-.content-header {
-  display: flex;
-  align-items: center;
-  padding: 28rpx 28rpx 20rpx;
-  border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
-
-  .content-icon {
-    width: 48rpx;
-    height: 48rpx;
-    border-radius: 12rpx;
-    background: rgba(255, 157, 0, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 16rpx;
-
-    .cuIcon-creativefill {
-      font-size: 28rpx;
-    }
-  }
-
-  .content-title {
-    flex: 1;
-  }
-
-  .download-btn {
-    display: flex;
-    align-items: center;
-    padding: 8rpx 16rpx;
-    border-radius: 8rpx;
-    background: rgba(0, 129, 255, 0.1);
-
-    .cuIcon-downloadfill {
-      font-size: 28rpx;
-      margin-right: 8rpx;
-    }
-
-    .download-text {
-      color: #007aff;
-      font-weight: 500;
-    }
-  }
-
-  .share-btn {
-    display: flex;
-    align-items: center;
-    padding: 8rpx 16rpx;
-    border-radius: 8rpx;
-    background: rgba(48, 190, 100, 0.1);
-    margin-left: 12rpx;
-
-    &.share-btn-disabled {
-      opacity: 0.6;
-      pointer-events: none;
-    }
-
-    .share-btn-icon {
-      font-size: 28rpx;
-      margin-right: 8rpx;
-    }
-
-    .share-btn-text {
-      color: #30be64;
-      font-weight: 500;
-    }
-  }
-}
-
-.content-body {
-  padding: 28rpx;
+/* 正文内容（沉浸式） */
+.article-body {
+  padding: 0;
+  padding-bottom: $spacing-xl;
 
   .towxml-wrapper {
-    font-size: 28rpx;
+    font-size: 34rpx;
     line-height: 1.8;
-    color: #333;
+    color: $color-text-primary;
 
     ::v-deep img {
       max-width: 100%;
       height: auto;
-      border-radius: 8rpx;
+      border-radius: $radius-button;
+      margin: $spacing-sm 0;
     }
 
     ::v-deep pre {
-      background: #f5f5f5;
-      padding: 20rpx;
-      border-radius: 8rpx;
+      background: #1C1C1E;
+      color: #E5E5EA;
+      padding: $spacing-md;
+      border-radius: $radius-button;
       overflow-x: auto;
+      font-size: 28rpx;
+      line-height: 1.6;
+      margin: $spacing-sm 0;
     }
 
     ::v-deep code {
-      background: #f5f5f5;
-      padding: 4rpx 8rpx;
-      border-radius: 4rpx;
-      font-size: 24rpx;
+      background: rgba(118, 118, 128, 0.12);
+      padding: 4rpx 12rpx;
+      border-radius: $radius-tag;
+      font-size: 26rpx;
+      color: $color-error;
+    }
+
+    ::v-deep pre code {
+      background: none;
+      color: inherit;
+      padding: 0;
+      font-size: 28rpx;
     }
 
     ::v-deep p {
-      margin-bottom: 16rpx;
+      margin-bottom: $spacing-md;
     }
 
-    ::v-deep h1, ::v-deep h2, ::v-deep h3, ::v-deep h4 {
-      margin-top: 32rpx;
-      margin-bottom: 16rpx;
-      font-weight: bold;
+    ::v-deep h1,
+    ::v-deep h2,
+    ::v-deep h3 {
+      margin-top: $spacing-lg;
+      margin-bottom: $spacing-sm;
+      font-weight: 700;
+      color: $color-text-primary;
+      letter-spacing: -0.3px;
+    }
+
+    ::v-deep h4,
+    ::v-deep h5,
+    ::v-deep h6 {
+      margin-top: $spacing-md;
+      margin-bottom: $spacing-xs;
+      font-weight: 600;
+      color: $color-text-primary;
+    }
+
+    ::v-deep ul,
+    ::v-deep ol {
+      padding-left: $spacing-lg;
+      margin-bottom: $spacing-md;
+    }
+
+    ::v-deep blockquote {
+      border-left: 3px solid $color-primary;
+      padding-left: $spacing-md;
+      color: $color-text-tertiary;
+      margin: $spacing-md 0;
     }
   }
 }
 
-/* 错误卡片 */
-.error-card {
-  background: #ffffff;
-  border-radius: 24rpx;
-  padding: 60rpx 40rpx;
+/* 错误区域 */
+.error-section {
+  background: $color-bg-card;
+  border-radius: $radius-card;
+  padding: 80rpx 40rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -394,6 +414,11 @@ export default {
   to { transform: rotate(360deg); }
 }
 
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
 /* 分享弹窗 */
 .share-modal-mask {
   position: fixed;
@@ -401,8 +426,8 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 999;
+  background: $color-bg-mask;
+  z-index: $z-modal;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -410,53 +435,53 @@ export default {
 
 .share-modal {
   width: 100%;
-  background: #fff;
-  border-radius: 24rpx 24rpx 0 0;
-  padding: 40rpx 32rpx;
-  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+  background: $color-bg-card;
+  border-radius: $radius-card $radius-card 0 0;
+  padding: $spacing-xl $spacing-md;
+  padding-bottom: calc(#{$spacing-xl} + env(safe-area-inset-bottom));
 
   .share-modal-title {
     font-size: 32rpx;
     font-weight: 600;
-    color: #333;
+    color: $color-text-primary;
     text-align: center;
     margin-bottom: 8rpx;
   }
 
   .share-modal-subtitle {
     font-size: 26rpx;
-    color: #999;
+    color: $color-text-tertiary;
     text-align: center;
-    margin-bottom: 32rpx;
+    margin-bottom: $spacing-lg;
   }
 
   .share-options {
     display: flex;
     flex-wrap: wrap;
-    gap: 16rpx;
+    gap: $spacing-sm;
     justify-content: center;
-    margin-bottom: 40rpx;
+    margin-bottom: $spacing-xl;
   }
 
   .share-option {
     padding: 16rpx 32rpx;
-    border-radius: 40rpx;
-    background: #f5f5f5;
+    border-radius: $radius-pill;
+    background: $color-bg-page;
     border: 2rpx solid transparent;
     font-size: 28rpx;
-    color: #666;
+    color: $color-text-secondary;
 
     &.share-option-active {
-      background: rgba(48, 190, 100, 0.1);
-      border-color: #30be64;
-      color: #30be64;
+      background: $color-success-light;
+      border-color: $color-success;
+      color: $color-success;
       font-weight: 500;
     }
   }
 
   .share-modal-actions {
     display: flex;
-    gap: 24rpx;
+    gap: $spacing-md;
   }
 
   .share-modal-cancel {
@@ -465,10 +490,10 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 40rpx;
-    background: #f5f5f5;
+    border-radius: $radius-button;
+    background: $color-bg-page;
     font-size: 28rpx;
-    color: #999;
+    color: $color-text-tertiary;
   }
 
   .share-modal-confirm {
@@ -477,10 +502,10 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 40rpx;
-    background: #30be64;
+    border-radius: $radius-button;
+    background: $color-success;
     font-size: 28rpx;
-    color: #fff;
+    color: $color-text-inverse;
     font-weight: 500;
   }
 }

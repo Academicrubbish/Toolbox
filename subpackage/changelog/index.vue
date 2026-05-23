@@ -3,10 +3,7 @@
 -->
 <template>
   <view class="changelog-container">
-    <cu-custom bgColor="bg-gradual-blue" :isBack="true">
-      <block slot="backText">返回</block>
-      <block slot="content">更新日志</block>
-    </cu-custom>
+    <nav-bar title="更新日志" showBack />
 
     <view class="changelog-wrapper">
       <!-- 加载中 -->
@@ -52,8 +49,12 @@
 
 <script>
 import { getChangelogList } from "@/api/changelog.js";
+import NavBar from "@/component/nav-bar/index.vue";
 
 export default {
+  components: {
+    NavBar,
+  },
   data() {
     return {
       logList: [],
@@ -100,7 +101,7 @@ export default {
 <style lang="scss">
 .changelog-container {
   min-height: 100vh;
-  background: #ffffff;
+  background: $color-bg-page;
 }
 
 .changelog-wrapper {
@@ -125,8 +126,8 @@ export default {
 
 /* 日志卡片 */
 .log-card {
-  background: #f7f8fa;
-  border-radius: 20rpx;
+  background: $color-bg-card;
+  border-radius: $radius-card;
   padding: 28rpx;
 }
 
@@ -141,9 +142,9 @@ export default {
 }
 
 .version-badge {
-  background: #007aff;
+  background: $color-primary;
   padding: 6rpx 16rpx;
-  border-radius: 8rpx;
+  border-radius: $radius-small;
 }
 
 .version-text {
@@ -159,8 +160,8 @@ export default {
   align-items: center;
   padding: 24rpx;
   margin-bottom: 24rpx;
-  background: #eef6ff;
-  border-radius: 16rpx;
+  background: $color-primary-light;
+  border-radius: $radius-card;
 }
 
 .qq-group-desc {
@@ -182,7 +183,7 @@ export default {
 .qq-group-number {
   font-size: 28rpx;
   font-weight: 600;
-  color: #007aff;
+  color: $color-primary;
 }
 
 .log-date {
@@ -232,7 +233,7 @@ export default {
   }
 
   ::v-deep blockquote {
-    border-left: 6rpx solid #007aff;
+    border-left: 6rpx solid $color-primary;
     padding-left: 16rpx;
     margin: 12rpx 0;
     color: #666;

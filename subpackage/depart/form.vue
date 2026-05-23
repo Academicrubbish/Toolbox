@@ -9,14 +9,11 @@
 -->
 <template>
   <view class="form-container">
-    <cu-custom bgColor="bg-gradual-blue" :isBack="true">
-      <block slot="backText">返回</block>
-      <block slot="content">记录{{ type === 'add' ? '新增' : '修改' }}</block>
-    </cu-custom>
+    <nav-bar :title="type === 'add' ? '新增记录' : '编辑记录'" showBack />
 
     <view class="form-wrapper">
       <!-- 表单卡片 -->
-      <view class="form-card shadow-warp">
+      <view class="form-card">
         <view class="form-header">
           <view class="form-icon">
             <text class="cuIcon-creativefill text-blue"></text>
@@ -59,7 +56,7 @@
                 <view v-else class="tag-select-wrapper">
                   <view v-for="(tag, index) in tagList" :key="tag._id" class="tag-option"
                     :class="isTagSelected(tag._id) ? 'tag-selected' : ''" @tap="toggleTag(tag._id)">
-                    <view class="tag-option-badge" :class="tagColorClasses[index % 12]">
+                    <view class="tag-option-badge" :style="'background:' + getTagColor(index).bg + ';color:' + getTagColor(index).text">
                       <text class="tag-option-name">{{ tag.name }}</text>
                     </view>
                     <view v-if="isTagSelected(tag._id)" class="tag-check-icon">
@@ -94,7 +91,7 @@
 
       <!-- 提交按钮 -->
       <view class="form-footer">
-        <button class="submit-btn bg-gradual-blue shadow-lg" @click="submit('valiForm')">
+        <button class="submit-btn" @click="submit('valiForm')">
           <text class="cuIcon-check text-white margin-right-xs"></text>
           <text class="text-white text-bold">提交</text>
         </button>
@@ -106,33 +103,35 @@
 <script>
 import { addRecord, getRecord, updateRecord } from "@/api/record";
 import { getDictCategoryList } from "@/api/dictCategory";
-import { callProcessOcr, callParseWechatArticle } from "@/api/ocr";
-import { fetchWebPage } from "@/utils/web-reader.js";
 import { callGenerateLearnNote } from "@/api/aiLearn";
 import { getSummarize } from "@/api/summarize";
-import { tagColorClasses } from "@/utils/tagColors";
+import { getTagColor } from "@/utils/tagColors";
+import { processOcr, processLinkImport } from "@/utils/record-create.js";
 import { debounce } from "lodash-es";
 import moment from "moment";
+import NavBar from "@/component/nav-bar/index.vue";
 
 export default {
+  components: {
+    NavBar,
+  },
   data() {
     return {
       type: "add",
       recordId: null,
       tagList: [],
-      tagColorClasses, // 从公共工具文件导入
       formData: {
         title: '', // 初始化为空字符串，避免显示 undefined
         tags: [],
         summarizeId: '',
         createTime: '', // 用于保存原始创建时间
       },
-      // 输入框样式配置
+      // 输入框样式配置（对应 tokens: $color-border / $color-bg-card / $color-text-primary / $color-bg-input）
       inputStyles: {
-        borderColor: '#e5e5e5',
-        backgroundColor: '#ffffff',
-        color: '#333333',
-        disableColor: '#f5f5f5'
+        borderColor: 'rgba(60, 60, 67, 0.08)',
+        backgroundColor: 'rgba(118, 118, 128, 0.06)',
+        color: '#1C1C1E',
+        disableColor: '#F2F2F7'
       },
       // 校验规则
       rules: {
@@ -172,23 +171,12 @@ export default {
     this.loadTagList();
   },
   computed: {
-    // 获取标题长度（安全处理 null/undefined）
     getTitleLength() {
-      const title = this.formData.title;
-      if (title === null || title === undefined) {
-        return 0;
-      }
-      return String(title).length;
+      return (this.formData.title || '').length;
     },
   },
   methods: {
-    // 带超时的 Promise 包装
-    withTimeout(promise, ms, message) {
-      return Promise.race([
-        promise,
-        new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms))
-      ]);
-    },
+    getTagColor,
     // AI 辅导引导
     async goAiLearn(recordId) {
       if (!recordId) {
@@ -226,98 +214,17 @@ export default {
     },
     // OCR 拍照识别
     async handleOcr() {
-      try {
-        const res = await new Promise((resolve, reject) => {
-          uni.chooseMedia({ count: 9, mediaType: ['image'], success: resolve, fail: reject });
-        });
-        if (!res.tempFiles || res.tempFiles.length === 0) return;
-
-        const total = res.tempFiles.length;
-        const imageUrls = [];
-
-        // 阶段1：逐张上传，展示上传进度
-        for (let i = 0; i < total; i++) {
-          uni.showLoading({ title: `正在上传第 ${i + 1}/${total} 张...`, mask: true });
-          const uploadRes = await uniCloud.uploadFile({
-            filePath: res.tempFiles[i].tempFilePath,
-            cloudPath: 'ocr/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.jpg'
-          });
-          imageUrls.push(uploadRes.fileID);
-        }
-
-        // 阶段2：识别，展示预估时间
-        const estimatedSeconds = total * 4;
-        uni.showLoading({ title: `正在识别 ${total} 张图片（预计约${estimatedSeconds}s）`, mask: true });
-        const ocrRes = await this.withTimeout(
-          callProcessOcr({ imageUrls, source: 'depart' }),
-          90000,
-          '识别超时，请减少图片数量或稍后重试'
-        );
-        uni.hideLoading();
-
-        // 将原图拼成 Markdown 图片语法，放在识别文本上方
-        const imageMarkdown = imageUrls.map(url => '![](' + url + ')').join('\n\n')
-        const fullContent = imageMarkdown + '\n\n---\n\n' + ocrRes.data.content
-
-        this.$store.dispatch('cachePrefill', {
-          content: fullContent,
-          source: 'ocr',
-          ocrLogId: ocrRes.data.logId
-        });
-        this.goSummarize();
-      } catch (err) {
-        uni.hideLoading();
-        if (err && err.errMsg && err.errMsg.includes('cancel')) return;
-        uni.showToast({ title: (err && err.message) || '识别失败，请重试', icon: 'none' });
-      }
+      const ok = await processOcr(this.$store);
+      if (ok) this.goSummarize();
     },
     // 链接导入
     async handleLinkImport() {
-      try {
-        const res = await new Promise((resolve) => {
-          uni.showModal({ title: '导入链接', editable: true, placeholderText: '请粘贴微信公众号文章链接', success: resolve });
-        });
-        if (!res.confirm || !res.content) return;
-        const url = res.content.trim();
-
-        if (!url.includes('mp.weixin.qq.com')) {
-          uni.showToast({ title: '暂不支持该链接，目前仅支持微信公众号文章', icon: 'none' });
-          return;
-        }
-
-        uni.showLoading({ title: '正在获取文章...', mask: true });
-
-        // 客户端直接请求 + 解析（不走云函数）
-        const article = await this.withTimeout(
-          fetchWebPage(url),
-          15000,
-          '获取文章超时，请检查网络'
-        );
-
-        // 用云函数 GLM 清洗噪声
-        uni.showLoading({ title: '正在清洗文章（约10s）', mask: true });
-        const parseRes = await this.withTimeout(
-          callParseWechatArticle({
-            html: article.content,
-            title: article.title
-          }),
-          60000,
-          '清洗超时，请稍后重试'
-        );
-        uni.hideLoading();
-
-        this.$store.dispatch('cachePrefill', {
-          content: parseRes.data.content,
-          source: 'link',
-          title: parseRes.data.title
-        });
-        if (parseRes.data.title && !this.formData.title.trim()) {
-          this.formData.title = parseRes.data.title;
+      const result = await processLinkImport(this.$store);
+      if (result) {
+        if (result.title && !this.formData.title.trim()) {
+          this.formData.title = result.title;
         }
         this.goSummarize();
-      } catch (err) {
-        uni.hideLoading();
-        uni.showToast({ title: (err && err.message) || '解析失败，请重试', icon: 'none' });
       }
     },
     // 加载标签列表
@@ -390,22 +297,18 @@ export default {
         url: `/subpackage/summarize/index?id=${this.formData.summarizeId || ''}`,
       });
     },
-    // 切换标签选择
     toggleTag(tagId) {
       const index = this.formData.tags.indexOf(tagId);
       if (index > -1) {
-        // 已选中，取消选择
         this.formData.tags.splice(index, 1);
       } else {
-        // 未选中，添加选择
         this.formData.tags.push(tagId);
       }
       // 触发响应式更新
       this.$set(this.formData, 'tags', [...this.formData.tags]);
     },
-    // 判断标签是否已选中
     isTagSelected(tagId) {
-      return this.formData.tags.indexOf(tagId) > -1;
+      return this.formData.tags.includes(tagId);
     },
     // 提交表单
     submit: debounce(function (form) {
@@ -466,6 +369,7 @@ export default {
                       if (modalRes.confirm) {
                         this.goAiLearn(recordId);
                       } else {
+                        uni.$emit('record-changed');
                         uni.navigateBack({ delta: 1 });
                       }
                     }
@@ -497,6 +401,7 @@ export default {
                     icon: "success",
                     mask: true,
                   });
+                  uni.$emit('record-changed');
                   setTimeout(() => {
                     uni.navigateBack({
                       delta: 1,
@@ -552,41 +457,42 @@ export default {
 <style lang="scss" scoped>
 .form-container {
   min-height: 100vh;
-  background: linear-gradient(to bottom, #f5f7fa 0%, #f1f1f1 100%);
-  padding-bottom: 40rpx;
+  background: $color-bg-page;
+  padding-bottom: 20px;
 }
 
 .form-wrapper {
-  padding: 30rpx;
+  padding: 15px;
 }
 
 /* 表单卡片 */
 .form-card {
-  background: #ffffff;
-  border-radius: 24rpx;
+  background: $color-bg-card;
+  border-radius: $radius-card;
   overflow: hidden;
-  margin-bottom: 30rpx;
+  margin-bottom: 15px;
+  box-shadow: $shadow-card;
 }
 
 /* 表单头部 */
 .form-header {
   display: flex;
   align-items: center;
-  padding: 40rpx 32rpx 32rpx;
-  border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+  padding: 20px $spacing-md $spacing-md;
+  border-bottom: 0.5px solid $color-divider;
 
   .form-icon {
-    width: 80rpx;
-    height: 80rpx;
-    border-radius: 16rpx;
-    background: linear-gradient(135deg, rgba(0, 129, 255, 0.1) 0%, rgba(28, 187, 180, 0.1) 100%);
+    width: 40px;
+    height: 40px;
+    border-radius: $radius-card;
+    background: $color-primary-light;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 24rpx;
+    margin-right: 12px;
 
     .cuIcon-creativefill {
-      font-size: 40rpx;
+      font-size: 20px;
     }
   }
 
@@ -599,12 +505,12 @@ export default {
 
 /* 表单主体 */
 .form-body {
-  padding: 32rpx;
+  padding: $spacing-md;
 }
 
 /* 表单项 */
 .form-item {
-  margin-bottom: 40rpx;
+  margin-bottom: 20px;
 
   &:last-child {
     margin-bottom: 0;
@@ -613,9 +519,9 @@ export default {
   .form-item-label {
     display: flex;
     align-items: center;
-    margin-bottom: 16rpx;
-    font-size: 28rpx;
-    color: #333;
+    margin-bottom: $spacing-sm;
+    font-size: 14px;
+    color: $color-text-primary;
   }
 
   .form-item-content {
@@ -627,18 +533,18 @@ export default {
 /* 字符计数 */
 .char-count {
   position: absolute;
-  right: 20rpx;
-  bottom: 20rpx;
+  right: 10px;
+  bottom: 10px;
   z-index: 10;
   background: rgba(255, 255, 255, 0.95);
-  padding: 6rpx 12rpx;
-  border-radius: 8rpx;
-  backdrop-filter: blur(4rpx);
+  padding: 3px 6px;
+  border-radius: $radius-small;
+  backdrop-filter: blur(2px);
 }
 
 /* 标签选择区域 */
 .tag-empty-tip {
-  padding: 40rpx 0;
+  padding: 20px 0;
   text-align: center;
 
   .text-blue {
@@ -649,18 +555,18 @@ export default {
 .tag-select-wrapper {
   display: flex;
   flex-wrap: wrap;
-  margin: 0 -8rpx;
+  margin: 0 -4px;
 }
 
 .tag-option {
   position: relative;
-  margin: 0 8rpx 16rpx;
+  margin: 0 4px 8px;
   transition: all 0.3s ease;
 
   &.tag-selected {
     .tag-option-badge {
       transform: scale(1.05);
-      box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.15);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
     }
 
     .tag-check-icon {
@@ -671,11 +577,11 @@ export default {
 
   .tag-option-badge {
     display: inline-block;
-    padding: 12rpx 24rpx;
-    border-radius: 40rpx;
-    font-size: 26rpx;
+    padding: 6px 12px;
+    border-radius: $radius-pill;
+    font-size: 13px;
     font-weight: 500;
-    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
     position: relative;
 
@@ -686,22 +592,22 @@ export default {
 
   .tag-check-icon {
     position: absolute;
-    top: -8rpx;
-    right: -8rpx;
-    width: 32rpx;
-    height: 32rpx;
+    top: -4px;
+    right: -4px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #39b54a 0%, #8dc63f 100%);
+    background: $color-success;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2rpx 8rpx rgba(57, 181, 74, 0.4);
+    box-shadow: 0 1px 4px rgba(52, 199, 89, 0.4);
     opacity: 0;
     transform: scale(0);
     transition: all 0.3s ease;
 
     .cuIcon-check {
-      font-size: 20rpx;
+      font-size: 10px;
     }
   }
 }
@@ -711,19 +617,19 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24rpx;
-  background: #fafafa;
-  border: 2rpx solid #e5e5e5;
-  border-radius: 16rpx;
+  padding: 12px;
+  background: $color-bg-input;
+  border: 1px solid $color-border;
+  border-radius: $radius-card;
 
   .rich-text-content {
     flex: 1;
-    font-size: 28rpx;
+    font-size: 14px;
   }
 
   .rich-text-icon {
-    margin-left: 16rpx;
-    font-size: 32rpx;
+    margin-left: $spacing-sm;
+    font-size: 16px;
   }
 }
 
@@ -744,51 +650,52 @@ export default {
 }
 
 ::v-deep .uni-easyinput__content {
-  border-radius: 16rpx !important;
-  border: 2rpx solid #e5e5e5 !important;
+  border-radius: $radius-card !important;
+  border: 1px solid $color-border !important;
   transition: all 0.3s ease;
-  background: #fafafa !important;
+  background: $color-bg-input !important;
 
   &:focus-within,
   &.is-focused {
-    border-color: #0081ff !important;
-    background: #ffffff !important;
-    box-shadow: 0 0 0 4rpx rgba(0, 129, 255, 0.1);
+    border-color: $color-primary !important;
+    background: $color-bg-card !important;
+    box-shadow: 0 0 0 2px $color-primary-light;
   }
 }
 
 ::v-deep .uni-easyinput__content-input {
-  font-size: 28rpx !important;
-  color: #333 !important;
-  padding: 20rpx 24rpx !important;
+  font-size: 14px !important;
+  color: $color-text-primary !important;
+  padding: 10px 12px !important;
   line-height: 1.6 !important;
 }
 
 ::v-deep .uni-easyinput__placeholder-class {
-  color: #999 !important;
-  font-size: 28rpx !important;
+  color: $color-text-placeholder !important;
+  font-size: 14px !important;
 }
 
 ::v-deep .is-input-error-border {
-  border-color: #e43d33 !important;
-  background: #fff5f5 !important;
+  border-color: $color-error !important;
+  background: $color-error-light !important;
 }
 
 /* 表单底部 */
 .form-footer {
-  padding: 0 30rpx;
+  padding: 0 15px;
 }
 
 /* 提交按钮 */
 .submit-btn {
   width: 100%;
-  height: 96rpx;
-  border-radius: 48rpx;
+  height: 48px;
+  border-radius: $radius-pill;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32rpx;
+  font-size: 16px;
   border: none;
+  background: $color-primary;
   transition: all 0.3s ease;
 
   &::after {
@@ -796,26 +703,26 @@ export default {
   }
 
   .cuIcon-check {
-    font-size: 36rpx;
+    font-size: 18px;
   }
 }
 
 /* 响应式优化 */
-@media screen and (max-width: 750rpx) {
+@media screen and (max-width: 375px) {
   .form-wrapper {
-    padding: 20rpx;
+    padding: 10px;
   }
 
   .form-card {
-    border-radius: 20rpx;
+    border-radius: $radius-card;
   }
 
   .form-header {
-    padding: 32rpx 24rpx 24rpx;
+    padding: 16px 12px 12px;
   }
 
   .form-body {
-    padding: 24rpx;
+    padding: 12px;
   }
 }
 </style>

@@ -5,16 +5,13 @@
   <view class="learn-result-container">
     <z-paging ref="paging" v-model="resultList" @query="queryList">
       <view slot="top">
-        <cu-custom bgColor="bg-gradual-orange" :isBack="true">
-          <block slot="backText">返回</block>
-          <block slot="content">学习结果</block>
-        </cu-custom>
+        <nav-bar title="学习结果" showBack />
       </view>
 
       <view slot="empty">
         <view class="empty-wrapper">
           <text class="cuIcon-text text-gray" style="font-size: 80rpx;"></text>
-          <text class="text-gray margin-top">暂无学习记录</text>
+          <text class="text-gray margin-top">暂无学习结果</text>
           <text class="text-gray text-sm margin-top-sm">在笔记详情页点击"AI辅导"即可生成</text>
         </view>
       </view>
@@ -29,7 +26,7 @@
             </view>
           </view>
 
-          <view v-for="item in group.items" :key="item._id" class="result-card shadow-warp"
+          <view v-for="item in group.items" :key="item._id" class="result-card"
             @click="handleItemClick(item)">
             <view class="result-card-header">
               <view class="type-badge" :class="item.type === 'note' ? 'type-note' : 'type-exercise'">
@@ -53,8 +50,12 @@
 <script>
 import { getLearnResultList } from "@/api/aiLearn.js";
 import { formatTime } from "@/utils/format";
+import NavBar from "@/component/nav-bar/index.vue";
 
 export default {
+  components: {
+    NavBar,
+  },
   data() {
     return {
       recordId: "",
@@ -169,7 +170,7 @@ export default {
 <style lang="scss" scoped>
 .learn-result-container {
   min-height: 100vh;
-  background: linear-gradient(to bottom, #f5f7fa 0%, #f1f1f1 100%);
+  background: $color-bg-page;
 }
 
 .empty-wrapper {
@@ -205,9 +206,9 @@ export default {
   align-items: center;
   gap: 8rpx;
 
-  &.batch-success .status-dot { background: #4cd964; }
-  &.batch-pending .status-dot { background: #ff9d00; }
-  &.batch-error .status-dot { background: #999; }
+  &.batch-success .status-dot { background: $color-success; }
+  &.batch-pending .status-dot { background: $color-warning; }
+  &.batch-error .status-dot { background: $color-text-tertiary; }
 
   .status-dot {
     width: 12rpx;
@@ -217,9 +218,10 @@ export default {
 }
 
 .result-card {
-  background: #ffffff;
-  border-radius: 24rpx;
+  background: $color-bg-card;
+  border-radius: $radius-card;
   padding: 28rpx 32rpx;
+  box-shadow: $shadow-card;
 }
 
 .result-card-header {
@@ -229,17 +231,17 @@ export default {
 
   .type-badge {
     padding: 4rpx 16rpx;
-    border-radius: 8rpx;
+    border-radius: $radius-small;
     margin-right: 16rpx;
 
     &.type-note {
-      background: rgba(0, 129, 255, 0.1);
-      .type-badge-text { color: #007aff; }
+      background: $color-primary-light;
+      .type-badge-text { color: $color-primary; }
     }
 
     &.type-exercise {
-      background: rgba(255, 157, 0, 0.1);
-      .type-badge-text { color: #ff9d00; }
+      background: $color-warning-light;
+      .type-badge-text { color: $color-warning; }
     }
   }
 

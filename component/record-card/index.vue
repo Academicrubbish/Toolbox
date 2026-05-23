@@ -1,18 +1,22 @@
 <template>
-	<view class="record-card shadow-warp" @tap="handleTap">
+	<view class="record-card" @tap="handleTap" @longpress="handleLongPress">
+		<!-- 左侧色条 -->
+		<view class="record-card-bar" :style="'background:' + barColor"></view>
+
 		<view class="record-card-header">
 			<view class="record-title">
-				<text class="cuIcon-creativefill text-blue margin-right-xs"></text>
+				<text class="cuIcon-creativefill text-primary text-xs margin-right-xs"></text>
 				<text class="text-bold">{{ record.title }}</text>
-			</view>
-			<view v-if="showMore" class="record-more-icon" @tap.stop="onMoreClick">
-				<text class="cuIcon-moreandroid text-gray"></text>
 			</view>
 		</view>
 
 		<view v-if="record.tags && record.tags.length > 0" class="record-tags">
-			<view v-for="(tagId, index) in record.tags" :key="tagId" class="record-tag"
-				:class="tagColorClasses[index % 12]">
+			<view
+				v-for="(tagId, index) in record.tags"
+				:key="tagId"
+				class="record-tag"
+				:style="'background:' + getTagColor(index).bg + ';color:' + getTagColor(index).text"
+			>
 				<text>{{ getTagName(tagId) }}</text>
 			</view>
 		</view>
@@ -23,18 +27,18 @@
 
 		<view class="record-footer">
 			<text class="cuIcon-timefill text-gray text-xs margin-right-xs"></text>
-			<text class="text-gray text-xs">{{ formattedTime }}</text>
-			<view v-if="aiNoteCount > 0" class="ai-note-tag" @tap.stop="onAiNoteClick">
+			<text class="record-time text-gray text-xs">{{ formattedTime }}</text>
+			<view v-if="aiNoteCount > 0" class="ai-badge" @tap.stop="onAiNoteClick">
 				<text class="cuIcon-creativefill text-xs"></text>
-				<text class="ai-note-tag-text text-xs">AI笔记{{ aiNoteCount > 1 ? " " + aiNoteCount + "篇" : "" }}</text>
+				<text class="ai-badge-text text-xs">AI笔记{{ aiNoteCount > 1 ? " " + aiNoteCount + "篇" : "" }}</text>
 			</view>
 		</view>
 	</view>
 </template>
 
 <script>
-import { tagColorClasses } from "@/utils/tagColors";
-import { formatTime, formatSummaryContent } from "@/utils/format";
+import { getTagColor } from "@/utils/tagColors";
+import { formatRelativeTime, formatSummaryContent } from "@/utils/format";
 
 export default {
 	props: {
@@ -46,37 +50,43 @@ export default {
 			type: Object,
 			default: () => ({}),
 		},
+		tagList: {
+			type: Array,
+			default: () => [],
+		},
 		aiNoteCount: {
 			type: Number,
 			default: 0,
 		},
-		showMore: {
-			type: Boolean,
-			default: true,
-		},
 	},
 	data() {
-		return {
-			tagColorClasses,
-		};
+		return {};
 	},
 	computed: {
 		getTagName() {
 			return (tagId) => this.tagMap[tagId] ? this.tagMap[tagId].name : '未知标签';
 		},
 		formattedTime() {
-			return formatTime(this.record.createTime, 'HH:mm');
+			return formatRelativeTime(this.record.createTime);
 		},
 		summaryText() {
 			return formatSummaryContent(this.record.summarizeContent);
 		},
+		barColor() {
+			const firstTagId = this.record.tags && this.record.tags[0];
+			if (!firstTagId) return getTagColor(0).bar;
+			const index = this.tagList.findIndex(t => t._id === firstTagId);
+			if (index === -1) return getTagColor(0).bar;
+			return getTagColor(index).bar;
+		},
 	},
 	methods: {
+		getTagColor,
 		handleTap() {
 			this.$emit('card-tap', this.record);
 		},
-		onMoreClick(e) {
-			this.$emit('more-click', e, this.record);
+		handleLongPress(e) {
+			this.$emit('card-longpress', e, this.record);
 		},
 		onAiNoteClick() {
 			this.$emit('ai-note-click', this.record);
@@ -87,65 +97,63 @@ export default {
 
 <style lang="scss" scoped>
 .record-card {
-	background: #ffffff;
-	border-radius: 24rpx;
-	padding: 32rpx 24rpx 24rpx;
-	transition: all 0.3s ease;
+	background: $color-bg-card;
+	border-radius: $radius-card;
+	padding: $spacing-md $spacing-md $spacing-sm;
+	box-shadow: $shadow-card;
+	transition: transform $duration-fast $ease-out;
 	position: relative;
 	overflow: hidden;
 
-	.record-card-header {
+	&:active {
+		transform: scale(0.98);
+	}
+
+	&-bar {
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		width: 4px;
+		border-radius: 0 2px 2px 0;
+	}
+
+	&-header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		margin-bottom: 20rpx;
+		margin-bottom: $spacing-sm;
 
 		.record-title {
 			display: flex;
 			align-items: center;
-			font-size: 30rpx;
-			color: #333;
+			font-size: 16px;
+			color: $color-text-primary;
 			flex: 1;
-		}
-
-		.record-more-icon {
-			width: 56rpx;
-			height: 56rpx;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			border-radius: 50%;
-			margin-left: 16rpx;
-
-			.cuIcon-moreandroid {
-				font-size: 40rpx;
-			}
 		}
 	}
 
 	.record-tags {
 		display: flex;
 		flex-wrap: wrap;
-		margin-bottom: 16rpx;
-		gap: 12rpx;
+		gap: $spacing-sm;
+		margin-bottom: $spacing-sm;
 
 		.record-tag {
 			display: inline-block;
-			padding: 8rpx 16rpx;
-			border-radius: 20rpx;
-			font-size: 24rpx;
+			padding: 4px 10px;
+			border-radius: $radius-pill;
+			font-size: 12px;
 			font-weight: 500;
-			box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.08);
 		}
 	}
 
 	.record-summary {
-		margin-bottom: 16rpx;
-		padding: 12rpx 0;
+		padding-top: $spacing-xs;
 
 		.record-summary-text {
-			font-size: 26rpx;
-			color: #666;
+			font-size: 13px;
+			color: $color-text-tertiary;
 			line-height: 1.6;
 			display: -webkit-box;
 			-webkit-box-orient: vertical;
@@ -160,28 +168,32 @@ export default {
 	.record-footer {
 		display: flex;
 		align-items: center;
-		padding-top: 16rpx;
-		border-top: 1rpx solid rgba(0, 0, 0, 0.05);
-		opacity: 0.7;
+		padding-top: $spacing-sm;
+		border-top: 0.5px solid $color-divider;
 
-		.ai-note-tag {
+		.record-time {
+			font-size: 12px;
+		}
+
+		.ai-badge {
 			display: flex;
 			align-items: center;
 			margin-left: auto;
-			padding: 4rpx 14rpx;
-			border-radius: 16rpx;
-			background: rgba(255, 157, 0, 0.1);
-			opacity: 1;
+			padding: 6px 12px;
+			min-height: 44px;
+			border-radius: $radius-pill;
+			background: $color-warning-light;
+			gap: 4px;
 
 			.cuIcon-creativefill {
-				color: #ff9d00;
-				margin-right: 4rpx;
-				font-size: 22rpx;
+				color: #B36B00;
+				font-size: 13px;
 			}
 
-			.ai-note-tag-text {
-				color: #ff9d00;
+			.ai-badge-text {
+				color: #B36B00;
 				font-weight: 500;
+				font-size: 12px;
 			}
 		}
 	}

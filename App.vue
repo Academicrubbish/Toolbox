@@ -142,7 +142,6 @@
 <style>
 	@import "colorui/main.css";
 	@import "colorui/icon.css";
-	@import "colorui/animation.css";
 	@import "static/mdEditor/markdown.css";
 	/*每个页面公共css */
 </style>

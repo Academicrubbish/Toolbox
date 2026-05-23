@@ -2,7 +2,7 @@
  * @Author: yuanchuang 1226377893@qq.com
  * @Date: 2024-08-26 09:21:50
  * @LastEditors: yuanchuang 1226377893@qq.com
- * @LastEditTime: 2024-10-09 15:51:49
+ * @LastEditTime: 2026-05-19 18:04:59
  * @FilePath: \Toolbox\subpackage\summarize\index.vue
  * @Description: md富文本编辑页
  *
@@ -10,14 +10,20 @@
 
 <template>
   <view class="summarize">
-    <cu-custom bgColor="bg-gradual-blue" :isBack="true">
-      <block slot="backText">返回</block>
-      <block slot="content">
-        {{ status == "add" ? "新增总结" : "修改总结" }}
-      </block>
-    </cu-custom>
+    <nav-bar title="内容编辑">
+      <template #left>
+        <view class="nav-actions">
+          <view class="nav-more" @tap="handleMoreMenu">
+            <text class="cuIcon-moreandroid"></text>
+          </view>
+          <view class="nav-done-btn" @tap="handleSave">
+            <text>完成</text>
+          </view>
+        </view>
+      </template>
+    </nav-bar>
     <view :style="contentHeight">
-      <md-editor :textareaDataProp="textareaData" @submit="submit" />
+      <md-editor ref="editor" :textareaDataProp="textareaData" :showExtraActions="false" @submit="submit" />
     </view>
 
     <!-- 登录授权弹窗 -->
@@ -36,10 +42,13 @@ import {
 import loginMixin from "@/utils/login-mixin.js";
 import { debounce } from "lodash-es";
 import moment from "moment";
+import NavBar from "@/component/nav-bar/index.vue";
+
 export default {
   components: {
     mdEditor,
     LoginModal,
+    NavBar,
   },
   mixins: [loginMixin],
   data() {
@@ -57,7 +66,7 @@ export default {
     this.summarizeId = option.id;
     if (option.id) {
       getSummarize(option.id).then(res => {
-        if (res.result.data.length > 0) {
+        if (res.result && res.result.data && res.result.data.length > 0) {
           this.status = "update";
           this.form = res.result.data[0];
           this.textareaData = this.form.content;
@@ -76,6 +85,25 @@ export default {
     }
   },
   methods: {
+    handleSave() {
+      if (this.$refs.editor) {
+        this.$refs.editor.submit();
+      }
+    },
+    handleMoreMenu() {
+      uni.showActionSheet({
+        itemList: ['返回', '上传MD文件', '清空内容'],
+        success: (res) => {
+          if (res.tapIndex === 0) {
+            uni.navigateBack({ delta: 1 });
+          } else if (res.tapIndex === 1 && this.$refs.editor) {
+            this.$refs.editor.uploadMdFile();
+          } else if (res.tapIndex === 2 && this.$refs.editor) {
+            this.$refs.editor.toolBarClick('clear');
+          }
+        }
+      });
+    },
     submit: debounce(async function (e) {
       if (!e.textareaData.trim()) {
         uni.showToast({ title: "内容不能为空", icon: "none" });
@@ -105,7 +133,7 @@ export default {
       apiCall
         .then((res) => {
           uni.hideLoading();
-          if (res.result.code === 0) {
+          if (res.result && (res.result.code === 0 || res.result.code === undefined)) {
             if (!isUpdate) {
               this.$store.dispatch("cacheSummary", { id: res.result.id, status: 'add' });
             }
@@ -199,8 +227,41 @@ export default {
   },
 };
 </script>
-<style>
+<style lang="scss" scoped>
 .summarize {
   height: 100vh;
+  background: #FFFFFF;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-done-btn {
+  padding: 4px 14px;
+  background: $color-primary;
+  color: #fff;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 600;
+
+  text {
+    color: #fff;
+  }
+}
+
+.nav-more {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .cuIcon-moreandroid {
+    font-size: 22px;
+    color: #8e8e93;
+  }
 }
 </style>

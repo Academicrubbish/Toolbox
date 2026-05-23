@@ -9,14 +9,11 @@
 -->
 <template>
   <view class="form-container">
-    <cu-custom bgColor="bg-gradual-pink" :isBack="true">
-      <block slot="backText">返回</block>
-      <block slot="content">标签{{ type === 'add' ? '新增' : '修改' }}</block>
-    </cu-custom>
+    <nav-bar :title="type === 'add' ? '新增标签' : '编辑标签'" showBack />
 
     <view class="form-wrapper">
       <!-- 表单卡片 -->
-      <view class="form-card shadow-warp">
+      <view class="form-card">
         <view class="form-header">
           <view class="form-icon">
             <text class="cuIcon-tagfill text-pink"></text>
@@ -68,7 +65,7 @@
 
       <!-- 提交按钮 -->
       <view class="form-footer">
-        <button class="submit-btn bg-gradual-green shadow-lg" @click="submit('valiForm')">
+        <button class="submit-btn" @click="submit('valiForm')">
           <text class="cuIcon-check text-white margin-right-xs"></text>
           <text class="text-white text-bold">提交</text>
         </button>
@@ -86,10 +83,12 @@ import LoginModal from "@/component/login-modal/index.vue";
 import loginMixin from "@/utils/login-mixin.js";
 import { debounce } from "lodash-es";
 import moment from "moment";
+import NavBar from "@/component/nav-bar/index.vue";
 
 export default {
   components: {
     LoginModal,
+    NavBar,
   },
   mixins: [loginMixin],
   data() {
@@ -288,7 +287,7 @@ export default {
 <style lang="scss" scoped>
 .form-container {
   min-height: 100vh;
-  background: linear-gradient(to bottom, #f5f7fa 0%, #f1f1f1 100%);
+  background: $color-bg-page;
   padding-bottom: 40rpx;
 }
 
@@ -298,10 +297,11 @@ export default {
 
 /* 表单卡片 */
 .form-card {
-  background: #ffffff;
-  border-radius: 24rpx;
+  background: $color-bg-card;
+  border-radius: $radius-card;
   overflow: hidden;
   margin-bottom: 30rpx;
+  box-shadow: $shadow-card;
 }
 
 /* 表单头部 */
@@ -314,8 +314,8 @@ export default {
   .form-icon {
     width: 80rpx;
     height: 80rpx;
-    border-radius: 16rpx;
-    background: linear-gradient(135deg, rgba(236, 0, 140, 0.1) 0%, rgba(103, 57, 182, 0.1) 100%);
+    border-radius: $radius-card;
+    background: linear-gradient(135deg, rgba(255, 45, 85, 0.1) 0%, rgba(175, 82, 222, 0.1) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -365,7 +365,7 @@ export default {
       z-index: 10;
       background: rgba(255, 255, 255, 0.95);
       padding: 6rpx 12rpx;
-      border-radius: 8rpx;
+      border-radius: $radius-small;
       backdrop-filter: blur(4rpx);
     }
   }
@@ -388,16 +388,16 @@ export default {
 }
 
 ::v-deep .uni-easyinput__content {
-  border-radius: 16rpx !important;
+  border-radius: $radius-card !important;
   border: 2rpx solid #e5e5e5 !important;
   transition: all 0.3s ease;
-  background: #fafafa !important;
+  background: $color-bg-input !important;
 
   &:focus-within,
   &.is-focused {
-    border-color: #39b54a !important;
+    border-color: $color-primary !important;
     background: #ffffff !important;
-    box-shadow: 0 0 0 4rpx rgba(57, 181, 74, 0.1);
+    box-shadow: 0 0 0 4rpx $color-primary-light;
   }
 }
 
@@ -433,12 +433,13 @@ export default {
 .submit-btn {
   width: 100%;
   height: 96rpx;
-  border-radius: 48rpx;
+  border-radius: $radius-pill;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 32rpx;
   border: none;
+  background: $color-primary;
   transition: all 0.3s ease;
 
   &::after {
@@ -457,7 +458,7 @@ export default {
   }
 
   .form-card {
-    border-radius: 20rpx;
+    border-radius: $radius-card;
   }
 
   .form-header {

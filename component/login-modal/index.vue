@@ -3,10 +3,10 @@
     <view class="login-modal">
       <view class="login-header">
         <view class="login-title">
-          <text class="text-xxl text-bold text-black">markdown笔记</text>
+          <text class="text-xxl text-bold text-black">Markdown 笔记</text>
         </view>
         <view class="login-subtitle">
-          <text class="text-gray">- 为你而准备 -</text>
+          <text class="text-gray">为你而准备</text>
         </view>
       </view>
       
@@ -17,7 +17,7 @@
         
         <view class="login-buttons">
           <button 
-            class="cu-btn bg-green shadow-blur round lg login-btn" 
+            class="login-btn" 
             @click="handleLogin" 
             :disabled="loading"
             :loading="loading">
@@ -158,46 +158,60 @@ export default {
 
 <style lang="scss" scoped>
 .login-modal {
-  width: 600rpx;
+  width: 300px;
   max-width: 90vw;
-  background: #ffffff;
-  border-radius: 24rpx;
-  padding: 60rpx 40rpx 40rpx;
+  background: $color-bg-card;
+  border-radius: $radius-card;
+  padding: 40px $spacing-xl $spacing-xl;
   box-sizing: border-box;
-  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
+  box-shadow: $shadow-modal;
 }
 
 .login-header {
   text-align: center;
-  margin-bottom: 40rpx;
-  
+  margin-bottom: $spacing-xl;
+
   .login-title {
-    margin-bottom: 16rpx;
+    margin-bottom: $spacing-sm;
   }
-  
+
   .login-subtitle {
-    margin-top: 8rpx;
+    margin-top: $spacing-xs;
   }
 }
 
 .login-content {
   .login-tips {
     text-align: center;
-    margin-bottom: 40rpx;
-    padding: 0 20rpx;
+    margin-bottom: $spacing-xl;
+    padding: 0 $spacing-lg;
   }
-  
+
   .login-buttons {
     .login-btn {
       width: 100%;
-      height: 88rpx;
-      line-height: 88rpx;
-      font-size: 32rpx;
-      margin-bottom: 20rpx;
+      height: 48px;
+      line-height: 48px;
+      font-size: 16px;
+      margin-bottom: $spacing-lg;
+      background: $color-primary;
+      color: $color-text-inverse;
+      border-radius: $radius-pill;
+      border: none;
+      font-weight: 600;
+      box-shadow: $shadow-fab;
+
+      &::after {
+        border: none;
+      }
+
+      &[disabled] {
+        opacity: 0.6;
+      }
     }
-    
+
     .cancel-btn {
-      padding: 20rpx 0;
+      padding: $spacing-lg 0;
     }
   }
 }

@@ -2,17 +2,14 @@
  * @Author: yuanchuang 1226377893@qq.com
  * @Date: 2024-09-03 16:31:36
  * @LastEditors: yuanchuang 1226377893@qq.com
- * @LastEditTime: 2025-11-19 21:00:59
+ * @LastEditTime: 2026-05-20 11:27:27
  * @FilePath: \Toolbox\subpackage\dictCategory\index.vue
  * @Description: 标签管理
  * 
 -->
 <template>
   <view class="tag-container">
-    <cu-custom bgColor="bg-gradual-pink" :isBack="true">
-      <block slot="backText">返回</block>
-      <block slot="content">标签管理</block>
-    </cu-custom>
+    <nav-bar title="标签管理" showBack />
 
     <!-- 标签列表 -->
     <view class="tag-list-container">
@@ -28,27 +25,57 @@
       </view>
       
       <!-- 标签卡片列表 -->
-      <view v-else class="tag-card-list">
-        <view 
-          v-for="(item, index) in tagList" 
-          :key="item._id" 
-          class="tag-card shadow-warp"
-          :class="{ 'tag-card-public': isPublicTag(item) }"
-          @tap="handleTagClick(item)"
-          @longpress="handleLongPress($event, item)"
-        >
-          <view class="tag-card-header">
-            <view class="tag-badge" :class="tagColorClasses[index % tagColorClasses.length]">
-              <text class="tag-name">{{ item.name }}</text>
-              <text v-if="isPublicTag(item)" class="tag-public-badge">公共</text>
+      <view v-else class="tag-list">
+        <!-- 公共标签区域 -->
+        <view v-if="publicTags.length > 0" class="section">
+          <text class="section-title text-gray text-xs">公共标签</text>
+          <view
+            v-for="(item, index) in publicTags"
+            :key="item._id"
+            class="tag-item"
+            @tap="handleTagClick(item)"
+          >
+            <view class="tag-dot" :style="'background:' + getTagColor(index).bar"></view>
+            <view class="tag-item-content">
+              <view class="tag-item-header">
+                <text class="tag-item-name">{{ item.name }}</text>
+                <view class="public-badge">
+                  <text class="text-xs">公共</text>
+                </view>
+              </view>
+              <view class="tag-item-meta">
+                <text class="text-gray text-xs">公共标签，不可操作</text>
+              </view>
+            </view>
+            <view class="tag-item-arrow">
+              <text class="cuIcon-right text-gray"></text>
             </view>
           </view>
-          <view v-if="item.description" class="tag-card-body">
-            <text class="tag-desc text-gray text-sm">{{ item.description }}</text>
-          </view>
-          <view class="tag-card-footer">
-            <text v-if="isPublicTag(item)" class="text-gray text-xs">公共标签，不可操作</text>
-            <text v-else class="text-gray text-xs">点击编辑 · 长按删除</text>
+        </view>
+
+        <!-- 个人标签区域 -->
+        <view v-if="personalTags.length > 0" class="section">
+          <text v-if="publicTags.length > 0" class="section-title text-gray text-xs">个人标签（点击编辑 · 长按删除）</text>
+          <view
+            v-for="(item, index) in personalTags"
+            :key="item._id"
+            class="tag-item"
+            :class="{ 'tag-item-public': isPublicTag(item) }"
+            @tap="handleTagClick(item)"
+            @longpress="handleLongPress($event, item)"
+          >
+            <view class="tag-dot" :style="'background:' + getTagColor(index).bar"></view>
+            <view class="tag-item-content">
+              <view class="tag-item-header">
+                <text class="tag-item-name">{{ item.name }}</text>
+              </view>
+              <view v-if="item.description" class="tag-item-desc">
+                <text class="text-gray text-xs">{{ item.description }}</text>
+              </view>
+            </view>
+            <view class="tag-item-arrow">
+              <text class="cuIcon-right text-gray"></text>
+            </view>
           </view>
         </view>
       </view>
@@ -69,7 +96,7 @@
         cancelText="取消" 
         confirmText="确定"
         @confirm="dialogConfirm" 
-        @close="dialogClose" 
+       
       />
     </uni-popup>
   </view>
@@ -77,14 +104,16 @@
 
 <script>
 import { getDictCategoryList, delDictCategory } from "@/api/dictCategory.js";
-import { tagColorClasses } from "@/utils/tagColors";
+import { getTagColor } from "@/utils/tagColors";
 import ContextPopup from '@/component/context-popup/index.vue';
 import FabButton from '@/component/fab-button/index.vue';
+import NavBar from '@/component/nav-bar/index.vue';
 
 export default {
   components: {
     ContextPopup,
-    FabButton
+    FabButton,
+    NavBar,
   },
   data() {
     return {
@@ -98,16 +127,13 @@ export default {
     };
   },
   computed: {
-    // 计算属性：检查 tagList 是否有效
-    tagListLength() {
-      return this.tagList && Array.isArray(this.tagList) ? this.tagList.length : 0;
+    // 公共标签
+    publicTags() {
+      return this.tagList.filter(item => this.isPublicTag(item));
     },
-    isTagListArray() {
-      return Array.isArray(this.tagList);
-    },
-    // 标签颜色类数组（从公共工具文件导入）
-    tagColorClasses() {
-      return tagColorClasses;
+    // 个人标签
+    personalTags() {
+      return this.tagList.filter(item => !this.isPublicTag(item));
     },
   },
   onLoad() {
@@ -118,30 +144,13 @@ export default {
     this.loadTagList();
   },
   methods: {
+    getTagColor,
     // 加载标签列表
     loadTagList() {
       getDictCategoryList()
         .then((res) => {
-          // uniCloud 返回格式：{ result: { data: [...] } }
-          let data = [];
-          
-          if (res && res.result) {
-            // 如果 result.data 存在，使用它
-            if (res.result.data !== undefined) {
-              data = Array.isArray(res.result.data) ? res.result.data : [];
-            } 
-            // 如果 result 本身是数组
-            else if (Array.isArray(res.result)) {
-              data = res.result;
-            }
-            // 其他情况，返回空数组
-            else {
-              data = [];
-            }
-          }
-          
-          // 使用 Vue.set 确保响应式更新（最可靠的方法）
-          this.$set(this, 'tagList', data || []);
+          const data = res?.result?.data;
+          this.tagList = Array.isArray(data) ? data : [];
         })
         .catch((err) => {
           console.error("加载标签列表失败：", err);
@@ -254,7 +263,6 @@ export default {
           });
         });
     },
-    dialogClose() {},
   },
 };
 </script>
@@ -263,12 +271,87 @@ export default {
 .tag-container {
   position: relative;
   min-height: 100vh;
-  background: linear-gradient(to bottom, #f5f7fa 0%, #f1f1f1 100%);
-  padding-bottom: 160rpx;
+  background: $color-bg-page;
+  padding-bottom: 80px;
 }
 
 .tag-list-container {
-  padding: 30rpx 30rpx 0;
+  padding: 15px 15px 0;
+}
+
+/* 标签列表 - 单列布局 */
+.tag-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 20px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-title {
+  padding: 4px 2px;
+  font-weight: 500;
+}
+
+/* 标签项 */
+.tag-item {
+  background: $color-bg-card;
+  border-radius: $radius-card;
+  padding: 12px 14px;
+  min-height: 75px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: $shadow-card;
+}
+
+.tag-dot {
+  width: 6px;
+  height: 20px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.tag-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.tag-item-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.tag-item-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: $color-text-primary;
+}
+
+.public-badge {
+  background: $color-bg-input;
+  padding: 1px 6px;
+  border-radius: $radius-pill;
+  color: $color-text-tertiary;
+}
+
+.tag-item-desc {
+  margin-bottom: 4px;
+}
+
+.tag-item-meta {
+  font-size: 12px;
+}
+
+.tag-item-arrow {
+  flex-shrink: 0;
 }
 
 /* 空状态样式 */
@@ -277,116 +360,35 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 200rpx 60rpx;
+  padding: 100px 30px;
   text-align: center;
-  
+
   .empty-icon {
-    width: 160rpx;
-    height: 160rpx;
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.02);
+    background: $color-bg-input;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 40rpx;
-    
+    margin-bottom: 20px;
+
     .cuIcon-tagfill {
-      font-size: 80rpx;
+      font-size: 40px;
+      color: $color-text-tertiary;
       opacity: 0.5;
     }
   }
-  
+
   .empty-text {
     display: flex;
     flex-direction: column;
-    
+
     text {
       &:not(:first-child) {
-        margin-top: 20rpx;
+        margin-top: 10px;
       }
     }
-  }
-}
-
-/* 标签卡片列表 */
-.tag-card-list {
-  display: flex;
-  flex-wrap: wrap;
-  padding-bottom: 40rpx;
-  margin: 0 -12rpx;
-  
-  .tag-card {
-    flex: 0 0 calc(50% - 24rpx);
-    max-width: calc(50% - 24rpx);
-    margin: 0 12rpx 24rpx;
-  }
-}
-
-/* 标签卡片 */
-.tag-card {
-  background: #ffffff;
-  border-radius: 24rpx;
-  padding: 32rpx 24rpx 24rpx;
-  position: relative;
-  overflow: hidden;
-
-  /* 公共标签样式 */
-  &.tag-card-public {
-    background: #fafafa;
-  }
-
-  /* 卡片头部 */
-  .tag-card-header {
-    margin-bottom: 20rpx;
-    
-    .tag-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8rpx;
-      padding: 12rpx 24rpx;
-      border-radius: 40rpx;
-      font-size: 28rpx;
-      font-weight: 500;
-      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
-      position: relative;
-      
-      .tag-name {
-        font-weight: 600;
-      }
-      
-      .tag-public-badge {
-        font-size: 20rpx;
-        padding: 2rpx 8rpx;
-        background: rgba(255, 255, 255, 0.8);
-        border-radius: 8rpx;
-        color: #666;
-        font-weight: 400;
-        margin-left: 4rpx;
-      }
-    }
-  }
-  
-  /* 卡片主体 */
-  .tag-card-body {
-    min-height: 60rpx;
-    margin-bottom: 16rpx;
-    
-    .tag-desc {
-      line-height: 1.6;
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
-      line-clamp: 2;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-  }
-  
-  /* 卡片底部 */
-  .tag-card-footer {
-    padding-top: 16rpx;
-    border-top: 1rpx solid rgba(0, 0, 0, 0.05);
-    opacity: 0.6;
   }
 }
 

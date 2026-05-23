@@ -1,0 +1,140 @@
+/**
+ * Design Tokens — UI 全站重构设计变量体系
+ * 基于 Apple HIG 设计语言
+ */
+
+/* ════════ 颜色 ════════ */
+
+// 主色
+$color-primary: #007AFF;
+$color-primary-light: rgba(0, 122, 255, 0.10);
+$color-primary-dark: #0062CC;
+
+// 功能色
+$color-success: #34C759;
+$color-success-light: rgba(52, 199, 89, 0.10);
+$color-warning: #FF9500;
+$color-warning-light: rgba(255, 149, 0, 0.08);
+$color-error: #FF3B30;
+$color-error-light: rgba(255, 59, 48, 0.08);
+$color-share: #30BE64;
+$color-share-light: rgba(48, 190, 100, 0.10);
+
+// 文字颜色
+$color-text-primary: #1C1C1E;
+$color-text-secondary: #3C3C43;
+$color-text-tertiary: #8E8E93;
+$color-text-placeholder: #C7C7CC;
+$color-text-disabled: #AEAEB2;
+$color-text-inverse: #FFFFFF;
+
+// 背景颜色
+$color-bg-page: #F2F2F7;
+$color-bg-card: #FFFFFF;
+$color-bg-sidebar: rgba(247, 247, 250, 0.92);
+$color-bg-input: rgba(118, 118, 128, 0.06);
+$color-bg-mask: rgba(0, 0, 0, 0.28);
+$color-bg-overlay: rgba(0, 0, 0, 0.3);
+
+// 边框/分割线
+$color-border: rgba(60, 60, 67, 0.08);
+$color-divider: rgba(60, 60, 67, 0.06);
+
+/* ════════ 圆角 ════════ */
+
+$radius-card: 16px;
+$radius-button: 12px;
+$radius-input: 12px;
+$radius-tag: 6px;
+$radius-pill: 20px;
+$radius-avatar: 50%;
+$radius-small: 8px;
+
+/* ════════ 间距（8pt 网格） ════════ */
+
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+$spacing-xxl: 48px;
+
+/* ════════ 字体 ════════ */
+
+$font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+$font-family-code: 'SF Mono', Menlo, Consolas, monospace;
+
+// 字体样式（weight size/line-height family）
+$font-page-title: 700 28px/1.3 $font-family;
+$font-section-title: 700 22px/1.3 $font-family;
+$font-card-title: 600 16px/1.3 $font-family;
+$font-body: 400 15px/1.7 $font-family;
+$font-secondary: 400 13px/1.5 $font-family;
+$font-label: 600 11px/1 $font-family;
+$font-code: 400 14px/1.6 $font-family-code;
+$font-nav-title: 600 17px/1 $font-family;
+$font-button: 600 17px/1 $font-family;
+
+/* ════════ 阴影 ════════ */
+
+$shadow-card: 0 1px 4px rgba(0, 0, 0, 0.03);
+$shadow-sidebar: 6px 0 40px rgba(0, 0, 0, 0.12);
+$shadow-fab: 0 4px 16px rgba(0, 122, 255, 0.35);
+$shadow-sheet: 0 -4px 40px rgba(0, 0, 0, 0.1);
+$shadow-modal: 0 8px 40px rgba(0, 0, 0, 0.14);
+
+/* ════════ 动画 ════════ */
+
+$duration-fast: 150ms;
+$duration-normal: 250ms;
+$duration-slow: 350ms;
+$ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+$ease-in-out: cubic-bezier(0.42, 0, 0.58, 1);
+$ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+/* ════════ 毛玻璃 Mixin ════════ */
+
+@mixin glass-bg($opacity: 0.72, $blur: 24px) {
+  background: rgba(255, 255, 255, $opacity);
+  /* #ifndef APP-PLUS-NVUE */
+  backdrop-filter: blur($blur);
+  -webkit-backdrop-filter: blur($blur);
+  /* #endif */
+}
+
+// 安卓降级 mixin（纯色半透明）
+@mixin glass-bg-android($opacity: 0.95) {
+  background: rgba(255, 255, 255, $opacity);
+}
+
+// 平台判断变量（在组件中通过 JS 设置 class 使用）
+$android-glass-bg: rgba(255, 255, 255, 0.95);
+
+/* ════════ 标签色板 ════════ */
+
+$tag-colors: (
+  blue:   (bg: rgba(0, 122, 255, 0.10),  text: #007AFF, bar: #007AFF),
+  purple: (bg: rgba(175, 82, 222, 0.10), text: #AF52DE, bar: #AF52DE),
+  orange: (bg: rgba(255, 149, 0, 0.10),  text: #FF9500, bar: #FF9500),
+  green:  (bg: rgba(52, 199, 89, 0.10),  text: #34C759, bar: #34C759),
+  red:    (bg: rgba(255, 59, 48, 0.10),  text: #FF3B30, bar: #FF3B30),
+  cyan:   (bg: rgba(90, 200, 250, 0.10), text: #5AC8FA, bar: #5AC8FA),
+  pink:   (bg: rgba(255, 45, 85, 0.10),  text: #FF2D55, bar: #FF2D55),
+  indigo: (bg: rgba(88, 86, 214, 0.10),  text: #5856D6, bar: #5856D6)
+);
+
+/* ════════ 页面布局 ════════ */
+
+$nav-height: 44px; // 导航栏内容高度（不含 status bar）
+$sidebar-width: 78%; // 侧边栏宽度（约 290px）
+$safe-area-bottom: env(safe-area-inset-bottom);
+
+/* ════════ z-index 层级 ════════ */
+
+$z-nav: 100;
+$z-fab: 200;
+$z-sidebar: 300;
+$z-overlay: 250;
+$z-sheet: 400;
+$z-modal: 500;
+$z-toast: 600;
