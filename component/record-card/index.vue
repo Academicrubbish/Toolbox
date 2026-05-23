@@ -101,10 +101,9 @@ export default {
 	border-radius: $radius-card;
 	padding: $spacing-md $spacing-md $spacing-sm;
 	box-shadow: $shadow-card;
-	transition: all 0.2s ease;
+	transition: transform $duration-fast $ease-out;
 	position: relative;
 	overflow: hidden;
-	margin-bottom: $spacing-sm;
 
 	&:active {
 		transform: scale(0.98);
@@ -115,7 +114,8 @@ export default {
 		left: 0;
 		top: 0;
 		bottom: 0;
-		width: 3px;
+		width: 4px;
+		border-radius: 0 2px 2px 0;
 	}
 
 	&-header {
@@ -136,8 +136,8 @@ export default {
 	.record-tags {
 		display: flex;
 		flex-wrap: wrap;
+		gap: $spacing-sm;
 		margin-bottom: $spacing-sm;
-		gap: $spacing-xs;
 
 		.record-tag {
 			display: inline-block;
@@ -149,7 +149,6 @@ export default {
 	}
 
 	.record-summary {
-		margin-bottom: $spacing-sm;
 		padding-top: $spacing-xs;
 
 		.record-summary-text {
@@ -180,20 +179,21 @@ export default {
 			display: flex;
 			align-items: center;
 			margin-left: auto;
-			padding: 2px 10px;
+			padding: 6px 12px;
+			min-height: 44px;
 			border-radius: $radius-pill;
 			background: $color-warning-light;
 			gap: 4px;
 
 			.cuIcon-creativefill {
-				color: $color-warning;
-				font-size: 11px;
+				color: #B36B00;
+				font-size: 13px;
 			}
 
 			.ai-badge-text {
-				color: $color-warning;
+				color: #B36B00;
 				font-weight: 500;
-				font-size: 11px;
+				font-size: 12px;
 			}
 		}
 	}

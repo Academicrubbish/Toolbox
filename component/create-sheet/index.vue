@@ -157,7 +157,7 @@ export default {
       this.tagArray.forEach((tag, index) => {
         const color = getTagColor(index);
         if (this.selectedTags.includes(tag._id)) {
-          styles[tag._id] = `background:${color.text};color:#fff`;
+          styles[tag._id] = `background:${color.text};color:#ffffff`;
         } else {
           styles[tag._id] = `background:${color.bg};color:${color.text}`;
         }
@@ -316,7 +316,8 @@ export default {
 }
 
 .tag-chip {
-  padding: 6px 14px;
+  padding: 10px 16px;
+  min-height: 44px;
   border-radius: $radius-pill;
   background: $color-bg-input;
   border: 1px solid transparent;
@@ -374,7 +375,7 @@ export default {
     top: -6px;
     right: -4px;
     font-size: 10px;
-    color: #fff;
+    color: $color-text-inverse;
     background: $color-primary;
     padding: 1px 6px;
     border-radius: 8px;
@@ -395,7 +396,7 @@ export default {
   color: $color-text-inverse;
   font-size: 16px;
   font-weight: 600;
-  border-radius: $radius-button;
+  border-radius: $radius-pill;
   border: none;
   transition: opacity $duration-fast;
 
@@ -446,7 +447,7 @@ export default {
   padding: $spacing-sm $spacing-md;
   background: $color-bg-input;
   border-radius: $radius-input;
-  max-height: 200rpx;
+  max-height: 100px;
   overflow: hidden;
 
   .summary-preview-text {

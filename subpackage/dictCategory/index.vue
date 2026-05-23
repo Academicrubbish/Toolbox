@@ -272,29 +272,29 @@ export default {
   position: relative;
   min-height: 100vh;
   background: $color-bg-page;
-  padding-bottom: 160rpx;
+  padding-bottom: 80px;
 }
 
 .tag-list-container {
-  padding: 30rpx 30rpx 0;
+  padding: 15px 15px 0;
 }
 
 /* 标签列表 - 单列布局 */
 .tag-list {
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
-  padding-bottom: 40rpx;
+  gap: 12px;
+  padding-bottom: 20px;
 }
 
 .section {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
+  gap: 8px;
 }
 
 .section-title {
-  padding: 8rpx 4rpx;
+  padding: 4px 2px;
   font-weight: 500;
 }
 
@@ -302,18 +302,18 @@ export default {
 .tag-item {
   background: $color-bg-card;
   border-radius: $radius-card;
-  padding: 24rpx 28rpx;
-  min-height: 150rpx;
+  padding: 12px 14px;
+  min-height: 75px;
   display: flex;
   align-items: center;
-  gap: 20rpx;
+  gap: 10px;
   box-shadow: $shadow-card;
 }
 
 .tag-dot {
-  width: 12rpx;
-  height: 40rpx;
-  border-radius: 6rpx;
+  width: 6px;
+  height: 20px;
+  border-radius: 3px;
   flex-shrink: 0;
 }
 
@@ -325,29 +325,29 @@ export default {
 .tag-item-header {
   display: flex;
   align-items: center;
-  gap: 12rpx;
-  margin-bottom: 4rpx;
+  gap: 6px;
+  margin-bottom: 2px;
 }
 
 .tag-item-name {
-  font-size: 30rpx;
+  font-size: 15px;
   font-weight: 600;
   color: $color-text-primary;
 }
 
 .public-badge {
   background: $color-bg-input;
-  padding: 2rpx 12rpx;
+  padding: 1px 6px;
   border-radius: $radius-pill;
   color: $color-text-tertiary;
 }
 
 .tag-item-desc {
-  margin-bottom: 8rpx;
+  margin-bottom: 4px;
 }
 
 .tag-item-meta {
-  font-size: 24rpx;
+  font-size: 12px;
 }
 
 .tag-item-arrow {
@@ -360,21 +360,21 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 200rpx 60rpx;
+  padding: 100px 30px;
   text-align: center;
 
   .empty-icon {
-    width: 160rpx;
-    height: 160rpx;
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
     background: $color-bg-input;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 40rpx;
+    margin-bottom: 20px;
 
     .cuIcon-tagfill {
-      font-size: 80rpx;
+      font-size: 40px;
       color: $color-text-tertiary;
       opacity: 0.5;
     }
@@ -386,7 +386,7 @@ export default {
 
     text {
       &:not(:first-child) {
-        margin-top: 20rpx;
+        margin-top: 10px;
       }
     }
   }

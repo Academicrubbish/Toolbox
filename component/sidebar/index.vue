@@ -160,7 +160,7 @@ export default {
   width: $sidebar-width;
   max-width: 290px;
   height: 100%;
-  background: rgba(255, 249, 235, 0.95);
+  background: $color-bg-sidebar;
   /* #ifndef APP-PLUS-NVUE */
   backdrop-filter: blur(40px);
   -webkit-backdrop-filter: blur(40px);
@@ -179,40 +179,45 @@ export default {
 .sidebar-scroll {
   flex: 1;
   overflow-y: auto;
-  padding-top: constant(safe-area-inset-top);
-  padding-top: env(safe-area-inset-top);
+  padding-top: 50px;
+  margin-top: constant(safe-area-inset-top);
+  margin-top: env(safe-area-inset-top);
 }
 
 // 游客提示
 .guest-tip {
-  margin: 32px 16px 0;
-  padding: 12px 14px;
-  background: rgba(255, 183, 77, 0.2);
-  border-radius: 12px;
+  margin: $spacing-xl $spacing-md 0;
+  padding: $spacing-sm $spacing-md;
+  background: $color-primary-light;
+  border-radius: $radius-button;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: $spacing-sm;
 
   .guest-icon {
     font-size: 18px;
-    color: #e67e00;
+    color: $color-primary;
   }
 
   .guest-text {
     flex: 1;
     font-size: 13px;
-    color: #5d4037;
+    color: $color-text-secondary;
     line-height: 1.4;
   }
 
   .guest-btn {
     font-size: 12px;
-    color: #fff;
-    background: #e67e00;
-    padding: 6px 14px;
-    border-radius: 8px;
+    color: $color-text-inverse;
+    background: $color-primary;
+    padding: 8px 16px;
+    border-radius: $radius-small;
     font-weight: 500;
     white-space: nowrap;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 
@@ -226,7 +231,7 @@ export default {
   padding: 24px 20px 8px;
   font-size: 12px;
   font-weight: 600;
-  color: #b8860b;
+  color: $color-text-tertiary;
   letter-spacing: 0.5px;
 }
 
@@ -235,17 +240,19 @@ export default {
   display: flex;
   align-items: center;
   padding: 14px 20px;
+  margin: 0 12px;
+  border-radius: $radius-small;
   transition: background $duration-fast;
 
   &:active {
-    background: rgba(184, 134, 11, 0.08);
+    background: $color-primary-light;
   }
 }
 
 .menu-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
+  width: 32px;
+  height: 32px;
+  border-radius: $radius-small;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -257,46 +264,46 @@ export default {
   }
 
   &--blue {
-    background: rgba(255, 149, 0, 0.15);
-    text { color: #e67e00; }
+    background: $color-primary-light;
+    text { color: $color-primary; }
   }
 
   &--orange {
-    background: rgba(255, 111, 0, 0.15);
-    text { color: #d4600a; }
+    background: $color-warning-light;
+    text { color: $color-warning; }
   }
 
   &--green {
-    background: rgba(76, 175, 80, 0.15);
-    text { color: #2e7d32; }
+    background: $color-success-light;
+    text { color: $color-success; }
   }
 
   &--indigo {
-    background: rgba(121, 85, 72, 0.12);
-    text { color: #6d4c41; }
+    background: rgba($color-primary, 0.10);
+    text { color: $color-primary; }
   }
 
   &--purple {
-    background: rgba(156, 39, 176, 0.12);
-    text { color: #8e24aa; }
+    background: rgba($color-primary, 0.10);
+    text { color: $color-primary; }
   }
 }
 
 .menu-text {
   flex: 1;
   font-size: 15px;
-  color: #3d2b1f;
+  color: $color-text-primary;
   margin-left: 14px;
 }
 
 .menu-arrow {
   font-size: 12px;
-  color: #d4a574;
+  color: $color-text-placeholder;
 }
 
 .menu-arrow-text {
   font-size: 12px;
-  color: #b8860b;
+  color: $color-text-tertiary;
   opacity: 0.6;
   font-weight: 500;
 }
@@ -312,7 +319,7 @@ export default {
   margin: 0;
   line-height: 1;
   text-align: left;
-  color: #3d2b1f;
+  color: $color-text-primary;
 
   &::after {
     border: none;
@@ -324,13 +331,13 @@ export default {
   padding: 16px 20px;
   padding-bottom: calc(16px + constant(safe-area-inset-bottom));
   padding-bottom: calc(16px + env(safe-area-inset-bottom));
-  border-top: 0.5px solid rgba(184, 134, 11, 0.12);
+  border-top: 0.5px solid $color-divider;
   text-align: center;
 }
 
 .version-text {
   font-size: 11px;
-  color: #b8860b;
+  color: $color-text-tertiary;
   opacity: 0.5;
 }
 </style>

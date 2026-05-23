@@ -126,12 +126,12 @@ export default {
         summarizeId: '',
         createTime: '', // 用于保存原始创建时间
       },
-      // 输入框样式配置
+      // 输入框样式配置（对应 tokens: $color-border / $color-bg-card / $color-text-primary / $color-bg-input）
       inputStyles: {
-        borderColor: '#e5e5e5',
-        backgroundColor: '#ffffff',
-        color: '#333333',
-        disableColor: '#f5f5f5'
+        borderColor: 'rgba(60, 60, 67, 0.08)',
+        backgroundColor: 'rgba(118, 118, 128, 0.06)',
+        color: '#1C1C1E',
+        disableColor: '#F2F2F7'
       },
       // 校验规则
       rules: {
@@ -458,11 +458,11 @@ export default {
 .form-container {
   min-height: 100vh;
   background: $color-bg-page;
-  padding-bottom: 40rpx;
+  padding-bottom: 20px;
 }
 
 .form-wrapper {
-  padding: 30rpx;
+  padding: 15px;
 }
 
 /* 表单卡片 */
@@ -470,7 +470,7 @@ export default {
   background: $color-bg-card;
   border-radius: $radius-card;
   overflow: hidden;
-  margin-bottom: 30rpx;
+  margin-bottom: 15px;
   box-shadow: $shadow-card;
 }
 
@@ -478,21 +478,21 @@ export default {
 .form-header {
   display: flex;
   align-items: center;
-  padding: 40rpx 32rpx 32rpx;
-  border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+  padding: 20px $spacing-md $spacing-md;
+  border-bottom: 0.5px solid $color-divider;
 
   .form-icon {
-    width: 80rpx;
-    height: 80rpx;
+    width: 40px;
+    height: 40px;
     border-radius: $radius-card;
     background: $color-primary-light;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 24rpx;
+    margin-right: 12px;
 
     .cuIcon-creativefill {
-      font-size: 40rpx;
+      font-size: 20px;
     }
   }
 
@@ -505,12 +505,12 @@ export default {
 
 /* 表单主体 */
 .form-body {
-  padding: 32rpx;
+  padding: $spacing-md;
 }
 
 /* 表单项 */
 .form-item {
-  margin-bottom: 40rpx;
+  margin-bottom: 20px;
 
   &:last-child {
     margin-bottom: 0;
@@ -519,9 +519,9 @@ export default {
   .form-item-label {
     display: flex;
     align-items: center;
-    margin-bottom: 16rpx;
-    font-size: 28rpx;
-    color: #333;
+    margin-bottom: $spacing-sm;
+    font-size: 14px;
+    color: $color-text-primary;
   }
 
   .form-item-content {
@@ -533,18 +533,18 @@ export default {
 /* 字符计数 */
 .char-count {
   position: absolute;
-  right: 20rpx;
-  bottom: 20rpx;
+  right: 10px;
+  bottom: 10px;
   z-index: 10;
   background: rgba(255, 255, 255, 0.95);
-  padding: 6rpx 12rpx;
+  padding: 3px 6px;
   border-radius: $radius-small;
-  backdrop-filter: blur(4rpx);
+  backdrop-filter: blur(2px);
 }
 
 /* 标签选择区域 */
 .tag-empty-tip {
-  padding: 40rpx 0;
+  padding: 20px 0;
   text-align: center;
 
   .text-blue {
@@ -555,18 +555,18 @@ export default {
 .tag-select-wrapper {
   display: flex;
   flex-wrap: wrap;
-  margin: 0 -8rpx;
+  margin: 0 -4px;
 }
 
 .tag-option {
   position: relative;
-  margin: 0 8rpx 16rpx;
+  margin: 0 4px 8px;
   transition: all 0.3s ease;
 
   &.tag-selected {
     .tag-option-badge {
       transform: scale(1.05);
-      box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.15);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
     }
 
     .tag-check-icon {
@@ -577,11 +577,11 @@ export default {
 
   .tag-option-badge {
     display: inline-block;
-    padding: 12rpx 24rpx;
+    padding: 6px 12px;
     border-radius: $radius-pill;
-    font-size: 26rpx;
+    font-size: 13px;
     font-weight: 500;
-    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
     position: relative;
 
@@ -592,22 +592,22 @@ export default {
 
   .tag-check-icon {
     position: absolute;
-    top: -8rpx;
-    right: -8rpx;
-    width: 32rpx;
-    height: 32rpx;
+    top: -4px;
+    right: -4px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
     background: $color-success;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2rpx 8rpx rgba(52, 199, 89, 0.4);
+    box-shadow: 0 1px 4px rgba(52, 199, 89, 0.4);
     opacity: 0;
     transform: scale(0);
     transition: all 0.3s ease;
 
     .cuIcon-check {
-      font-size: 20rpx;
+      font-size: 10px;
     }
   }
 }
@@ -617,19 +617,19 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24rpx;
+  padding: 12px;
   background: $color-bg-input;
-  border: 2rpx solid #e5e5e5;
+  border: 1px solid $color-border;
   border-radius: $radius-card;
 
   .rich-text-content {
     flex: 1;
-    font-size: 28rpx;
+    font-size: 14px;
   }
 
   .rich-text-icon {
-    margin-left: 16rpx;
-    font-size: 32rpx;
+    margin-left: $spacing-sm;
+    font-size: 16px;
   }
 }
 
@@ -651,49 +651,49 @@ export default {
 
 ::v-deep .uni-easyinput__content {
   border-radius: $radius-card !important;
-  border: 2rpx solid #e5e5e5 !important;
+  border: 1px solid $color-border !important;
   transition: all 0.3s ease;
   background: $color-bg-input !important;
 
   &:focus-within,
   &.is-focused {
     border-color: $color-primary !important;
-    background: #ffffff !important;
-    box-shadow: 0 0 0 4rpx $color-primary-light;
+    background: $color-bg-card !important;
+    box-shadow: 0 0 0 2px $color-primary-light;
   }
 }
 
 ::v-deep .uni-easyinput__content-input {
-  font-size: 28rpx !important;
-  color: #333 !important;
-  padding: 20rpx 24rpx !important;
+  font-size: 14px !important;
+  color: $color-text-primary !important;
+  padding: 10px 12px !important;
   line-height: 1.6 !important;
 }
 
 ::v-deep .uni-easyinput__placeholder-class {
-  color: #999 !important;
-  font-size: 28rpx !important;
+  color: $color-text-placeholder !important;
+  font-size: 14px !important;
 }
 
 ::v-deep .is-input-error-border {
-  border-color: #e43d33 !important;
-  background: #fff5f5 !important;
+  border-color: $color-error !important;
+  background: $color-error-light !important;
 }
 
 /* 表单底部 */
 .form-footer {
-  padding: 0 30rpx;
+  padding: 0 15px;
 }
 
 /* 提交按钮 */
 .submit-btn {
   width: 100%;
-  height: 96rpx;
+  height: 48px;
   border-radius: $radius-pill;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32rpx;
+  font-size: 16px;
   border: none;
   background: $color-primary;
   transition: all 0.3s ease;
@@ -703,14 +703,14 @@ export default {
   }
 
   .cuIcon-check {
-    font-size: 36rpx;
+    font-size: 18px;
   }
 }
 
 /* 响应式优化 */
-@media screen and (max-width: 750rpx) {
+@media screen and (max-width: 375px) {
   .form-wrapper {
-    padding: 20rpx;
+    padding: 10px;
   }
 
   .form-card {
@@ -718,11 +718,11 @@ export default {
   }
 
   .form-header {
-    padding: 32rpx 24rpx 24rpx;
+    padding: 16px 12px 12px;
   }
 
   .form-body {
-    padding: 24rpx;
+    padding: 12px;
   }
 }
 </style>

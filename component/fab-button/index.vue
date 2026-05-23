@@ -1,5 +1,5 @@
 <template>
-  <view class="fab-button" @tap="$emit('click')">
+  <view class="fab-button" role="button" aria-label="新建记录" @tap="$emit('click')">
     <view class="fab-icon">
       <text class="cuIcon-add"></text>
     </view>
@@ -19,21 +19,21 @@ export default {
   right: $spacing-xl;
   width: 56px;
   height: 56px;
-  border-radius: $radius-card;
+  border-radius: 50%;
   background: $color-primary;
   box-shadow: $shadow-fab;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: $z-fab;
-  transition: all 0.2s ease;
+  transition: transform $duration-fast $ease-out;
 
   &:active {
     transform: scale(0.95);
   }
 
   .fab-icon {
-    color: #ffffff;
+    color: $color-text-inverse;
     font-size: 28px;
     font-weight: 300;
   }

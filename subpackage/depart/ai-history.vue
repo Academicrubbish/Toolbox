@@ -37,7 +37,7 @@
               <view v-if="batch.note && batch.note.status === 'success'" class="ai-result-item"
                 @click="goDetail(batch.note._id)">
                 <view class="ai-result-title">
-                  <text>📖 知识点精讲</text>
+                  <text>知识点精讲</text>
                 </view>
                 <view class="ai-result-preview">
                   <text class="text-sm text-gray">{{ getPreview(batch.note.ai_result) }}</text>
@@ -49,7 +49,7 @@
               <view v-if="batch.exercise && batch.exercise.status === 'success'" class="ai-result-item"
                 @click="goDetail(batch.exercise._id)">
                 <view class="ai-result-title">
-                  <text>✏️ 针对性练习</text>
+                  <text>针对性练习</text>
                 </view>
                 <view class="ai-result-preview">
                   <text class="text-sm text-gray">{{ getPreview(batch.exercise.ai_result) }}</text>
@@ -160,22 +160,22 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 200rpx 0;
+  padding: 100px 0;
 }
 
 .history-list {
-  padding: 20rpx 30rpx 60rpx;
+  padding: 10px 15px 30px;
 }
 
 .date-section {
-  margin-bottom: 20rpx;
+  margin-bottom: 10px;
 }
 
 .date-header {
-  padding: 20rpx 8rpx 12rpx;
+  padding: 10px 4px 6px;
 
   .date-label {
-    font-size: 22rpx;
+    font-size: 11px;
     font-weight: 700;
     color: $color-text-tertiary;
     letter-spacing: 0.8px;
@@ -200,13 +200,13 @@ export default {
   .ai-card-header-left {
     display: flex;
     align-items: center;
-    gap: 12rpx;
+    gap: 6px;
     flex: 1;
     min-width: 0;
   }
 
   .ai-record-title {
-    font-size: 30rpx;
+    font-size: 15px;
     font-weight: 600;
     color: $color-text-primary;
     flex: 1;
@@ -217,7 +217,7 @@ export default {
 
   .ai-card-time {
     flex-shrink: 0;
-    margin-left: 16rpx;
+    margin-left: 8px;
   }
 }
 
@@ -230,7 +230,7 @@ export default {
   }
 
   .ai-result-title {
-    font-size: 28rpx;
+    font-size: 14px;
     font-weight: 600;
     color: $color-text-primary;
     margin-bottom: $spacing-xs;
@@ -242,7 +242,7 @@ export default {
   }
 
   .ai-result-link {
-    font-size: 26rpx;
+    font-size: 13px;
     color: $color-warning;
     font-weight: 500;
   }

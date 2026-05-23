@@ -54,15 +54,15 @@
         <template v-else>
           <view class="ai-card-header">
             <text class="cuIcon-creativefill text-warning margin-right-xs"></text>
-            <text class="text-bold">✨ AI 学习笔记</text>
+            <text class="text-bold">AI 学习笔记</text>
           </view>
           <view v-for="note in noteResults" :key="note._id" class="ai-result-item">
-            <view class="ai-result-title">📖 知识点精讲</view>
+            <view class="ai-result-title">知识点精讲</view>
             <view class="ai-result-preview">{{ getAiSummary(note.ai_result) }}</view>
             <view class="ai-result-link" @tap="goToAiDetail(note._id)">查看完整笔记 →</view>
           </view>
           <view v-for="ex in exerciseResults" :key="ex._id" class="ai-result-item">
-            <view class="ai-result-title">📝 针对性练习</view>
+            <view class="ai-result-title">针对性练习</view>
             <view class="ai-result-preview">{{ getAiSummary(ex.ai_result) }}</view>
             <view class="ai-result-link" @tap="goToAiDetail(ex._id)">查看完整练习 →</view>
           </view>
@@ -386,10 +386,10 @@ export default {
 }
 
 .nav-back-btn {
-  width: 32px;
-  height: 32px;
-  background: rgba(0, 122, 255, 0.08);
-  border-radius: 8px;
+  width: 44px;
+  height: 44px;
+  background: $color-primary-light;
+  border-radius: $radius-small;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -401,8 +401,8 @@ export default {
 }
 
 .nav-more-btn {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -410,7 +410,7 @@ export default {
 
   text {
     font-size: 20px;
-    color: #8e8e93;
+    color: $color-text-tertiary;
   }
 }
 
@@ -615,8 +615,8 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 999;
+  background: $color-bg-mask;
+  z-index: $z-modal;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -624,7 +624,7 @@ export default {
 
 .share-modal {
   width: 100%;
-  background: #fff;
+  background: $color-bg-card;
   border-radius: $radius-card $radius-card 0 0;
   padding: $spacing-xl $spacing-md;
   padding-bottom: calc(#{$spacing-xl} + env(safe-area-inset-bottom));
@@ -705,7 +705,7 @@ export default {
 
     text {
       font-size: 15px;
-      color: #fff;
+      color: $color-text-inverse;
       font-weight: 500;
     }
   }

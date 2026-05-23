@@ -100,16 +100,12 @@ export default {
     left: 0;
     right: 0;
     z-index: $z-nav;
-    background: rgba(255, 255, 255, 0.72);
-    /* #ifndef APP-PLUS-NVUE */
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    /* #endif */
+    @include glass-bg;
     border-bottom: 0.5px solid $color-divider;
   }
 
   &--android {
-    background: rgba(255, 255, 255, 0.95);
+    @include glass-bg-android;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
@@ -129,25 +125,33 @@ export default {
   }
 
   &__menu {
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: $radius-button;
     font-size: 15px;
     color: $color-primary;
+
+    &:active {
+      background: $color-primary-light;
+    }
   }
 
   &__back {
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: $color-primary;
     font-size: 20px;
     border-radius: $radius-button;
+
+    &:active {
+      background: $color-primary-light;
+    }
   }
 
   &__title {

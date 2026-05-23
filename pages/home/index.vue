@@ -6,7 +6,7 @@
           <nav-bar
             showMenu
             @menu-click="sidebarVisible = true"
-            title="markdown"
+            title="Markdown"
           >
           </nav-bar>
         </view>
@@ -74,21 +74,16 @@
           >
             <view class="auth-failed-main">
               <image
-                class="auth-failed-image-rpx"
+                class="auth-failed-image"
                 :src="zStatic.base64Error"
                 mode="aspectFit"
               />
-              <text class="auth-failed-title auth-failed-title-rpx"
-                >当前用户未授权，无法查询到信息</text
-              >
-              <text class="auth-failed-title auth-failed-title-rpx"
-                >请授权后再尝试加载</text
-              >
-              <text
-                class="auth-failed-error-btn auth-failed-error-btn-rpx"
+              <text class="auth-title">需要授权才能查看</text>
+              <text class="auth-failed-text">登录后可保存和管理您的记录</text>
+              <button
+                class="auth-btn"
                 @click.stop="handleAuthorize"
-                >授权登录</text
-              >
+              >授权登录</button>
             </view>
           </view>
           <z-paging-empty-view
@@ -553,11 +548,15 @@ export default {
       this.showAuthFailed = false;
       this.isLoadFailed = false;
       this.loadTagList();
-      this.$nextTick(() => {
-        if (this.$refs.paging) {
-          this.$refs.paging.reload();
+      setTimeout(() => {
+        try {
+          if (this.$refs.paging) {
+            this.$refs.paging.reload();
+          }
+        } catch (e) {
+          // ignore ref access errors during auth state transition
         }
-      });
+      }, 100);
     },
     handleDefaultReload() {
       if (this.$refs.paging) {
@@ -655,12 +654,13 @@ export default {
 }
 
 .search-clear {
-  width: 24px;
-  height: 24px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-left: $spacing-xs;
+  margin-right: -10px;
   flex-shrink: 0;
 
   .cuIcon-close {
@@ -694,6 +694,18 @@ export default {
   background: $color-bg-card;
   padding: $spacing-xs $spacing-md $spacing-sm;
   border-bottom: 0.5px solid $color-divider;
+  position: relative;
+}
+
+.tag-filter-bar::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: $spacing-xs;
+  bottom: $spacing-sm;
+  width: 40px;
+  background: linear-gradient(to right, transparent, $color-bg-card);
+  pointer-events: none;
 }
 
 .tag-scroll {
@@ -708,7 +720,8 @@ export default {
 .tag-filter-item {
   display: inline-flex;
   align-items: center;
-  padding: 6px 14px;
+  padding: 8px 16px;
+  min-height: 36px;
   border-radius: $radius-pill;
   background: $color-bg-input;
   font-size: 13px;
@@ -718,7 +731,7 @@ export default {
 
   &--active {
     background: $color-primary;
-    color: #fff;
+    color: $color-text-inverse;
   }
 
   :active {
@@ -741,7 +754,7 @@ export default {
   .section-date-title {
     font-size: 11px;
     font-weight: 700;
-    color: $color-text-tertiary;
+    color: $color-text-secondary;
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
@@ -777,36 +790,41 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 50rpx 0;
+  padding: 80px $spacing-xl;
 }
 
-.auth-failed-image-rpx {
-  width: 240rpx;
-  height: 240rpx;
+.auth-failed-image {
+  width: 120px;
+  height: 120px;
+  margin-bottom: $spacing-lg;
 }
 
-.auth-failed-title {
-  color: #aaaaaa;
+.auth-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-sm;
+}
+
+.auth-failed-text {
+  font-size: 13px;
+  color: $color-text-secondary;
   text-align: center;
 }
 
-.auth-failed-title-rpx {
-  font-size: 28rpx;
-  margin-top: 10rpx;
-  padding: 0 20rpx;
-}
+.auth-btn {
+  margin-top: $spacing-xxl;
+  height: 44px;
+  padding: 0 $spacing-xl;
+  background: $color-primary;
+  color: $color-text-inverse;
+  border: none;
+  border-radius: $radius-pill;
+  font-size: 15px;
+  font-weight: 600;
 
-.auth-failed-error-btn {
-  border: solid 1px #dddddd;
-  color: #aaaaaa;
-  text-align: center;
-  cursor: pointer;
-}
-
-.auth-failed-error-btn-rpx {
-  font-size: 28rpx;
-  padding: 8rpx 24rpx;
-  border-radius: 6rpx;
-  margin-top: 50rpx;
+  &::after {
+    border: none;
+  }
 }
 </style>
