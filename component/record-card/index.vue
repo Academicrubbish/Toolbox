@@ -179,21 +179,20 @@ export default {
 			display: flex;
 			align-items: center;
 			margin-left: auto;
-			padding: 6px 12px;
-			min-height: 44px;
+			padding: 2px 10px;
 			border-radius: $radius-pill;
 			background: $color-warning-light;
 			gap: 4px;
 
 			.cuIcon-creativefill {
 				color: #B36B00;
-				font-size: 13px;
+				font-size: 11px;
 			}
 
 			.ai-badge-text {
 				color: #B36B00;
 				font-weight: 500;
-				font-size: 12px;
+				font-size: 11px;
 			}
 		}
 	}

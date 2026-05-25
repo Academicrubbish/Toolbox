@@ -720,8 +720,7 @@ export default {
 .tag-filter-item {
   display: inline-flex;
   align-items: center;
-  padding: 8px 16px;
-  min-height: 36px;
+  padding: 6px 14px;
   border-radius: $radius-pill;
   background: $color-bg-input;
   font-size: 13px;
