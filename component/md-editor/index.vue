@@ -52,6 +52,7 @@
           <view class="more-item" @click="onMoreAction('latex')"><view class="iconfont icon-latex more-icon" /><text class="more-label">LaTeX</text></view>
           <view class="more-item" @click="onMoreAction('yuml')"><view class="iconfont icon-yuml more-icon" /><text class="more-label">YUML</text></view>
           <view class="more-item" @click="onMoreAction('echarts')"><view class="iconfont icon-echarts more-icon" /><text class="more-label">ECharts</text></view>
+          <view class="more-item" @click="onMoreAction('mermaid')"><text class="cuIcon-creativefill more-icon" style="font-family:cuIcon !important" /><text class="more-label">流程图</text></view>
           <view v-if="showExtraActions" class="more-item" @click="onMoreAction('clear')"><view class="iconfont icon-empty more-icon" /><text class="more-label">清空</text></view>
           <view v-if="showExtraActions" class="more-item" @click="onMoreAction('upload')"><text class="cuIcon-upload more-icon" style="font-family:cuIcon !important" /><text class="more-label">上传MD</text></view>
         </view>
@@ -125,7 +126,8 @@ export default {
 
           const hasLatexOrYumlOrEcharts = this.textareaData.includes('$') ||
                                           this.textareaData.includes('```yuml') ||
-                                          this.textareaData.includes('```echarts');
+                                          this.textareaData.includes('```echarts') ||
+                                          this.textareaData.includes('```mermaid');
 
           if (hasLatexOrYumlOrEcharts) {
             setTimeout(() => {

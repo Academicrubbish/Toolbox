@@ -1,0 +1,4 @@
+{
+  "code": "graph LR\nA[开始] --> B[结束]",
+  "theme": "light"
+}

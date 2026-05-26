@@ -266,6 +266,7 @@ module.exports = {
         'latex',                    // LaTeX 数学公式支持（使用云函数渲染）
         'yuml',                     // YUML 图表支持（使用云函数渲染）
         'echarts',                  // ECharts 图表支持（使用云函数渲染）
+        'mermaid',                  // Mermaid 图表支持（使用云函数渲染）
     ],
 
     // 保留原本的元素属性（建议不要变动）

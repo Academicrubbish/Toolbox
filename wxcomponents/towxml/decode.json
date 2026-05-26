@@ -4,6 +4,7 @@
     "decode": "/wxcomponents/towxml/decode",
     "echarts": "/wxcomponents/towxml/echarts/echarts-simple",
     "latex": "/wxcomponents/towxml/latex/latex",
+    "mermaid": "/wxcomponents/towxml/mermaid/mermaid",
     "table": "/wxcomponents/towxml/table/table",
     "todogroup": "/wxcomponents/towxml/todogroup/todogroup",
     "yuml": "/wxcomponents/towxml/yuml/yuml",

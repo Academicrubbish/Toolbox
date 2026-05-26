@@ -99,6 +99,20 @@ export const toolbarActions = {
       },
     });
   },
+  mermaid(ctx, appendText) {
+    uni.showActionSheet({
+      itemList: ['流程图', '时序图', '甘特图', '类图'],
+      success: (res) => {
+        const templates = [
+          '\n```mermaid\ngraph LR\n    A[开始] --> B{条件判断}\n    B -->|是| C[执行操作]\n    B -->|否| D[结束]\n    C --> D\n```\n',
+          '\n```mermaid\nsequenceDiagram\n    participant A as 用户\n    participant B as 系统\n    A->>B: 发起请求\n    B-->>A: 返回结果\n```\n',
+          '\n```mermaid\ngantt\n    title 项目计划\n    dateFormat YYYY-MM-DD\n    section 阶段一\n    任务A :a1, 2024-01-01, 7d\n    任务B :after a1, 5d\n```\n',
+          '\n```mermaid\nclassDiagram\n    class Animal {\n        +String name\n        +makeSound()\n    }\n    class Dog {\n        +fetch()\n    }\n    Animal <|-- Dog\n```\n',
+        ];
+        appendText(templates[res.tapIndex]);
+      },
+    });
+  },
   inIndentation(ctx, appendText, adjustIndentation) {
     adjustIndentation(true);
   },
