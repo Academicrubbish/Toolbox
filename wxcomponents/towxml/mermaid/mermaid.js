@@ -85,6 +85,12 @@ Component({
           h: h / scale
         }
       })
+    },
+    _preview: function() {
+      if (!this.data.attrs.src) return
+      // 真机 previewImage 不支持 SVG，用 PNG 端点
+      const pngUrl = this.data.attrs.src.replace('/svg/', '/png/')
+      wx.previewImage({ urls: [pngUrl] })
     }
   }
 })

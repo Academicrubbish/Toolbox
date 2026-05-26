@@ -1,2 +1,5 @@
-<image class="{{attrs.class}}" lazy-load="true" src="{{attrs.src}}" style="width:{{size.w}}px; height:{{size.h}}px;" bindload="load">
-</image>
+<view class="mermaid-wrap">
+  <image class="{{attrs.class}}" lazy-load="true" src="{{attrs.src}}" style="width:{{size.w}}px; height:{{size.h}}px;" bindload="load" catch:tap="_preview">
+  </image>
+  <view class="mermaid-hint" wx:if="{{attrs.src}}">点击查看大图</view>
+</view>
