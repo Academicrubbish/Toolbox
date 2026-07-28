@@ -9,3 +9,22 @@
   text-align: center;
   margin-top: 4rpx;
 }
+.mermaid-fallback {
+  margin: 10rpx 0;
+  padding: 16rpx;
+  background: #fff7f0;
+  border: 1rpx solid #f0c8b0;
+  border-radius: 8rpx;
+}
+.mermaid-fallback-tip {
+  font-size: 24rpx;
+  color: #e8804a;
+  margin-bottom: 8rpx;
+}
+.mermaid-fallback-code {
+  font-size: 22rpx;
+  color: #666;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.5;
+}
