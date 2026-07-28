@@ -11,7 +11,8 @@ export const callGenerateLearnNote = withAuth(function(data) {
 		name: 'generateLearnNote',
 		data: {
 			content: data.content,
-			recordId: data.recordId
+			recordId: data.recordId,
+			openid: store.state.user.openid
 		}
 	}).then(res => {
 		if (res.result && res.result.code === 0) {

@@ -5,7 +5,7 @@ import { withAuth } from '@/utils/api-auth.js';
 export const callProcessOcr = withAuth(function(data) {
 	return uniCloud.callFunction({
 		name: 'processOcr',
-		data: { imageUrls: data.imageUrls, source: data.source || 'depart' }
+		data: { imageUrls: data.imageUrls, source: data.source || 'depart', openid: store.state.user.openid }
 	}).then(res => {
 		if (res.result && res.result.code === 0) return res.result
 		return Promise.reject(new Error(res.result?.message || '识别失败'))
@@ -16,7 +16,7 @@ export const callProcessOcr = withAuth(function(data) {
 export const callParseWechatArticle = withAuth(function(data) {
 	return uniCloud.callFunction({
 		name: 'parseWechatArticle',
-		data: { html: data.html, title: data.title }
+		data: { html: data.html, title: data.title, openid: store.state.user.openid }
 	}).then(res => {
 		if (res.result && res.result.code === 0) return res.result
 		return Promise.reject(new Error(res.result?.message || '解析失败'))
