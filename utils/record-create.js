@@ -40,11 +40,11 @@ export async function processOcr(store) {
       imageUrls.push(uploadRes.fileID);
     }
 
-    const estimatedSeconds = total * 4;
+    const estimatedSeconds = total * 8;
     uni.showLoading({ title: `正在识别 ${total} 张图片（预计约${estimatedSeconds}s）`, mask: true });
     const ocrRes = await withTimeout(
       callProcessOcr({ imageUrls, source: 'depart' }),
-      90000,
+      100000,
       '识别超时，请减少图片数量或稍后重试'
     );
     uni.hideLoading();
