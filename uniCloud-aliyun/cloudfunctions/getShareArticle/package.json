@@ -1,0 +1,7 @@
+{
+  "name": "getShareArticle",
+  "version": "1.0.0",
+  "description": "获取分享文章内容（支持 URL 化调用）",
+  "main": "index.js",
+  "dependencies": {}
+}

@@ -1,0 +1,13 @@
+{
+  "name": "renderYuml",
+  "version": "1.0.0",
+  "description": "YUML 图表渲染云函数，返回 Base64 SVG",
+  "main": "index.js",
+  "dependencies": {
+    "yuml2svg": "^4.2.2"
+  },
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}
+

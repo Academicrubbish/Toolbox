@@ -22,7 +22,7 @@
     .wrap { max-width: 1240px; margin: 0 auto; padding: 20px; }
 
     /* 总览卡 */
-    .ov-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+    .ov-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-bottom: 20px; }
     .ov-card { background: #fff; border-radius: 10px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
     .ov-card .ov-title { font-size: 13px; color: #999; margin-bottom: 10px; }
     .ov-card .ov-cost { font-size: 26px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px; }
@@ -37,8 +37,19 @@
     .panel h2 { font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
     .panel h2 .sub { font-size: 12px; color: #999; font-weight: 400; }
 
+    .table-scroll { width: 100%; overflow-x: auto; }
+    .pricing-meta { display: flex; justify-content: space-between; gap: 12px; margin: -4px 0 12px; color: #888; font-size: 12px; }
+    .pricing-meta .verified { color: #248f4d; }
+    .model-cell { white-space: nowrap; }
+    .model-cell strong { display: block; color: #222; }
+    .model-cell span { color: #999; font-size: 11px; }
+    .price-value { font-variant-numeric: tabular-nums; font-weight: 600; color: #333; white-space: nowrap; }
+    .price-source { color: #007aff; text-decoration: none; white-space: nowrap; }
+    .price-source:hover { text-decoration: underline; }
+
     .grid-2 { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 16px; }
     .grid-3 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-2 > *, .grid-3 > * { min-width: 0; }
     .chart-box { position: relative; height: 260px; }
     .chart-box.sm { height: 200px; }
 
@@ -89,6 +100,12 @@
     @media screen and (max-width: 520px) {
       .wrap { padding: 12px; }
       .ov-grid { grid-template-columns: 1fr; }
+      .topbar { padding: 12px; flex-wrap: wrap; gap: 8px; }
+      .topbar h1 { flex: 1 0 100%; }
+      .topbar .ctrl { width: 100%; margin-left: 0; flex-wrap: wrap; }
+      .topbar .gen-time { flex: 1 0 100%; }
+      .topbar select { flex: 1; min-width: 0; }
+      .pricing-meta { flex-direction: column; gap: 4px; }
     }
   </style>
 </head>
@@ -124,13 +141,20 @@
       <!-- 区块1：总览 -->
       <div class="ov-grid" id="ov-grid"></div>
 
-      <!-- 区块2：趋势 -->
+      <!-- 区块2：计费基准 -->
+      <div class="panel">
+        <h2>模型计费基准 <span class="sub">与后端费用计算使用同一份配置</span></h2>
+        <div class="pricing-meta" id="pricing-meta"></div>
+        <div class="table-scroll" id="pricing-table"></div>
+      </div>
+
+      <!-- 区块3：趋势 -->
       <div class="panel">
         <h2>消耗趋势 <span class="sub">每日 Token / 预估费用</span></h2>
         <div class="chart-box"><canvas id="chart-trend"></canvas></div>
       </div>
 
-      <!-- 区块3：消耗排行 -->
+      <!-- 区块4：消耗排行 -->
       <div class="grid-2">
         <div class="panel">
           <h2>用户消耗排行 <span class="sub">Top 10（按费用）</span></h2>
@@ -146,7 +170,7 @@
         </div>
       </div>
 
-      <!-- 区块4：告警 + 明细 -->
+      <!-- 区块5：告警 + 明细 -->
       <div class="grid-3">
         <div class="panel">
           <h2>告警记录 <span class="sub">最近 20 条</span></h2>
@@ -160,11 +184,7 @@
 
       <div class="footer">
         <div>Toolbox · AI 资源管理台</div>
-        <div class="price-note">
-          费用为按公开定价预估（元），仅作参考，请以智谱实际账单为准。<br>
-          定价参考：glm-5 输入4/输出18、glm-5.1/5.2 输入8/输出28、glm-4-flash 0.1、glm-ocr 0.2（元/百万token）；glm-4.6/reader 为估值，5.x多段定价需校准。
-          如定价调整，需在云函数 getAiStats 的 PRICING 表修改后重新部署。
-        </div>
+        <div class="price-note" id="price-note">费用加载中……</div>
       </div>
     </div>
   </div>
@@ -183,7 +203,12 @@
 
     // ====== 工具 ======
     function $(id) { return document.getElementById(id); }
-    function money(n) { return '¥' + (n || 0).toFixed(2); }
+    function money(n) {
+      var value = Number(n) || 0;
+      if (value === 0) return '¥0.00';
+      if (Math.abs(value) < 0.01) return '¥' + value.toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+      return '¥' + value.toFixed(2);
+    }
     function num(n) { return (n || 0).toLocaleString('zh-CN'); }
     function toast(msg) {
       var t = $('toast'); t.textContent = msg; t.style.display = 'block';
@@ -249,6 +274,7 @@
     // ====== 渲染 ======
     function render(d) {
       renderOverview(d);
+      renderPricing(d.pricing);
       renderTrend(d.trend);
       renderUser(d.byUser);
       renderPie('chart-func', 'funcChart', d.byFunction);
@@ -264,22 +290,54 @@
       var cards = [
         { key: '今日', data: o.today, hl: true },
         { key: '近 7 天', data: o.d7 },
-        { key: '近 30 天', data: o.d30 },
-        { key: '近 ' + span + ' 天', data: o.all }
+        { key: '近 30 天', data: o.d30 }
       ];
+      if (span !== 7 && span !== 30) cards.push({ key: '近 ' + span + ' 天（所选）', data: o.all });
       $('ov-grid').innerHTML = cards.map(function (c) {
         var x = c.data;
         return '<div class="ov-card ' + (c.hl ? 'hl' : '') + '">' +
           '<div class="ov-title">' + c.key + '</div>' +
           '<div class="ov-cost">' + money(x.cost) + ' <small>预估费用</small></div>' +
           '<div class="ov-rows">' +
-            '<div class="ov-row">Token<b>' + num(x.tokens) + '</b></div>' +
+            '<div class="ov-row">总 Token<b>' + num(x.tokens) + '</b></div>' +
+            '<div class="ov-row">输入 Token<b>' + num(x.inputTokens) + '</b></div>' +
+            '<div class="ov-row">输出 Token<b>' + num(x.outputTokens) + '</b></div>' +
             '<div class="ov-row">调用<b>' + num(x.calls) + '</b></div>' +
             '<div class="ov-row">活跃用户<b>' + num(x.users) + '</b></div>' +
             '<div class="ov-row">成功率<b>' + x.successRate + '%</b></div>' +
           '</div>' +
         '</div>';
       }).join('');
+    }
+
+    function renderPricing(pricing) {
+      if (!pricing || !pricing.models) {
+        $('pricing-meta').textContent = '未获取到计费配置';
+        $('pricing-table').innerHTML = '<div class="empty">暂无定价数据</div>';
+        return;
+      }
+      var verified = pricing.models.filter(function (p) { return p.official; });
+      var estimates = pricing.models.filter(function (p) { return !p.official; }).length;
+      $('pricing-meta').innerHTML = '<span class="verified">✓ 已核对官方公开原价</span>' +
+        '<span>更新日期：' + escapeHtml(pricing.updatedAt || '-') + '　单位：' + escapeHtml(pricing.unit || '') + '</span>';
+
+      var html = '<table><thead><tr><th>模型</th><th>输入区间</th><th class="num">输入单价</th><th class="num">输出单价</th><th>依据</th></tr></thead><tbody>';
+      verified.forEach(function (p) {
+        (p.tiers || []).forEach(function (tier, index) {
+          html += '<tr><td class="model-cell"><strong>' + escapeHtml(p.model) + '</strong>' +
+            '<span>' + escapeHtml(p.provider || '') + '</span></td>' +
+            '<td>' + escapeHtml(tier.label || '') + '</td>' +
+            '<td class="num price-value">¥' + num(tier.input) + '</td>' +
+            '<td class="num price-value">¥' + num(tier.output) + '</td>' +
+            '<td>' + (index === 0 && p.source
+              ? '<a class="price-source" href="' + escapeHtml(p.source) + '" target="_blank" rel="noopener noreferrer">官方价格</a>'
+              : '') + '</td></tr>';
+        });
+      });
+      html += '</tbody></table>';
+      $('pricing-table').innerHTML = html;
+      $('price-note').innerHTML = '费用按输入、输出 Token 分别计价，并按单次请求输入长度选择阶梯；不含免费额度、活动优惠、缓存或 Batch 折扣。' +
+        (estimates ? '<br>历史记录中的其他 ' + estimates + ' 个模型仍使用兼容估值；所有金额仅供资源监控，请以供应商实际账单为准。' : '<br>所有金额仅供资源监控，请以供应商实际账单为准。');
     }
 
     function renderTrend(trend) {
@@ -363,18 +421,20 @@
 
     function renderRecent(list) {
       if (!list || !list.length) { $('recent-list').innerHTML = '<div class="empty">暂无数据</div>'; return; }
-      var html = '<table><thead><tr><th>时间</th><th>功能</th><th>模型</th><th class="num">Token</th><th class="num">费用</th><th>状态</th></tr></thead><tbody>';
+      var html = '<div class="table-scroll"><table><thead><tr><th>时间</th><th>功能</th><th>模型</th><th class="num">输入</th><th class="num">输出</th><th class="num">总计</th><th class="num">费用</th><th>状态</th></tr></thead><tbody>';
       list.forEach(function (l) {
         html += '<tr>' +
           '<td>' + fmtTime(l.time) + '</td>' +
           '<td><span class="tag fn-' + (l.function || '') + '">' + (FN_NAME[l.function] || l.function) + '</span></td>' +
           '<td>' + escapeHtml(l.model || '') + '</td>' +
+          '<td class="num">' + num(l.inputTokens) + '</td>' +
+          '<td class="num">' + num(l.outputTokens) + '</td>' +
           '<td class="num">' + num(l.tokens) + '</td>' +
           '<td class="num">' + money(l.cost) + '</td>' +
-          '<td><span class="tag ' + (l.status === 'success' ? 'ok' : 'err') + '">' + (l.status === 'success' ? '成功' : '失败') + '</span></td>' +
+          '<td title="' + escapeHtml(l.error_msg || '') + '"><span class="tag ' + (l.status === 'success' ? 'ok' : 'err') + '">' + (l.status === 'success' ? '成功' : '失败') + '</span></td>' +
         '</tr>';
       });
-      html += '</tbody></table>';
+      html += '</tbody></table></div>';
       $('recent-list').innerHTML = html;
     }
 

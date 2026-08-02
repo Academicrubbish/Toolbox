@@ -1,0 +1,11 @@
+{
+  "name": "getAiStats",
+  "version": "1.0.0",
+  "description": "AI 资源消耗统计（管理端），URL 化供 admin.html 调用，聚合 ai_call_logs 多维统计 + 费用预估",
+  "main": "index.js",
+  "dependencies": {},
+  "cloudfunction-config": {
+    "memorySize": 512,
+    "timeout": 30
+  }
+}

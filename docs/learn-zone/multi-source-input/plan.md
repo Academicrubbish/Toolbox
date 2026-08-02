@@ -3,7 +3,7 @@ title: 文档新增多来源输入 — 实施计划
 design: ./design.md
 status: draft
 created: 2026-05-07
-updated: 2026-05-07
+updated: 2026-08-02
 author: yuanchuang
 ---
 
@@ -16,7 +16,7 @@ author: yuanchuang
 ## 前置条件
 
 - uniCloud 阿里云环境可用，云函数部署权限正常
-- 智谱 API Key 已配置在云函数环境变量中（GLM-4.6V-Flash 视觉模型 + 网页阅读 API）
+- OCR 云函数已配置环境变量 `QWEN_API_KEY`；微信公众号解析服务凭证单独配置
 - 现有 `depart/form.vue`、`summarize/index.vue`、`store/modules/summarize.js` 代码已理解
 - 微信小程序 `wx.chooseMedia` API 可用
 
@@ -45,8 +45,9 @@ author: yuanchuang
 
 - 步骤 2.1：创建云函数 `processOcr`
   - 接收 `imageUrls`（云存储路径）、`source`、`openid`
-  - 逐张下载图片 → 调 GLM-4.6V-Flash 视觉模型识别为 Markdown
+  - 获取图片临时 URL → 并行调用阿里云百炼 qwen3.6-flash 视觉模型识别为 Markdown
   - 合并结果，写入 `learn_ocr_log`
+  - 任意图片失败或返回空内容时将整批标记为 `failed`，避免静默生成缺页文档
   - 返回 `{ content, logId }`
 - 步骤 2.2：创建云函数 `parseWechatArticle`
   - 接收 `url`、`openid`
@@ -120,10 +121,10 @@ author: yuanchuang
 
 | 风险 | 影响阶段 | 应对方案 |
 |------|---------|---------|
-| GLM-4.6V-Flash OCR 识别准确率不足 | 阶段 2 | 预填充到编辑器后用户可手动修正（Human-in-the-loop），不追求 100% 准确 |
+| qwen3.6-flash OCR 识别准确率不足 | 阶段 2 | 预填充到编辑器后用户可手动修正（Human-in-the-loop），不追求 100% 准确 |
 | 智谱网页阅读 API 不稳定或微信反爬 | 阶段 2 | 错误处理中返回明确提示，用户可重试或切换手动输入 |
 | wx.chooseMedia 在低版本微信不支持 | 阶段 3 | 使用 `wx.chooseImage` 作为降级方案 |
-| 云函数 120s 超时（多张图片 OCR） | 阶段 2 | 限制单次最多 9 张，GLM-4.6V-Flash 响应快，单张约 3-5s，9 张内可完成 |
+| 多张图片 OCR 超时 | 阶段 2 | 限制单次最多 9 张，云端并行请求 qwen3.6-flash，单请求 45 秒、客户端整批 100 秒超时 |
 | Store 预填充内容在页面刷新后丢失 | 阶段 3 | Vuex state 不持久化是预期行为，刷新后回退到手动输入即可 |
 
 ## 变更记录

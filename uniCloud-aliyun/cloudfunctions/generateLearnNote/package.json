@@ -1,0 +1,10 @@
+{
+  "name": "generateLearnNote",
+  "version": "1.0.0",
+  "description": "AI辅导：写入pending记录和任务队列，立即返回",
+  "main": "index.js",
+  "dependencies": {},
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}

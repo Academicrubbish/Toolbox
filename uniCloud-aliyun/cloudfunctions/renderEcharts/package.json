@@ -1,0 +1,14 @@
+{
+  "name": "renderEcharts",
+  "version": "1.0.0",
+  "description": "ECharts 图表渲染云函数，返回 Base64 SVG 图片",
+  "main": "index.js",
+  "dependencies": {
+    "echarts": "^5.4.3",
+    "jsdom": "^23.0.0"
+  },
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}
+

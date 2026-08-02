@@ -3,7 +3,7 @@ title: 文档新增多来源输入 Tasks
 plan: ./plan.md
 status: draft
 created: 2026-05-07
-updated: 2026-05-07
+updated: 2026-08-02
 author: yuanchuang
 ---
 
@@ -27,7 +27,7 @@ author: yuanchuang
       "properties": {
         "document_id": { "bsonType": "string", "description": "关联 learn_document，depart 场景为空" },
         "image_urls": { "bsonType": "array", "items": { "bsonType": "string" }, "description": "云存储文件路径列表" },
-        "raw_results": { "bsonType": "array", "items": { "bsonType": "string" }, "description": "每张图片的 GLM 原始识别结果" },
+        "raw_results": { "bsonType": "array", "items": { "bsonType": "string" }, "description": "每张图片的 qwen3.6-flash 原始识别结果" },
         "merged_content": { "bsonType": "string", "description": "合并后的 Markdown 内容" },
         "status": { "bsonType": "string", "enum": ["pending", "processing", "done", "failed"] },
         "error_msg": { "bsonType": "string", "description": "错误信息" },
@@ -106,7 +106,11 @@ author: yuanchuang
     export const callProcessOcr = withAuth(function(data) {
       return uniCloud.callFunction({
         name: 'processOcr',
-        data: { imageUrls: data.imageUrls, source: data.source || 'depart' }
+        data: {
+          imageUrls: data.imageUrls,
+          source: data.source || 'depart',
+          openid: store.state.user.openid
+        }
       }).then(res => {
         if (res.result && res.result.code === 0) return res.result
         return Promise.reject(new Error(res.result?.message || '识别失败'))
@@ -160,15 +164,19 @@ author: yuanchuang
       })
       const logId = logRes.id
       try {
-        // 2. 逐张下载图片，调 GLM-4.6V-Flash 识别
-        const rawResults = []
-        for (const url of imageUrls) {
-          const imageData = await uniCloud.downloadFile({ fileID: url })
-          const base64 = Buffer.from(imageData.fileContent).toString('base64')
-          const result = await callGLMVision(base64)
-          rawResults.push(result || '')
+        // 2. 获取临时 URL，并行调 qwen3.6-flash 识别
+        const tempUrlRes = await uniCloud.getTempFileURL({ fileList: imageUrls })
+        const tempUrls = tempUrlRes.fileList.map(file => file.tempFileURL)
+        if (tempUrls.length !== imageUrls.length) {
+          throw new Error('获取图片临时链接失败')
         }
-        // 3. 合并结果
+        const results = await Promise.all(tempUrls.map(callQwenVL))
+        const failedResults = results.filter(result => result.error || !result.content.trim())
+        if (failedResults.length > 0) {
+          throw new Error(failedResults.length + '/' + results.length + ' 张识别失败')
+        }
+        // 3. 按图片顺序合并结果
+        const rawResults = results.map(result => result.content)
         const mergedContent = rawResults.filter(r => r.trim()).join('\n\n')
         // 4. 更新 log
         await db.collection('learn_ocr_log').doc(logId).update({
@@ -186,14 +194,16 @@ author: yuanchuang
       }
     }
     ```
-  - `callGLMVision(base64)` 内部函数：调智谱 GLM-4.6V-Flash 视觉模型，prompt 指示将图片内容转为 Markdown
-  - API Key 从 `process.env.ZHIPU_API_KEY` 读取
-  - `package.json` 依赖：`axios`（调智谱 API）
+  - `callQwenVL(imageUrl)` 内部函数：通过阿里云百炼 OpenAI 兼容接口调用 qwen3.6-flash，prompt 指示将图片内容转为 Markdown
+  - API Key 只从 `process.env.QWEN_API_KEY` 读取；缺失时整批失败，禁止硬编码或打印 Key
+  - `package.json` 依赖：`axios`（调用阿里云百炼 API）
 - **测试用例**：
   - 用例 1：传入 1 张测试图片云存储路径 → 返回 `{ code: 0, data: { content: "...", logId: "..." } }`
   - 用例 2：传入 3 张图片 → `raw_results` 有 3 项，`merged_content` 以 `\n\n` 连接
   - 用例 3：传入空数组 → 返回 `{ code: -1, message: "图片列表为空" }`
   - 用例 4：`learn_ocr_log` 中有对应记录，`status` 为 `done`
+  - 用例 5：任意图片识别失败或返回空内容 → 返回 `code: -1`，日志 `status` 为 `failed`
+  - 用例 6：未配置 `QWEN_API_KEY` → 返回配置错误，日志 `status` 为 `failed`
 - **依赖**：Task 1
 
 ### Task 5：创建云函数 `parseWechatArticle`（对应 Plan 阶段2-步骤2.2）
@@ -360,3 +370,4 @@ author: yuanchuang
 | 日期 | 作者 | 变更内容 |
 |------|------|---------|
 | 2026-05-07 | yuanchuang | 初始版本 |
+| 2026-08-02 | Codex | OCR 实现说明更新为 qwen3.6-flash、环境变量凭证和整批失败语义 |

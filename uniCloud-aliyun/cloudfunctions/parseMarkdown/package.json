@@ -1,0 +1,13 @@
+{
+  "name": "parseMarkdown",
+  "version": "1.0.0",
+  "description": "Markdown 解析云函数",
+  "main": "index.js",
+  "dependencies": {
+    "markdown-it": "^13.0.1"
+  },
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}
+

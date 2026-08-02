@@ -3,7 +3,7 @@ title: 文档新增多来源输入 Design
 spec: ./spec.md
 status: draft
 created: 2026-05-06
-updated: 2026-05-06
+updated: 2026-08-02
 author: yuanchuang
 ---
 
@@ -28,9 +28,19 @@ author: yuanchuang
 | 链接导入流程 | `depart/form.vue` → 云函数 | 校验域名 → 调 parseWechatArticle → 预填充 |
 | 内容预填充 | `summarize/index.vue` | 接收预填充内容，填入 md-editor |
 | AI 辅导引导 | `depart/form.vue` | 提交成功后弹窗引导 |
-| OCR 云函数 | `processOcr` | 调 GLM-4.6V-Flash 视觉模型识别图片 |
+| OCR 云函数 | `processOcr` | 调阿里云百炼 qwen3.6-flash 视觉模型并行识别图片 |
 | 链接解析云函数 | `parseWechatArticle` | 调智谱网页阅读 API（`/paas/v4/reader`）提取文章内容 |
 | Summarize Store | `store/modules/summarize.js` | 扩展：传递预填充内容和来源类型 |
+
+### OCR 模型与密钥配置
+
+- OCR 供应商为阿里云百炼，模型为 `qwen3.6-flash`，通过 OpenAI 兼容接口调用。
+- `processOcr` 只从运行时环境变量 `QWEN_API_KEY` 读取凭证；代码、Markdown 文档和 `.env` 示例中都不得写入真实 Key。
+- 环境变量只能通过 uniCloud 控制台配置：进入对应服务空间 → 云函数/云对象 → `processOcr` → 环境变量，新增 `QWEN_API_KEY=<新Key>`；HBuilderX 云函数右键菜单不能完成该配置。
+- 仓库根目录已忽略 `.env` 和 `.env.*`；不得将真实密钥写入 `.env.example` 或其他可提交文件。
+- 轮换时先在百炼创建新 Key 并写入 uniCloud，部署并验证后立即禁用或删除旧 Key。禁止在日志中打印环境变量值。
+
+官方说明：[uniCloud 云函数环境变量](https://doc.dcloud.net.cn/uniCloud/cf-env-variables.html)、[阿里云百炼 API Key 管理](https://help.aliyun.com/zh/model-studio/get-api-key/)
 
 ### 核心流程
 
@@ -81,7 +91,7 @@ sequenceDiagram
     participant Form as form.vue
     participant Upload as 云存储
     participant CF as processOcr 云函数
-    participant GLM as GLM-4.6V-Flash
+    participant Qwen as qwen3.6-flash
     participant DB as learn_ocr_log
 
     User->>Form: 选择"拍照识别"
@@ -93,14 +103,19 @@ sequenceDiagram
     end
     Form->>Form: 显示"正在识别..."
     Form->>CF: callFunction({ imageUrls, openid })
-    loop 逐张识别
-        CF->>GLM: 视觉模型识别图片 → Markdown
-        GLM-->>CF: 返回识别结果
+    par 并行识别每张图片
+        CF->>Qwen: 视觉模型识别图片 → Markdown
+        Qwen-->>CF: 返回识别结果或错误
     end
-    CF->>CF: 合并所有识别结果
-    CF->>DB: 写入 learn_ocr_log
-    CF-->>Form: { content, logId }
-    Form->>Form: 携带预填充内容跳转编辑器
+    CF->>CF: 校验全部结果并按顺序合并
+    alt 全部成功
+        CF->>DB: status = done
+        CF-->>Form: { content, logId }
+        Form->>Form: 携带预填充内容跳转编辑器
+    else 任意图片失败或为空
+        CF->>DB: status = failed + error_msg
+        CF-->>Form: { code: -1, message }
+    end
 ```
 
 ### 链接导入
@@ -156,7 +171,7 @@ sequenceDiagram
 |------|------|------|
 | `document_id` | string | 关联 learn_document（depart 场景为空） |
 | `image_urls` | array\<string\> | 云存储文件路径列表 |
-| `raw_results` | array\<string\> | 每张图片的 GLM 原始识别结果 |
+| `raw_results` | array\<string\> | 每张图片的 qwen3.6-flash 原始识别结果 |
 | `merged_content` | string | 合并后的 Markdown 内容 |
 | `status` | string | `pending` / `processing` / `done` / `failed` |
 | `error_msg` | string | 错误信息 |
@@ -229,7 +244,7 @@ form.vue → store.cachePrefill({ content, source }) → summarize/index.vue
 | 链接解析失败（文章已删除/网络问题） | 提示错误信息，用户可重试或切换手动输入 |
 | 编辑器已有内容时预填充 | 追加内容而非覆盖（用分隔符隔开），避免丢失已有内容 |
 | 标题自动回填 | 仅当 form.vue 标题为空时回填，已有标题不覆盖 |
-| 单张图片识别为空 | 合并时跳过空结果，最终内容为空则提示"未能识别内容"并引导手动输入 |
+| 任意图片识别为空或异常 | 整批标记为 `failed` 并返回错误，不把缺页内容带入编辑器；已成功内容保留在日志中用于排查 |
 | 图片上传失败 | 提示"图片上传失败"，不继续调用 OCR，用户可重试 |
 | AI 辅导引导 | 不强制，用户选"稍后再说"正常返回列表，不影响记录保存 |
 | 游客模式 | OCR 和链接导入均需登录，通过 `withAuth` 拦截 |
@@ -242,8 +257,8 @@ form.vue → store.cachePrefill({ content, source }) → summarize/index.vue
 | `wx.chooseMedia` 失败 | 用户取消时不做处理；权限拒绝提示"请在设置中开启相机权限" |
 | 图片上传云存储失败 | 停止后续上传，提示"图片上传失败，请重试"，已上传的图片不删除（下次重试时复用） |
 | `processOcr` 云函数调用失败 | catch 错误，Toast 提示"识别失败，请重试或选择手动输入" |
-| OCR 客户端超时（90s） | 提示"识别超时，请减少图片数量或稍后重试" |
-| GLM 视觉模型返回空/异常 | 云函数内部检查返回内容，为空则标记 `status: failed`，返回错误码 |
+| OCR 客户端超时（100s） | 提示"识别超时，请减少图片数量或稍后重试" |
+| qwen3.6-flash 返回空/异常 | 云函数将整批标记为 `status: failed`，记录失败图片序号并返回错误码 |
 | `parseWechatArticle` 云函数调用失败 | catch 错误，Toast 提示"链接解析失败，请重试或选择手动输入" |
 | 链接解析客户端超时（60s） | 提示"解析超时，请稍后重试" |
 | 智谱网页阅读 API 超时/失败 | 云函数设置 30s 超时，失败返回 `{ code: -1, message: "文章获取失败" }` |
@@ -276,10 +291,10 @@ try {
     await uniCloud.uploadFile(...)
   }
   // 阶段2：识别，展示预估时间
-  uni.showLoading({ title: `正在识别 ${total} 张图片（预计约${total * 4}s）`, mask: true })
+  uni.showLoading({ title: `正在识别 ${total} 张图片（预计约${total * 8}s）`, mask: true })
   await withTimeout(
     callProcessOcr({ imageUrls, source: 'depart' }),
-    90000,
+    100000,
     '识别超时，请减少图片数量或稍后重试'
   )
   // 成功 → 预填充跳转

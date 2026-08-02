@@ -2,7 +2,7 @@
 title: 学习专区
 status: draft
 created: 2026-05-06
-updated: 2026-05-06
+updated: 2026-08-02
 author: yuanchuang
 ---
 
@@ -121,7 +121,7 @@ flowchart TD
 | 内容引用 | 学习专区选择"已有笔记"时，只存储 `source_ref`（recordId），不复制内容 |
 | 组件复用 | 预览编辑页复用 `md-editor` 组件，列表页复用 `record-card` 样式 |
 | 架构复用 | AI 异步处理复用现有的定时触发器 + 任务队列模式 |
-| GLM 复用 | OCR 使用 GLM-4.6V 视觉模型，AI 处理使用 GLM 文本模型，无需新增供应商 |
+| 模型分工 | OCR 使用阿里云百炼 qwen3.6-flash 视觉模型；AI 学习处理继续使用 GLM 文本模型 |
 | AI 处理入口 | 保存总结后提供 AI 处理选项，学习专区详情页也可触发 AI 处理 |
 
 ## 整体验收标准
@@ -140,7 +140,7 @@ flowchart TD
 ## 关联信息
 
 - 需求来源：用户反馈 + 产品规划
-- 依赖：GLM-4.6V 视觉模型 API、微信公众号文章解析能力
+- 依赖：阿里云百炼 qwen3.6-flash 视觉模型 API、微信公众号文章解析能力
 - 代码地图：[codemap.md](../codemap.md)（已更新学习专区规划章节）
 - 规范参考：[ai-product-principles.md](../../.claude/rules/ai-product-principles.md)
 
@@ -150,3 +150,4 @@ flowchart TD
 |------|------|---------|
 | 2026-05-06 | yuanchuang | 初始版本 |
 | 2026-05-06 | yuanchuang | 新增"文档新增多来源输入"子需求，将 OCR 和链接导入能力下沉到 depart 模块，更新工作流为双业务线架构 |
+| 2026-08-02 | Codex | OCR 模型说明由 GLM-4.6V 更新为阿里云百炼 qwen3.6-flash |

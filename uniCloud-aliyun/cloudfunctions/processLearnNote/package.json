@@ -1,0 +1,23 @@
+{
+  "name": "processLearnNote",
+  "version": "1.0.0",
+  "description": "AI辅导：定时触发器消费任务队列，调用GLM生成精讲笔记+练习题",
+  "main": "index.js",
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "cloudfunction-config": {
+    "memorySize": 512,
+    "timeout": 300,
+    "triggers": [
+      {
+        "name": "processAiTask",
+        "type": "timer",
+        "config": "0 */1 * * * * *"
+      }
+    ]
+  },
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}

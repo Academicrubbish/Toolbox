@@ -1,0 +1,7 @@
+{
+  "name": "generateShareLink",
+  "version": "1.0.0",
+  "description": "生成文章分享链接",
+  "main": "index.js",
+  "dependencies": {}
+}

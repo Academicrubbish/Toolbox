@@ -3,6 +3,8 @@
 微信小程序（uni-app Vue 2 + uniCloud 云开发），Markdown 学习工具箱。
 支持游客模式和登录模式，主要功能：学习记录 CRUD、AI 辅导笔记、Markdown 编辑/渲染、标签管理、更新日志。
 
+新环境部署、云函数环境变量和交接检查请参见 [部署与环境变量配置](./deployment.md)。
+
 ## 目录结构
 
 ```
@@ -476,7 +478,7 @@ store/modules/learnZone.js  # 学习专区 Vuex 模块（规划中）
 |------|------|------|
 | `document_id` | string | 关联 learn_document ID（学习专区场景），depart 场景为空 |
 | `image_urls` | array | 原始图片云存储路径列表 |
-| `raw_results` | array | GLM 视觉模型原始返回列表 |
+| `raw_results` | array | qwen3.6-flash 视觉模型原始返回列表 |
 | `merged_content` | string | 合并后的 Markdown 内容 |
 | `status` | string | `pending` / `processing` / `done` / `failed` |
 | `error_msg` | string | 错误信息 |
@@ -499,7 +501,7 @@ store/modules/learnZone.js  # 学习专区 Vuex 模块（规划中）
 
 | 名称 | 说明 | 调用方式 |
 |------|------|---------|
-| `processOcr` | 调用 GLM-4.6V 视觉模型批量识别图片 → 合并输出 Markdown | `api/learnDocument.js` |
+| `processOcr` | 调用阿里云百炼 qwen3.6-flash 视觉模型并行识别图片 → 合并输出 Markdown | `api/ocr.js` |
 | `parseWechatArticle` | 解析微信公众号文章链接 → 提取正文转为 Markdown | `api/learnDocument.js` |
 | `processLearnDocument` | 学习专区 AI 处理（归纳复习等），复用定时触发器 + 任务队列模式 | 定时触发器 |
 
@@ -512,7 +514,7 @@ store/modules/learnZone.js  # 学习专区 Vuex 模块（规划中）
   ┌─────────────────────────────────────┐
   │  第一步：内容采集                      │
   │  ├── 从已有笔记选择（引用 record）       │
-  │  ├── OCR 批量拍照（GLM-4.6V-Flash）   │
+  │  ├── OCR 批量拍照（qwen3.6-flash）     │
   │  └── 微信公众号链接（白名单解析）         │
   └─────────────┬───────────────────────┘
                 ▼
@@ -538,7 +540,7 @@ store/modules/learnZone.js  # 学习专区 Vuex 模块（规划中）
 - **引用而非复制**：选择"已有笔记"时，只存储 `source_ref`（recordId），不复制内容
 - **复用组件**：预览编辑页复用 `md-editor` 组件
 - **复用架构**：AI 异步处理复用现有的定时触发器 + 任务队列模式
-- **复用 GLM**：OCR 使用 GLM-4.6V 视觉模型，无需新增供应商
+- **OCR 模型**：使用阿里云百炼 qwen3.6-flash 视觉模型，通过 OpenAI 兼容接口调用
 
 ## UI 全站重构（规划中）
 

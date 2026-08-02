@@ -3,7 +3,7 @@ title: 内容采集
 parent: ../spec.md
 status: draft
 created: 2026-05-06
-updated: 2026-05-06
+updated: 2026-08-02
 author: yuanchuang
 ---
 
@@ -55,8 +55,8 @@ author: yuanchuang
   3. 系统调用 `wx.chooseMedia` 选择/拍摄图片，支持多选（最多 9 张）
   4. 用户确认选图后，展示上传进度
   5. 系统将图片上传至云存储，获取临时 URL
-  6. 调用 `processOcr` 云函数，将图片 URL 列表发送给 GLM-4.6V-Flash 视觉模型
-  7. GLM 视觉模型逐张识别，返回结构化 Markdown 内容
+  6. 调用 `processOcr` 云函数，将图片 URL 列表发送给阿里云百炼 qwen3.6-flash 视觉模型
+  7. qwen3.6-flash 并行识别图片，返回结构化 Markdown 内容
   8. 系统将多张图片的识别结果按顺序合并为一个 Markdown 文档
   9. 跳转到预览编辑页，展示识别结果
 - **预期结果**：
@@ -106,7 +106,7 @@ author: yuanchuang
 ## 边界条件
 
 - **不做通用链接解析**：仅支持 `mp.weixin.qq.com` 域名，其他域名给出"暂不支持该来源"提示
-- **OCR 精度兜底**：GLM 视觉模型识别结果可能存在偏差，通过预览编辑环节让用户修正，不承诺 100% 准确
+- **OCR 精度兜底**：qwen3.6-flash 视觉模型识别结果可能存在偏差，通过预览编辑环节让用户修正，不承诺 100% 准确
 - **OCR 单次上限**：单次最多选择 9 张图片（`wx.chooseMedia` 的 count 参数上限）
 - **OCR 单张图片大小限制**：单张图片不超过 10MB（云存储限制）
 - **已有笔记选择范围**：仅展示当前用户自己的记录，不包含公共示例记录
@@ -131,7 +131,7 @@ author: yuanchuang
 ## 关联信息
 
 - 父 spec：[学习专区](../spec.md)
-- 依赖：GLM-4.6V-Flash 视觉模型 API（OCR）、微信公众号文章解析服务
+- 依赖：阿里云百炼 qwen3.6-flash 视觉模型 API（OCR）、微信公众号文章解析服务
 - 复用：`record-card` 组件样式（笔记列表）、`md-editor` 组件（预览编辑）
 - 数据库：`learn_document`（文档）、`learn_ocr_log`（OCR 日志）
 
@@ -141,3 +141,4 @@ author: yuanchuang
 |------|------|---------|
 | 2026-05-06 | yuanchuang | 初始版本 |
 | 2026-05-06 | yuanchuang | 明确 OCR 和链接解析能力复用自 multi-source-input 子需求 |
+| 2026-08-02 | Codex | OCR 模型和并行处理说明更新为 qwen3.6-flash |
