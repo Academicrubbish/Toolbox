@@ -75,6 +75,23 @@
           <towxml :nodes="towxmlData" />
         </view>
       </view>
+
+      <!-- 相关笔记推荐（基于向量相似度，无推荐时整块隐藏） -->
+      <view v-if="relatedRecords.length > 0" class="related-section">
+        <view class="related-header">
+          <text class="cuIcon-link text-primary text-xs margin-right-xs"></text>
+          <text class="related-title">相关笔记</text>
+        </view>
+        <view class="related-list">
+          <record-card
+            v-for="record in relatedRecords"
+            :key="record._id"
+            :record="record"
+            :tagMap="tagMap"
+            @card-tap="goRelatedDetail"
+          />
+        </view>
+      </view>
     </view>
 
     <!-- 分享有效期选择弹窗 -->
@@ -123,16 +140,19 @@ import { getRecord } from "@/api/record";
 import { getSummarize } from "@/api/summarize";
 import { getDictCategoryList } from "@/api/dictCategory.js";
 import { callGenerateLearnNote, getLearnResultList } from "@/api/aiLearn.js";
+import { getRelatedRecords } from "@/api/kb.js";
 import { deleteRecordCascade } from "@/utils/record-delete.js";
 import { callGenerateShareLink } from "@/api/share.js";
 import { getTagColor } from "@/utils/tagColors";
 import { downloadMarkdown } from "@/utils/download";
 import { formatTime, formatRelativeTime } from "@/utils/format";
 import NavBar from "@/component/nav-bar/index.vue";
+import RecordCard from "@/component/record-card/index.vue";
 
 export default {
   components: {
     NavBar,
+    RecordCard,
   },
   computed: {
     isGuest() {
@@ -167,6 +187,8 @@ export default {
       // 删除
       dialogContent: "",
       pickerRecordItem: null,
+      // 相关笔记推荐（第三期）
+      relatedRecords: [],
     };
   },
   onLoad(option) {
@@ -295,6 +317,21 @@ export default {
       const text = content.replace(/[#*`>\-\[\]]/g, '').trim();
       return text.length > maxLen ? text.substring(0, maxLen) + '...' : text;
     },
+    loadRelatedRecords(recordId) {
+      getRelatedRecords(recordId, { autoShowLogin: false })
+        .then(res => {
+          this.relatedRecords = res.result?.data || [];
+        })
+        .catch(() => {
+          // 推荐失败静默隐藏区块，不影响详情阅读
+          this.relatedRecords = [];
+        });
+    },
+    goRelatedDetail(record) {
+      uni.navigateTo({
+        url: `/subpackage/depart/detail?id=${record._id}`
+      });
+    },
     loadAiResults() {
       if (!this.recordData || !this.recordData._id) return;
       getLearnResultList({ recordId: this.recordData._id })
@@ -342,6 +379,10 @@ export default {
 
           this.recordData = recordRes.result.data[0];
           this.loadAiResults();
+          // 相关笔记推荐：仅本人笔记（游客/示例记录无向量，跳过请求）
+          if (!this.isGuest && !this.isExampleRecord) {
+            this.loadRelatedRecords(this.recordData._id);
+          }
 
           if (this.recordData.summarizeId) {
             this.loadSummarize(this.recordData.summarizeId);
@@ -605,6 +646,36 @@ export default {
       color: $color-text-tertiary;
       margin: $spacing-md 0;
     }
+  }
+}
+
+/* 相关笔记推荐 */
+.related-section {
+  margin-top: $spacing-lg;
+  padding-top: $spacing-md;
+  border-top: 0.5px solid $color-divider;
+
+  .related-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: $spacing-sm;
+
+    .cuIcon-link {
+      font-size: 16px;
+    }
+
+    .related-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: $color-text-primary;
+    }
+  }
+
+  .related-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    padding-bottom: $spacing-xl;
   }
 }
 

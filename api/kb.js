@@ -41,3 +41,29 @@ export const semanticSearch = function(data, options = {}) {
     });
   }, store, options)(data);
 }
+
+/**
+ * 获取相关笔记推荐（详情页"相关笔记"区块，第三期）
+ * 笔记无向量 / 候选不足 / 低于相似度阈值时返回空数组，前端隐藏区块
+ * @param {string} sourceId 当前笔记 ID
+ * @returns {Promise<{result: {data: Array}}>} 推荐笔记列表（带 relatedScore）
+ */
+export const getRelatedRecords = function(sourceId, options = {}) {
+  return withAuth(function(sourceId) {
+    return uniCloud.callFunction({
+      name: 'semanticSearch',
+      data: {
+        mode: 'byRecord',
+        sourceId: sourceId,
+        openid: store.state.user.openid,
+        topK: 5
+      }
+    }).then(res => {
+      if (res.result && res.result.code === 0) {
+        return { result: { data: res.result.data || [] } };
+      } else {
+        return Promise.reject(new Error(res.result?.message || '获取相关笔记失败'));
+      }
+    });
+  }, store, options)(sourceId);
+}

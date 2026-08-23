@@ -17,6 +17,10 @@ const EMBEDDING_URL = 'https://open.bigmodel.cn/api/paas/v4/embeddings'
 const DIMENSIONS = 512
 // 语义通道返回的笔记数上限（方案 §4.5.3）
 const SEMANTIC_TOP_K = 10
+// 相关笔记推荐数量与阈值（第三期）
+// 阈值说明：实测无关中文文本余弦约 0.50、同主题笔记 0.65+，取 0.55 过滤噪声（不达标可调）
+const RELATED_TOP_K = 5
+const RELATED_THRESHOLD = 0.55
 // 云函数单次 get 上限 1000，分页拉取
 const PAGE_LIMIT = 1000
 // 向量行数安全上限（超出只计算前面的行，当前量级远达不到）
@@ -27,6 +31,11 @@ const EMBED_TIMEOUT = 10000
 const ZHIPU_API_KEY = process.env.ZHIPU_API_KEY
 
 exports.main = async (event, context) => {
+	// 第三期：相关笔记推荐模式，与搜索模式共用向量与余弦逻辑
+	if (event && event.mode === 'byRecord') {
+		return relatedByRecord(event)
+	}
+
 	const { keyword = '', openid, pageNum = 1, pageSize = 10 } = event
 
 	if (!openid) {
@@ -93,6 +102,93 @@ exports.main = async (event, context) => {
 	} catch (err) {
 		console.error('[semanticSearch] 搜索失败：', err.message)
 		return { code: -1, message: '搜索失败：' + (err.message || '未知错误'), data: [], total: 0 }
+	}
+}
+
+/**
+ * 相关笔记推荐（mode='byRecord'）：取指定笔记的向量，与本人其余笔记算相似度，
+ * 笔记间相似度 = 各切片两两余弦的最大值，阈值过滤后取 top K
+ * 边界处理：笔记无向量（新保存未向量化）返回空；候选不足 2 篇（笔记总数 < 3）返回空
+ * @param {Object} event { openid, sourceId, topK? }
+ * @returns {Promise<Object>} { code, data: 记录数组（带 relatedScore、summarizeContent） }
+ */
+async function relatedByRecord(event) {
+	const { openid, sourceId, topK } = event
+	if (!openid) {
+		return { code: -1, message: 'openid不能为空', data: [] }
+	}
+	if (!sourceId) {
+		return { code: -1, message: 'sourceId不能为空', data: [] }
+	}
+
+	const db = uniCloud.database()
+	const _ = db.command
+
+	try {
+		// 1. 目标笔记的向量（数据库层按 openid 过滤，只能对本人笔记做推荐）
+		const targetRes = await db.collection('note_embedding')
+			.where({ source_id: sourceId, create_by: openid })
+			.field({ vector: true })
+			.limit(50)
+			.get()
+		const targetVectors = (targetRes.result || targetRes).data || []
+		if (targetVectors.length === 0) {
+			// 新笔记向量尚未生成：静默返回空，前端隐藏区块
+			return { code: 0, message: 'success', data: [], reason: 'no-vector' }
+		}
+
+		// 2. 本人全部向量，排除自身
+		const allRows = await fetchAll(() => db.collection('note_embedding')
+			.where({ create_by: openid })
+			.field({ source_id: true, vector: true }), MAX_VECTOR_ROWS)
+		const rows = allRows.filter(r => r.source_id !== sourceId)
+
+		// 3. 每对笔记取切片间最大余弦作为相似度
+		const best = new Map()
+		for (const row of rows) {
+			let score = 0
+			for (const tv of targetVectors) {
+				const s = cosine(tv.vector, row.vector)
+				if (s > score) score = s
+			}
+			const prev = best.get(row.source_id)
+			if (!prev || score > prev.score) {
+				best.set(row.source_id, { source_id: row.source_id, score })
+			}
+		}
+
+		// 4. 候选笔记不足 2 篇（笔记总数 < 3）时不出推荐，避免凑数
+		if (best.size < 2) {
+			return { code: 0, message: 'success', data: [], reason: 'too-few' }
+		}
+
+		const hits = Array.from(best.values())
+			.filter(h => h.score >= RELATED_THRESHOLD)
+			.sort((a, b) => b.score - a.score)
+			.slice(0, topK || RELATED_TOP_K)
+		if (hits.length === 0) {
+			return { code: 0, message: 'success', data: [], reason: 'below-threshold' }
+		}
+
+		// 5. 补全记录信息（数据库层再次按 openid 收窄）
+		const hitIds = hits.map(h => h.source_id)
+		const scoreById = {}
+		hits.forEach(h => { scoreById[h.source_id] = h.score })
+		const records = await fetchAll(() => db.collection('daily_record')
+			.where({ _id: _.in(hitIds), create_by: openid }))
+		const recordById = {}
+		records.forEach(r => { recordById[r._id] = r })
+		const pageRecords = hitIds
+			.map(id => recordById[id])
+			.filter(Boolean)
+			.map(r => Object.assign(r, { relatedScore: scoreById[r._id] }))
+
+		await attachSummarizeContent(db, _, pageRecords)
+
+		return { code: 0, message: 'success', data: pageRecords, total: pageRecords.length }
+	} catch (err) {
+		console.error('[semanticSearch] 相关笔记查询失败：', err.message)
+		return { code: -1, message: '查询失败：' + (err.message || '未知错误'), data: [] }
 	}
 }
 
