@@ -45,7 +45,7 @@ exports.main = async (event, context) => {
 		while (page < maxPages && hasMore && Date.now() - start < TIME_BUDGET_MS) {
 			page++
 			const recRes = await db.collection('daily_record')
-				.orderBy('_id asc')
+				.orderBy('_id', 'asc')
 				.skip((page - 1) * pageSize)
 				.limit(pageSize)
 				.get()

@@ -34,7 +34,7 @@ exports.main = async (event, context) => {
 		// 1. 认领一批 pending 任务（先到 processing，防止并发重复消费）
 		const taskRes = await db.collection('embed_task_queue')
 			.where({ status: 'pending' })
-			.orderBy('create_time asc')
+			.orderBy('create_time', 'asc')
 			.limit(TASK_BATCH_SIZE)
 			.get()
 		const tasks = (taskRes.result || taskRes).data || []
