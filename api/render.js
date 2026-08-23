@@ -106,7 +106,7 @@ function renderYuml(yuml, theme = 'light') {
  * @param {string} theme - 主题：'light' 或 'dark'
  * @param {number} width - 图表宽度（默认 800）
  * @param {number} height - 图表高度（默认 400）
- * @returns {Promise} 返回 Base64 格式的 PNG 图片
+ * @returns {Promise} 返回 Base64 格式的 SVG 图片
  */
 function renderEcharts(option, theme = 'light', width = 800, height = 400) {
   return new Promise((resolve, reject) => {

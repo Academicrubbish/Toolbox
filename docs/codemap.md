@@ -124,7 +124,7 @@ uniCloud-aliyun/      # 云开发（云函数 + 数据库 schema）
 | `parseMarkdown` | Markdown → HTML（markdown-it） | 编辑器渲染 |
 | `renderLatex` | LaTeX → Base64 SVG（mathjax-node） | `api/render.js` |
 | `renderYuml` | YUML → Base64 SVG | `api/render.js` |
-| `renderEcharts` | ECharts → Base64 PNG | `api/render.js` |
+| `renderEcharts` | ECharts → Base64 SVG | `api/render.js` |
 
 ### AI 辅导异步处理架构
 
@@ -282,7 +282,7 @@ export default {
 |------|------|
 | `renderLatex(tex, theme?)` | LaTeX → Base64 SVG（默认 light） |
 | `renderYuml(yuml, theme?)` | YUML → Base64 SVG |
-| `renderEcharts(option, theme?, width?, height?)` | ECharts → Base64 PNG（默认 800×400） |
+| `renderEcharts(option, theme?, width?, height?)` | ECharts → Base64 SVG（默认 800×400） |
 
 - 同时支持 ES6 export 和 CommonJS（供小程序组件使用）
 
