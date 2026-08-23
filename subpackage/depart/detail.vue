@@ -230,7 +230,7 @@ export default {
     },
     showDeleteSuccess() {
       uni.showToast({ title: "删除成功", icon: "success" });
-      uni.$emit('record-changed');
+      getApp().globalData.recordDirty = true;
       setTimeout(() => uni.navigateBack(), 1500);
     },
     showMoreMenu() {

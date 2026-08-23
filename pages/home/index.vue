@@ -11,8 +11,8 @@
           </nav-bar>
         </view>
 
-        <!-- 搜索框 -->
-        <view slot="top" class="search-container">
+        <!-- 搜索框（游客模式隐藏：搜索依赖登录态，游客无可搜的个人数据） -->
+        <view v-if="!isGuest" slot="top" class="search-container">
           <view class="search-box">
             <view class="search-icon">
               <text class="cuIcon-search text-gray"></text>
@@ -278,13 +278,12 @@ export default {
     });
   },
   onShow() {
-    // 监听记录变更事件（详情页删除/编辑后触发）
-    if (!this._onRecordChanged) {
-      this._onRecordChanged = () => {
-        if (this.$refs.paging) this.$refs.paging.refresh();
-      };
+    // 子页面（表单/详情）修改数据后设置脏标记，返回首页时统一刷新
+    // 说明：原事件总线方案在首页 onHide 后监听器已注销，收不到子页面事件，改用 globalData 脏标记
+    if (getApp().globalData && getApp().globalData.recordDirty) {
+      getApp().globalData.recordDirty = false;
+      if (this.$refs.paging) this.$refs.paging.refresh();
     }
-    uni.$on("record-changed", this._onRecordChanged);
 
     const currentAuthStateVersion = this.$store.state.user.authStateVersion;
     const currentIsGuest = this.$store.state.user.isGuest;
@@ -309,9 +308,7 @@ export default {
       }
     }
   },
-  onHide() {
-    uni.$off("record-changed", this._onRecordChanged);
-  },
+  onHide() {},
   watch: {
     "$store.state.user.authStateVersion": {
       handler(newVersion, oldVersion) {
@@ -398,10 +395,11 @@ export default {
       const recordIds = list.map((item) => item._id);
       batchQueryAiResults(recordIds)
         .then((resultMap) => {
-          this.aiResultMap = resultMap;
+          // 合并而非整体替换：z-paging 列表跨页累加，替换会把已加载页的 AI 徽章清掉
+          this.aiResultMap = Object.assign({}, this.aiResultMap, resultMap);
         })
         .catch(() => {
-          this.aiResultMap = {};
+          // 查询失败保留旧数据，避免已显示的徽章闪烁消失
         });
     },
     isExampleRecord(record) {
