@@ -1,5 +1,6 @@
 import store from '@/store';
 import { withAuth } from '@/utils/api-auth.js';
+import { enqueueEmbedTaskBySummarizeId } from '@/api/embedTask.js';
 
 // 延迟初始化数据库连接，避免在模块加载时 uniCloud 未初始化
 const getRequest = () => {
@@ -27,8 +28,12 @@ export const addSummarize = withAuth(function(data) {
 }, store)
 
 // 更新总结（需要登录）
+// 正文编辑后投递向量化任务（按 summarizeId 反查所属笔记）
 export const updateSummarize = withAuth(function(id, data) {
-  return getRequest().doc(id).update(data)
+  return getRequest().doc(id).update(data).then(res => {
+    enqueueEmbedTaskBySummarizeId(id)
+    return res
+  })
 }, store)
 
 /**

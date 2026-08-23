@@ -1,5 +1,6 @@
 import store from '@/store';
 import { withAuth } from '@/utils/api-auth.js';
+import { enqueueEmbedTask, removeEmbeddings } from '@/api/embedTask.js';
 
 // 延迟初始化数据库连接，避免在模块加载时 uniCloud 未初始化
 const getRequest = () => {
@@ -119,18 +120,31 @@ export function getRecord(id) {
 }
 
 // 添加记录（需要登录）
+// 保存成功后投递向量化任务（fire-and-forget，不影响保存主流程）
 export const addRecord = withAuth(function(data) {
-  return getRequest().add(data)
+  return getRequest().add(data).then(res => {
+    const newId = res?.result?.id || res?.result?.data
+    if (newId) enqueueEmbedTask(newId)
+    return res
+  })
 }, store)
 
 // 更新记录（需要登录）
+// 编辑成功后投递向量化任务，消费端将拉取最新内容重建向量
 export const updateRecord = withAuth(function(id, data) {
-  return getRequest().doc(id).update(data)
+  return getRequest().doc(id).update(data).then(res => {
+    enqueueEmbedTask(id)
+    return res
+  })
 }, store)
 
 // 删除记录（需要登录）
+// 级联清理该笔记的全部向量，避免搜索命中已删除笔记
 export const delRecord = withAuth(function(id) {
-  return getRequest().doc(id).remove()
+  return getRequest().doc(id).remove().then(res => {
+    removeEmbeddings(id)
+    return res
+  })
 }, store)
 
 // 模糊查询记录（需要登录）

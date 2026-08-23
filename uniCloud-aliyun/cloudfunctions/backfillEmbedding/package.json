@@ -1,0 +1,11 @@
+{
+  "name": "backfillEmbedding",
+  "version": "1.0.0",
+  "description": "知识库：存量笔记向量回填工具（手动触发，只投递任务不调AI接口，向量化由processEmbedding完成）",
+  "main": "index.js",
+  "dependencies": {},
+  "cloudfunction-config": {
+    "memorySize": 256,
+    "timeout": 120
+  }
+}
