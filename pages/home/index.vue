@@ -40,6 +40,16 @@
           </view>
         </view>
 
+        <!-- 语义服务降级提示 -->
+        <view
+          v-if="searchDegraded && searchKeyword && searchKeyword.trim()"
+          slot="top"
+          class="degraded-tip"
+        >
+          <text class="cuIcon-infofill text-gray text-xs"></text>
+          <text class="degraded-tip-text">当前为普通搜索（语义服务暂不可用）</text>
+        </view>
+
         <!-- 标签筛选横滑条 -->
         <view slot="top" class="tag-filter-bar">
           <scroll-view scroll-x class="tag-scroll" show-scrollbar="false">
@@ -116,6 +126,7 @@
               :tagMap="tagMap"
               :tagList="tagList"
               :aiNoteCount="getAiNoteCount(record)"
+              :matchType="record.matchType || ''"
               @card-tap="goDetail"
               @card-longpress="onCardLongPress"
               @ai-note-click="goLearnResult"
@@ -173,7 +184,8 @@
   </view>
 </template>
 <script>
-import { getRecordList, searchRecord, addRecord } from "@/api/record.js";
+import { getRecordList, addRecord } from "@/api/record.js";
+import { semanticSearch } from "@/api/kb.js";
 import { getDictCategoryList } from "@/api/dictCategory.js";
 import { batchQueryAiResults } from "@/api/aiLearn.js";
 import { deleteRecordCascade } from "@/utils/record-delete.js";
@@ -222,6 +234,7 @@ export default {
       lastIsGuest: null,
       searchKeyword: "",
       isSearchMode: false,
+      searchDegraded: false,
       aiResultMap: {},
       appVersion: "1.0.0",
       sidebarVisible: false,
@@ -331,7 +344,7 @@ export default {
     queryList(pageNo, pageSize) {
       const queryPromise =
         this.searchKeyword && this.searchKeyword.trim()
-          ? searchRecord(
+          ? semanticSearch(
               {
                 keyword: this.searchKeyword.trim(),
                 pageNum: pageNo,
@@ -351,6 +364,8 @@ export default {
         .then((res) => {
           this.showAuthFailed = false;
           this.isLoadFailed = false;
+          // 语义服务不可用时云函数返回 degraded，结果仍是关键词搜索
+          this.searchDegraded = !!res.result.degraded;
           const list = res.result.data || [];
           this.totalRecordCount = list.length;
           this.fetchAiResults(list);
@@ -580,6 +595,7 @@ export default {
     clearSearch() {
       this.searchKeyword = "";
       this.isSearchMode = false;
+      this.searchDegraded = false;
       if (this.$refs.paging) {
         this.$refs.paging.reload();
       }
@@ -685,6 +701,21 @@ export default {
 
   .search-reset-text {
     font-size: 13px;
+    color: $color-text-tertiary;
+  }
+}
+
+/* 语义降级提示条 */
+.degraded-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: $spacing-xs $spacing-md;
+  background: $color-bg-input;
+  border-bottom: 0.5px solid $color-divider;
+
+  .degraded-tip-text {
+    font-size: 12px;
     color: $color-text-tertiary;
   }
 }

@@ -7,6 +7,13 @@
 			<view class="record-title">
 				<text class="cuIcon-creativefill text-primary text-xs margin-right-xs"></text>
 				<text class="text-bold">{{ record.title }}</text>
+				<view
+					v-if="matchType"
+					class="match-badge"
+					:class="matchType === 'semantic' ? 'match-badge--semantic' : 'match-badge--keyword'"
+				>
+					<text>{{ matchType === 'semantic' ? '语义' : '关键词' }}</text>
+				</view>
 			</view>
 		</view>
 
@@ -58,6 +65,10 @@ export default {
 			type: Number,
 			default: 0,
 		},
+		matchType: {
+			type: String,
+			default: '',
+		},
 	},
 	data() {
 		return {};
@@ -107,6 +118,25 @@ export default {
 
 	&:active {
 		transform: scale(0.98);
+	}
+
+	.match-badge {
+		flex-shrink: 0;
+		margin-left: auto;
+		padding: 2px 8px;
+		border-radius: $radius-pill;
+		font-size: 10px;
+		line-height: 14px;
+
+		&--semantic {
+			background: $color-primary;
+			color: $color-text-inverse;
+		}
+
+		&--keyword {
+			background: $color-bg-input;
+			color: $color-text-tertiary;
+		}
 	}
 
 	&-bar {
