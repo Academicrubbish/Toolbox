@@ -8,3 +8,7 @@ uniCloud-aliyun/**/node_modules/
 .env
 .env.*
 !.env.example
+
+# 知识库第 0 期临时准备物：本地验证脚本含硬编码 Key，种子文件含个人 openid，均不入库
+tests/embedding-check.mjs
+tests/kb-seed/
