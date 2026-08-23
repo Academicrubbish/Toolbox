@@ -1,3 +1,5 @@
+const renderCache = require('../render-cache.js');
+
 Component({
 	options: {
 		styleIsolation: 'shared'
@@ -17,14 +19,19 @@ Component({
 		size:{
 			w:0,
 			h:0
-		}
+		},
+		// 图表是否仍在渲染（骨架占位中）
+		loading: true,
+		// 图表渲染是否失败，失败时展示提示而非空白
+		failed: false
 	},
 	lifetimes:{
 		attached:function(){
 			const _ts = this;
 			let dataAttr = this.data.data.attrs;
-			
+
 			if (!dataAttr || !dataAttr.value) {
+				_ts.setData({ loading: false, failed: true });
 				return;
 			}
 			
@@ -98,44 +105,62 @@ Component({
 				}
 				
 				if (!cloud || typeof cloud.callFunction !== 'function') {
+					_ts.setData({ loading: false, failed: true });
 					return;
 				}
 				
-				// 调用云函数渲染图表（使用屏幕宽度）
-				cloud.callFunction({
-					name: 'renderEcharts',
-					data: {
-						option: option,
-						theme: theme,
-						width: renderWidth,
-						height: renderHeight
-					}
-				}).then(res => {
-					if (res.result && res.result.code === 0) {
-						// 云函数返回 Base64 格式的图片
-						_ts.setData({
-							attr: {
-								src: res.result.data,
-								class: dataAttr.class,
-								height: renderHeight,
-								width: renderWidth
-							}
-						});
-					}
+				// 带缓存渲染图表（缓存维度含宽高，尺寸变化不会误用旧图）
+				renderCache.renderWithCache('echarts', decoded, theme + '|' + renderWidth + 'x' + renderHeight, () => {
+					return cloud.callFunction({
+						name: 'renderEcharts',
+						data: {
+							option: option,
+							theme: theme,
+							width: renderWidth,
+							height: renderHeight
+						}
+					}).then(res => {
+						if (res.result && res.result.code === 0) {
+							return res.result.data;
+						}
+						throw new Error(res.result?.message || 'ECharts 渲染失败');
+					});
+				}).then(data => {
+					// 云函数返回 Base64 格式的图片
+					_ts.setData({
+						attr: {
+							src: data,
+							class: dataAttr.class,
+							height: renderHeight,
+							width: renderWidth
+						}
+					});
 				}).catch(err => {
-					// 静默处理错误
+					console.error('调用 ECharts 云函数失败：', err.message || err);
+					_ts.setData({ loading: false, failed: true });
 				});
 			} catch (error) {
-				// 静默处理错误
+				console.error('ECharts 配置解析失败：', error.message || error);
+				_ts.setData({ loading: false, failed: true });
 			}
 		}
 	},
 	methods: {
 		load:function(e){
-			// 图片加载完成，无需额外处理（已使用 widthFix 模式自适应）
+			// 图片上屏，撤掉骨架占位
+			this.setData({ loading: false });
 		},
 		error:function(e){
-			// 静默处理错误
+			// 图片加载失败：撤掉骨架占位
+			this.setData({ loading: false });
+		},
+		// 点击图表 → 全屏大图预览
+		// （云函数返回 SVG data URI，previewImage 真机不支持 SVG，走组件内全屏预览）
+		onTap: function(){
+			const src = this.data.attr && this.data.attr.src;
+			if (!src) return;
+			const preview = this.selectComponent('#chartPreview');
+			if (preview) preview.show(src);
 		}
 	}
 })

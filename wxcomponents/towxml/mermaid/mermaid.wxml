@@ -1,7 +1,8 @@
 <view class="mermaid-wrap">
-  <image wx:if="{{!failed && attrs.src}}" class="{{attrs.class}}" lazy-load="true" src="{{attrs.src}}" style="width:{{size.w}}px; height:{{size.h}}px;" bindload="load" binderror="onError" catch:tap="_preview">
+  <view class="mermaid-skeleton" wx:if="{{loading && !failed}}"><text>图表生成中...</text></view>
+  <image wx:if="{{!failed && attrs.src}}" class="{{attrs.class}}" src="{{attrs.src}}" style="width:{{size.w}}px; height:{{size.h}}px;" bindload="load" binderror="onError" catch:tap="_preview">
   </image>
-  <view class="mermaid-hint" wx:if="{{!failed && attrs.src}}">点击查看大图</view>
+  <view class="mermaid-hint" wx:if="{{!failed && !loading && attrs.src}}">点击查看大图</view>
   <view wx:if="{{failed}}" class="mermaid-fallback">
     <view class="mermaid-fallback-tip">⚠️ 图表渲染失败，以下为源码</view>
     <view class="mermaid-fallback-code" user-select="true">{{code}}</view>

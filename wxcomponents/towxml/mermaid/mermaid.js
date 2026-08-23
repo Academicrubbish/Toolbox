@@ -1,3 +1,5 @@
+const renderCache = require('../render-cache.js')
+
 Component({
   options: {
     styleIsolation: 'shared'
@@ -17,6 +19,8 @@ Component({
       w: 0,
       h: 0
     },
+    // 图表是否仍在渲染（骨架占位中）
+    loading: true,
     // 图表渲染是否失败，失败时降级展示源码而非裂图
     failed: false,
     // 原始 mermaid 源码，供降级展示
@@ -48,32 +52,36 @@ Component({
 
       if (!cloud || typeof cloud.callFunction !== 'function') {
         console.error('uniCloud 未定义或不可用，无法调用 renderMermaid 云函数')
-        _ts.setData({ failed: true })
+        _ts.setData({ loading: false, failed: true })
         return
       }
 
-      cloud.callFunction({
-        name: 'renderMermaid',
-        data: {
-          code: codeValue,
-          theme: theme
-        }
-      }).then(res => {
-        if (res.result && res.result.code === 0) {
-          _ts.setData({
-            attrs: {
-              src: res.result.data,
-              class: dataAttr.class
-            },
-            failed: false
-          })
-        } else {
-          console.error('Mermaid 渲染失败：', res.result?.message)
-          _ts.setData({ failed: true })
-        }
+      // 带缓存渲染：命中缓存直接复用 Kroki URL，未命中调云函数并缓存结果
+      renderCache.renderWithCache('mermaid', codeValue, theme, () => {
+        return cloud.callFunction({
+          name: 'renderMermaid',
+          data: {
+            code: codeValue,
+            theme: theme
+          }
+        }).then(res => {
+          if (res.result && res.result.code === 0) {
+            return res.result.data
+          }
+          throw new Error(res.result?.message || 'Mermaid 渲染失败')
+        })
+      }).then(url => {
+        // 图片 URL 就位
+        _ts.setData({
+          attrs: {
+            src: url,
+            class: dataAttr.class
+          },
+          failed: false
+        })
       }).catch(err => {
-        console.error('调用 Mermaid 云函数失败：', err)
-        _ts.setData({ failed: true })
+        console.error('调用 Mermaid 云函数失败：', err.message || err)
+        _ts.setData({ loading: false, failed: true })
       })
     }
   },
@@ -90,7 +98,9 @@ Component({
         w = maxWidth
       }
 
+      // 图片上屏，撤掉骨架占位
       _ts.setData({
+        loading: false,
         size: {
           w: w / scale,
           h: h / scale
@@ -98,8 +108,8 @@ Component({
       })
     },
     onError: function() {
-      // 图片加载失败（如 Kroki 返回 400），降级显示源码
-      this.setData({ failed: true })
+      // 图片加载失败（如 Kroki 返回 400）：撤掉骨架并降级显示源码
+      this.setData({ loading: false, failed: true })
     },
     _preview: function() {
       if (!this.data.attrs.src) return

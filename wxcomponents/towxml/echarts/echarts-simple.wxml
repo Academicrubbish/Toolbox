@@ -1,14 +1,20 @@
 <view class="h2w__echartsBox">
-  <view class="h2w__echartsView">
-    <image 
-      class="{{attr.class}}" 
-      src="{{attr.src}}" 
-      style="width: 100%; max-width: 100%;" 
-      lazy-load="true" 
-      mode="widthFix" 
+  <view class="h2w__echartsView" wx:if="{{!failed}}">
+    <view class="echarts-skeleton" wx:if="{{loading}}" style="height:{{attr.height}}px;">
+      <text>图表生成中...</text>
+    </view>
+    <image
+      wx:if="{{attr.src}}"
+      class="{{attr.class}}"
+      src="{{attr.src}}"
+      style="width: 100%; max-width: 100%;"
+      mode="widthFix"
       bindload="load"
       binderror="error"
+      catch:tap="onTap"
     />
+    <view class="echarts-hint" wx:if="{{!loading && attr.src}}">点击查看大图</view>
   </view>
+  <view class="echarts-fallback" wx:if="{{failed}}">⚠️ 图表渲染失败，请检查配置</view>
+  <chart-preview id="chartPreview" />
 </view>
-

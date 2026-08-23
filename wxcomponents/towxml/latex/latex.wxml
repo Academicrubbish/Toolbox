@@ -1,1 +1,2 @@
-<image class="{{attrs.class}}" lazy-load="true" src="{{attrs.src}}" style="width:{{size.w}}em; height:{{size.h}}em;" bindload="load"></image>
+<view class="latex-placeholder" wx:if="{{loading}}"></view>
+<image class="{{attrs.class}}" src="{{attrs.src}}" style="width:{{size.w}}em; height:{{size.h}}em;" bindload="load" binderror="onImgError"></image>

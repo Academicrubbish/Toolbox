@@ -1,5 +1,7 @@
 {
   "component": true,
-  "usingComponents": {}
+  "usingComponents": {
+    "chart-preview": "../chart-preview/index"
+  }
 }
 

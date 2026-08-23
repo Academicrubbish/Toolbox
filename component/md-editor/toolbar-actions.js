@@ -142,12 +142,6 @@ export const toolbarActions = {
   toggle(ctx) {
     if (ctx.status) {
       ctx.updateTextareaContent();
-    } else {
-      ctx.loading = false;
-      if (ctx.loadingTimer) {
-        clearTimeout(ctx.loadingTimer);
-        ctx.loadingTimer = null;
-      }
     }
     ctx.status = !ctx.status;
   },

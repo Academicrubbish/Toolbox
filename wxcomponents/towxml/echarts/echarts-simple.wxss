@@ -13,8 +13,40 @@
   width: 100%;
   max-width: 100%;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  box-sizing: border-box;
+}
+
+.echarts-hint {
+  font-size: 20rpx;
+  color: #999;
+  text-align: center;
+  margin-top: 4rpx;
+}
+
+/* 图表渲染中的骨架占位（高度与图表实际高度一致） */
+.echarts-skeleton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f2f2f7;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  color: #999;
+}
+
+.echarts-fallback {
+  width: 100%;
+  padding: 24rpx 16rpx;
+  font-size: 26rpx;
+  color: #e8804a;
+  text-align: center;
+  background: #fff7f0;
+  border: 1rpx solid #f0c8b0;
+  border-radius: 8rpx;
   box-sizing: border-box;
 }
 

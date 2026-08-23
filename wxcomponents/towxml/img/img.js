@@ -1,4 +1,5 @@
 const config = require('../config');
+const previewTool = require('../preview.js');
 Component({
 	options: {
 		styleIsolation: 'shared'
@@ -10,11 +11,6 @@ Component({
 		}
 	},
 	data: {
-		attr:{
-			src:'',
-			class:'',
-			style:''
-		},
 		size:{
 			w:0,
 			h:0
@@ -93,6 +89,11 @@ Component({
 					}
 				});
 			};
+		},
+
+		// 点击图片 → 画廊模式预览（可左右切换本文档所有图片）
+		onTap: function(){
+			previewTool.previewFromGallery(this.data.attrs && this.data.attrs.src);
 		}
 	}
 })

@@ -2,13 +2,7 @@
   <view class="mdEditor">
     <view class="input-content">
       <textarea v-if="status" maxlength="-1" v-model="textareaData" :focus="autoFocus" />
-      <view v-if="!status && loading" class="loading-wrapper">
-        <view class="loading-content">
-          <view class="loading-spinner"></view>
-          <text class="loading-text">正在渲染中，请稍候...</text>
-        </view>
-      </view>
-      <towxml v-if="!status && !loading" :nodes="towxmlData" />
+      <towxml v-if="!status" :nodes="towxmlData" />
     </view>
 
     <!-- 底部工具栏 -->
@@ -63,6 +57,7 @@
 
 <script>
 import { executeToolbarAction } from './toolbar-actions.js';
+import renderCache from '@/wxcomponents/towxml/render-cache.js';
 
 export default {
   name: "mdEditor",
@@ -70,9 +65,11 @@ export default {
     return {
       textareaData: "",
       towxmlData: "",
+      // 单条渲染 memo：记录上次成功渲染的源内容，内容未变时复用渲染结果
+      lastRenderedSource: "",
       status: true,
-      loading: false,
-      loadingTimer: null,
+      // 编辑态空闲预热计时器（停顿后提前渲染公式/图表进缓存）
+      prewarmTimer: null,
       autoFocus: false,
       showMore: false,
     };
@@ -107,53 +104,76 @@ export default {
       }
     },
     updateTextareaContent() {
-      if (this.loadingTimer) {
-        clearTimeout(this.loadingTimer);
-        this.loadingTimer = null;
+      // 单条 memo：内容未变时复用上次渲染结果，跳过解析与云函数渲染，实现秒开预览
+      if (this.towxmlData && this.textareaData === this.lastRenderedSource) {
+        return;
       }
 
-      this.loadingTimer = setTimeout(() => {
-        this.loading = true;
-      }, 200);
+      // 注意：解析必须同步完成，确保 towxmlData 在 status 翻转（toggle 中随后执行）前就位。
+      // 若放入 $nextTick，towxml 会先以旧的 towxmlData 挂载、nextTick 再换新树——
+      // 此时 towxml 内部按索引复用组件实例，attached 不再触发，公式/图表会滞留上次状态
+      try {
+        this.towxmlData = this.towxml(this.textareaData, "markdown", {
+          events: {
+            tap: () => {},
+          },
+        });
+        this.lastRenderedSource = this.textareaData;
+      } catch (error) {
+        // 解析失败保持上次的预览内容
+      }
+    },
+    /**
+     * 编辑态空闲预热：停顿后提前调云函数渲染公式/图表并写入缓存，
+     * 用户点预览时缓存命中即可秒开。同一内容仅真实调用一次（缓存层保证，
+     * 与预览时的渲染请求并发也会被去重），不增加总调用量
+     */
+    prewarmRenders() {
+      const content = this.textareaData;
+      if (!content || typeof uniCloud === 'undefined') return;
 
-      this.$nextTick(() => {
-        try {
-          this.towxmlData = this.towxml(this.textareaData, "markdown", {
-            events: {
-              tap: () => {},
-            },
-          });
-
-          const hasLatexOrYumlOrEcharts = this.textareaData.includes('$') ||
-                                          this.textareaData.includes('```yuml') ||
-                                          this.textareaData.includes('```echarts') ||
-                                          this.textareaData.includes('```mermaid');
-
-          if (hasLatexOrYumlOrEcharts) {
-            setTimeout(() => {
-              this.loading = false;
-              if (this.loadingTimer) {
-                clearTimeout(this.loadingTimer);
-                this.loadingTimer = null;
-              }
-            }, 3000);
-          } else {
-            setTimeout(() => {
-              this.loading = false;
-              if (this.loadingTimer) {
-                clearTimeout(this.loadingTimer);
-                this.loadingTimer = null;
-              }
-            }, 300);
+      const theme = (typeof global !== 'undefined' && global._theme) || 'light';
+      this.extractPrewarmItems(content).forEach(({ type, value }) => {
+        renderCache.renderWithCache(type, value, theme, () => {
+          if (type === 'latex') {
+            return uniCloud.callFunction({ name: 'renderLatex', data: { tex: value, theme } })
+              .then(res => res.result?.code === 0 ? res.result.data : Promise.reject(new Error(res.result?.message)));
           }
-        } catch (error) {
-          this.loading = false;
-          if (this.loadingTimer) {
-            clearTimeout(this.loadingTimer);
-            this.loadingTimer = null;
+          if (type === 'mermaid') {
+            return uniCloud.callFunction({ name: 'renderMermaid', data: { code: value, theme } })
+              .then(res => res.result?.code === 0 ? res.result.data : Promise.reject(new Error(res.result?.message)));
           }
-        }
+          return uniCloud.callFunction({ name: 'renderYuml', data: { yuml: value, theme } })
+            .then(res => res.result?.code === 0 ? res.result.data : Promise.reject(new Error(res.result?.message)));
+        }).catch(() => {
+          // 预热失败静默（预览时会再正常渲染并暴露错误）
+        });
       });
+    },
+    /**
+     * 从 Markdown 源文本提取可预热的公式/图表内容
+     * ECharts 不预热：其缓存维度含屏幕宽高，预热与真实渲染参数易不一致导致 miss
+     */
+    extractPrewarmItems(content) {
+      const items = [];
+      // 块级公式 $$...$$（提取后从文本移除，避免行内正则重复命中其内容）
+      const withoutBlock = content.replace(/\$\$([\s\S]+?)\$\$/g, (m, tex) => {
+        items.push({ type: 'latex', value: tex.trim() });
+        return '';
+      });
+      // mermaid / yuml 代码块
+      withoutBlock.replace(/```(mermaid|yuml)[ \t]*\n([\s\S]*?)```/g, (m, lang, code) => {
+        items.push({ type: lang, value: code.trim() });
+        return m;
+      });
+      // 行内公式 $...$：仅内容含 LaTeX 特征字符时预热，过滤 "$5 and $10" 类普通文本
+      withoutBlock.replace(/\$([^$\n]+?)\$/g, (m, tex) => {
+        if (/[\\^_{}]/.test(tex)) {
+          items.push({ type: 'latex', value: tex.trim() });
+        }
+        return m;
+      });
+      return items;
     },
     uploadMdFile() {
       const chooseMessageFile = wx.chooseMessageFile || uni.chooseMessageFile;
@@ -214,14 +234,26 @@ export default {
     textareaDataProp: function (newValue) {
       this.textareaData = newValue;
     },
+    // 编辑内容停顿 1.5s 后预热公式/图表渲染缓存，首次预览也能秒开
+    textareaData: function () {
+      if (this.prewarmTimer) {
+        clearTimeout(this.prewarmTimer);
+        this.prewarmTimer = null;
+      }
+      this.prewarmTimer = setTimeout(() => {
+        this.prewarmTimer = null;
+        // 预览态由渲染组件自行渲染，仅编辑态预热
+        if (this.status) this.prewarmRenders();
+      }, 1500);
+    },
   },
   mounted() {
     this.autoFocus = true;
   },
   beforeDestroy() {
-    if (this.loadingTimer) {
-      clearTimeout(this.loadingTimer);
-      this.loadingTimer = null;
+    if (this.prewarmTimer) {
+      clearTimeout(this.prewarmTimer);
+      this.prewarmTimer = null;
     }
   },
 };
@@ -315,44 +347,6 @@ export default {
     color: $color-primary;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   }
-}
-
-.loading-wrapper {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #FFFFFF;
-}
-
-.loading-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40rpx;
-}
-
-.loading-spinner {
-  width: 60rpx;
-  height: 60rpx;
-  border: 4rpx solid #f3f3f3;
-  border-top: 4rpx solid #007aff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 20rpx;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.loading-text {
-  font-size: 28rpx;
-  color: #666;
-  text-align: center;
 }
 
 /* 更多操作面板 */

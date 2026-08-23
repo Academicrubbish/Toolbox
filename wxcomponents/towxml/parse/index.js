@@ -1,6 +1,7 @@
 const parse2 = require('./parse2/index'),
     // parse5 = require('./parse5/index').parse,
     config = require('../config'),
+    preview = require('../preview'),
 
     // html与wxml转换关系
     correspondTag = (()=>{
@@ -114,5 +115,8 @@ module.exports = (str,option) => {
             return str;
         };
     })();
-    return initObj(parse2(str,{decodeEntities:true}),option);
+    const result = initObj(parse2(str,{decodeEntities:true}),option);
+    // 收集文档内全部图片地址到当前页面画廊，供图片点击预览使用
+    preview.collectAndSetGallery(result);
+    return result;
 };

@@ -1,0 +1,12 @@
+<view class="chart-preview-mask" wx:if="{{visible}}" catch:tap="close">
+	<image
+		class="chart-preview-img"
+		src="{{src}}"
+		mode="aspectFit"
+		style="transform: scale({{scale}});"
+		catch:tap="noop"
+		catch:touchstart="onTouchStart"
+		catch:touchmove="onTouchMove"
+	></image>
+	<view class="chart-preview-tip">双指缩放 · 点击空白处关闭</view>
+</view>

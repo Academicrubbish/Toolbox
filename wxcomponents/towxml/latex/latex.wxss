@@ -1,0 +1,9 @@
+/* 公式渲染中的行内骨架占位（图片 load 后消失） */
+.latex-placeholder {
+  display: inline-block;
+  width: 2em;
+  height: 1em;
+  background: #f2f2f7;
+  border-radius: 4rpx;
+  vertical-align: middle;
+}
