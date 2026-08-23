@@ -171,11 +171,12 @@ async function relatedByRecord(event) {
 		}
 
 		// 5. 补全记录信息（数据库层再次按 openid 收窄）
+		// 注意：daily_record 的归属字段是 createBy（驼峰），向量集合 note_embedding 才是 create_by
 		const hitIds = hits.map(h => h.source_id)
 		const scoreById = {}
 		hits.forEach(h => { scoreById[h.source_id] = h.score })
 		const records = await fetchAll(() => db.collection('daily_record')
-			.where({ _id: _.in(hitIds), create_by: openid }))
+			.where({ _id: _.in(hitIds), createBy: openid }))
 		const recordById = {}
 		records.forEach(r => { recordById[r._id] = r })
 		const pageRecords = hitIds
