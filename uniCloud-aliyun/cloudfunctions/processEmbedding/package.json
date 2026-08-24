@@ -4,7 +4,8 @@
   "description": "知识库：定时触发器消费向量任务队列，调智谱embedding-3生成笔记向量（幂等先删后写）",
   "main": "index.js",
   "dependencies": {
-    "axios": "^1.6.0"
+    "axios": "^1.6.0",
+    "kb-vector": "file:../common/kb-vector"
   },
   "cloudfunction-config": {
     "memorySize": 512,

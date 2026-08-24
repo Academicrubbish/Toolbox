@@ -1,6 +1,8 @@
 {
   "name": "login",
-  "dependencies": {},
+  "dependencies": {
+    "kb-auth": "file:../common/kb-auth"
+  },
   "extensions": {
     "uni-cloud-jql": {}
   }

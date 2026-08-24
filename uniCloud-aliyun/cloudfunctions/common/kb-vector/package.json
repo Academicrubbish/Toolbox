@@ -1,0 +1,6 @@
+{
+  "name": "kb-vector",
+  "version": "1.0.0",
+  "description": "Toolbox 知识库共享向量与切片纯函数",
+  "main": "index.js"
+}

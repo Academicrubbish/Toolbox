@@ -64,6 +64,8 @@
     .tag.ok { background: #e6f7ed; color: #30be64; }
     .tag.err { background: #fdecea; color: #e8402f; }
     .tag.fn-learn_note { background: #eef6ff; color: #3b82f6; }
+    .tag.fn-embedding { background: #ecfdf5; color: #059669; }
+    .tag.fn-embedding_search { background: #f0fdfa; color: #0f766e; }
     .tag.fn-ocr { background: #fff7e6; color: #d9822b; }
     .tag.fn-wechat_article { background: #f3e8ff; color: #8b5cf6; }
 
@@ -196,7 +198,13 @@
     var API_BASE = 'http://api.coptis.top';  // URL 化云函数域名（暂未配 SSL，用 http；配好证书后改回 https）
     var KEY_STORE = 'ai_admin_key';
 
-    var FN_NAME = { learn_note: '学习辅导', ocr: '图片OCR', wechat_article: '文章解析' };
+    var FN_NAME = {
+      learn_note: '学习辅导',
+      ocr: '图片OCR',
+      wechat_article: '文章解析',
+      embedding: '笔记向量化',
+      embedding_search: '语义搜索'
+    };
     var ALERT_NAME = { single_burst: '单次异常', daily_quota: '日刷量', error_rate: '失败率' };
 
     var trendChart, funcChart, modelChart;

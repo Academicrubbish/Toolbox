@@ -1,0 +1,6 @@
+{
+  "name": "kb-auth",
+  "version": "1.0.0",
+  "description": "Toolbox 知识库云函数共享会话签发与验证",
+  "main": "index.js"
+}

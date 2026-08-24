@@ -2,7 +2,7 @@
 
 本文用于新成员接手项目后，从代码仓库完成微信小程序、uniCloud 阿里云服务空间、云函数和网页托管的配置与部署。
 
-最后更新：2026-08-02
+最后更新：2026-08-24
 
 ## 1. 技术栈与准备工作
 
@@ -23,7 +23,7 @@ npm install
 
 ## 2. 必需的云函数环境变量
 
-uniCloud 环境变量按云函数隔离。同名变量不会自动共享，因此 `ZHIPU_API_KEY` 必须分别配置到两个云函数。
+uniCloud 环境变量按云函数隔离。同名变量不会自动共享，必须逐个云函数配置。
 
 | 云函数 | 环境变量 | 必填 | 来源与用途 |
 |--------|----------|------|------------|
@@ -32,6 +32,11 @@ uniCloud 环境变量按云函数隔离。同名变量不会自动共享，因�
 | `processLearnNote` | `ZHIPU_API_KEY` | 是 | 智谱凭证，用于 GLM-5 学习笔记和练习题生成 |
 | `login` | `WECHAT_APP_ID` | 是 | 微信小程序 AppID，必须与 `manifest.json` 中的 `mp-weixin.appid` 一致 |
 | `login` | `WECHAT_APP_SECRET` | 是 | 微信公众平台的小程序 AppSecret |
+| `login` | `KB_SESSION_SECRET` | 是 | 知识库 session 签名密钥，至少 32 位随机值 |
+| `manageEmbedding` | `KB_SESSION_SECRET` | 是 | 必须与 `login` 完全相同，用于验证向量操作身份 |
+| `semanticSearch` | `KB_SESSION_SECRET` | 是 | 必须与 `login` 完全相同，用于验证搜索与推荐身份 |
+| `semanticSearch` | `ZHIPU_API_KEY` | 是 | 智谱 embedding-3 搜索词向量化 |
+| `processEmbedding` | `ZHIPU_API_KEY` | 是 | 智谱 embedding-3 笔记向量化 |
 | `getAiStats` | `ADMIN_KEY` | 是 | AI 统计管理页访问密钥，使用密码管理器生成至少 32 位随机值 |
 
 其余云函数当前不需要环境变量。禁止为缺失配置重新增加硬编码兜底值。
@@ -67,6 +72,8 @@ uniCloud 环境变量按云函数隔离。同名变量不会自动共享，因�
 
 - `parseWechatArticle.ZHIPU_API_KEY`
 - `processLearnNote.ZHIPU_API_KEY`
+- `processEmbedding.ZHIPU_API_KEY`
+- `semanticSearch.ZHIPU_API_KEY`
 
 ### 微信小程序
 
@@ -74,6 +81,12 @@ uniCloud 环境变量按云函数隔离。同名变量不会自动共享，因�
 
 - `WECHAT_APP_ID` 同时填写到 `manifest.json` 的 `mp-weixin.appid`。
 - `WECHAT_APP_SECRET` 只配置到 `login` 云函数，禁止放入客户端代码或文档。
+
+### 知识库 session 密钥
+
+使用密码管理器生成至少 32 位随机值，将同一个值分别配置到 `login`、`manageEmbedding`、`semanticSearch` 的 `KB_SESSION_SECRET`。该密钥只存在于云函数环境变量中，禁止写入客户端、仓库或聊天记录。
+
+轮换该密钥会让所有现有登录凭证立即失效，用户需要重新登录。轮换时应同时更新三个云函数，避免出现登录成功但搜索鉴权失败。
 
 ### 轮换顺序
 
@@ -94,6 +107,7 @@ uniCloud 环境变量按云函数隔离。同名变量不会自动共享，因�
 - `daily_record`、`summarize`、`dict_category`、`tb_user`
 - `ai_learn_logs`、`ai_task_queue`、`ai_call_logs`、`ai_alerts`
 - `learn_ocr_log`、`share_links`、`changelog`
+- `note_embedding`、`embed_task_queue`（内部集合，客户端权限必须全部为 false）
 
 上传前先检查 schema 权限；生产环境不要直接套用过于宽松的测试权限。
 
@@ -103,12 +117,23 @@ uniCloud 环境变量按云函数隔离。同名变量不会自动共享，因�
 
 建议按以下顺序部署：
 
-1. 基础功能：`login`、`searchRecord`、`delImage`、`parseMarkdown`
-2. 内容导入：`processOcr`、`parseWechatArticle`
-3. AI 学习：`generateLearnNote`、`processLearnNote`
-4. 分享：`generateShareLink`、`getShareArticle`
-5. 图表渲染：`renderLatex`、`renderYuml`、`renderEcharts`、`renderMermaid`
-6. 运维：`getAiStats`、`checkAiAlert`、`cleanupOrphanData`
+1. 先上传公共模块：`common/kb-auth`、`common/kb-vector`
+2. 基础功能：`login`、`searchRecord`、`delImage`、`parseMarkdown`
+3. 知识库：`manageEmbedding`、`processEmbedding`、`backfillEmbedding`、`semanticSearch`
+4. 内容导入：`processOcr`、`parseWechatArticle`
+5. AI 学习：`generateLearnNote`、`processLearnNote`
+6. 分享：`generateShareLink`、`getShareArticle`
+7. 图表渲染：`renderLatex`、`renderYuml`、`renderEcharts`、`renderMermaid`
+8. 运维：`getAiStats`、`checkAiAlert`、`cleanupOrphanData`
+
+知识库加固版本首次部署必须遵循以下顺序，不能先关闭集合权限：
+
+1. 上传 `kb-auth`、`kb-vector` 公共模块，并在 HBuilderX 检查依赖它们的云函数已关联公共模块。
+2. 配置三个云函数一致的 `KB_SESSION_SECRET`，配置两个 embedding 云函数的 `ZHIPU_API_KEY`。
+3. 部署 `login`、`manageEmbedding`、`semanticSearch`、`processEmbedding`、`backfillEmbedding`、`getAiStats`。
+4. 编译新版小程序，重新登录一次，验证新建笔记能进入队列、语义搜索正常。
+5. 最后上传 `note_embedding`、`embed_task_queue` schema，关闭客户端直连权限。
+6. 再次执行新增、编辑、删除、搜索和相关笔记回归。
 
 ### 5.3 定时触发器
 
@@ -117,6 +142,7 @@ uniCloud 环境变量按云函数隔离。同名变量不会自动共享，因�
 | 云函数 | Cron | 含义 |
 |--------|------|------|
 | `processLearnNote` | `0 */1 * * * * *` | 每分钟消费一条 AI 学习任务 |
+| `processEmbedding` | `0 */2 * * * * *` | 每两分钟消费一批向量任务 |
 | `checkAiAlert` | `0 7 * * * * *` | 每小时第 7 分钟检查 AI 用量和失败率 |
 
 uniCloud 定时触发使用 UTC+8。阿里云正式版最低触发间隔为一分钟。参考：[uniCloud 定时触发器](https://doc.dcloud.net.cn/uniCloud/trigger.html)
@@ -262,10 +288,12 @@ Mermaid 使用独立 Kroki 服务，当前配置位于 `renderMermaid/index.js`�
 ## 8. 上线前验证清单
 
 - [ ] 微信登录成功，`tb_user` 能正确读取或创建用户
+- [ ] 加固版本升级后重新登录一次，语义搜索没有“登录凭证无效”错误
 - [ ] 记录新增、编辑、删除、搜索正常
 - [ ] 一张和多张图片 OCR 成功；故意使用错误 Key 时返回配置/鉴权错误而不是假成功
 - [ ] 微信公众号链接可导入并清洗为 Markdown
 - [ ] AI 学习任务进入队列，定时函数生成笔记和练习题
+- [ ] 新建/编辑笔记由 `manageEmbedding` 安全入队，客户端不能直接读取两个内部集合
 - [ ] 分享链接可在未登录浏览器中打开
 - [ ] `admin.html` 使用 `ADMIN_KEY` 登录并读取统计
 - [ ] LaTeX、YUML、ECharts、Mermaid 渲染正常

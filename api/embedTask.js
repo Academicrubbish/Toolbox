@@ -1,5 +1,11 @@
 import store from '@/store';
-import { withAuth } from '@/utils/api-auth.js';
+
+function invalidateExpiredSession(result) {
+  if (!result || result.code !== -401) return
+  store.commit('SET_IS_GUEST', true)
+  store.commit('SET_OPENID', '')
+  store.commit('SET_SESSION_TOKEN', '')
+}
 
 /**
  * 向量任务队列（集合：embed_task_queue）
@@ -7,26 +13,20 @@ import { withAuth } from '@/utils/api-auth.js';
  * 全部为 fire-and-forget 调用：入队失败只打日志、不影响保存主流程（下次编辑会再次入队）。
  */
 
-// 延迟初始化数据库连接，避免在模块加载时 uniCloud 未初始化
-const getQueue = () => {
-  if (typeof uniCloud === 'undefined' || !uniCloud.database) {
-    throw new Error('uniCloud 未初始化，请确保在应用启动后再调用数据库操作')
-  }
-  return uniCloud.database().collection("embed_task_queue")
-}
-
-const getEmbedding = () => {
-  if (typeof uniCloud === 'undefined' || !uniCloud.database) {
-    throw new Error('uniCloud 未初始化，请确保在应用启动后再调用数据库操作')
-  }
-  return uniCloud.database().collection("note_embedding")
-}
-
-const getRecordCollection = () => {
-  if (typeof uniCloud === 'undefined' || !uniCloud.database) {
-    throw new Error('uniCloud 未初始化，请确保在应用启动后再调用数据库操作')
-  }
-  return uniCloud.database().collection("daily_record")
+function callManageEmbedding(action, data) {
+  return uniCloud.callFunction({
+    name: 'manageEmbedding',
+    data: Object.assign({
+      action,
+      sessionToken: store.state.user.sessionToken
+    }, data)
+  }).then(res => {
+    if (!res.result || res.result.code !== 0) {
+      invalidateExpiredSession(res.result)
+      return Promise.reject(new Error(res.result?.message || '向量索引操作失败'))
+    }
+    return res.result
+  })
 }
 
 /**
@@ -36,15 +36,7 @@ const getRecordCollection = () => {
  */
 export function enqueueEmbedTask(sourceId) {
   if (!sourceId) return
-  const now = Date.now()
-  getQueue().add({
-    source_id: sourceId,
-    content: '',
-    status: 'pending',
-    error_msg: '',
-    create_time: now,
-    update_time: now
-  }).catch(err => {
+  callManageEmbedding('enqueue', { sourceId }).catch(err => {
     console.error('[embedTask] 向量化任务投递失败（不影响保存）：', err)
   })
 }
@@ -56,11 +48,8 @@ export function enqueueEmbedTask(sourceId) {
  */
 export function enqueueEmbedTaskBySummarizeId(summarizeId) {
   if (!summarizeId) return
-  getRecordCollection().where({ summarizeId }).limit(1).get().then(res => {
-    const record = (res.result?.data || res.data || [])[0]
-    if (record) enqueueEmbedTask(record._id)
-  }).catch(err => {
-    console.error('[embedTask] 反查笔记失败（不影响保存）：', err)
+  callManageEmbedding('enqueue', { summarizeId }).catch(err => {
+    console.error('[embedTask] 正文编辑后向量化任务投递失败（不影响保存）：', err)
   })
 }
 
@@ -71,7 +60,7 @@ export function enqueueEmbedTaskBySummarizeId(summarizeId) {
  */
 export function removeEmbeddings(sourceId) {
   if (!sourceId) return
-  getEmbedding().where({ source_id: sourceId }).remove().catch(err => {
+  callManageEmbedding('deleteIndex', { sourceId }).catch(err => {
     console.error('[embedTask] 向量清理失败（不影响删除）：', err)
   })
 }

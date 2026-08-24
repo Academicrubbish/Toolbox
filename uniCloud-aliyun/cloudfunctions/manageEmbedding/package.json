@@ -1,0 +1,9 @@
+{
+  "name": "manageEmbedding",
+  "version": "1.0.0",
+  "description": "知识库：受保护的向量任务投递与索引清理入口",
+  "main": "index.js",
+  "dependencies": {
+    "kb-auth": "file:../common/kb-auth"
+  }
+}

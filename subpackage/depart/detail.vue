@@ -194,7 +194,6 @@ export default {
   onLoad(option) {
     this.recordId = option.id;
     this.loadTagList();
-    this.loadRecordDetail(option.id);
   },
   onShow() {
     if (this.recordId) {

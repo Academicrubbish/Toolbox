@@ -10,8 +10,12 @@ const ADMIN_KEY = process.env.ADMIN_KEY
 
 // 各模型公开定价（单位：人民币元 / 百万 Token）
 // 阶梯价格按单次请求的输入 Token 数选择；费用仍为估算值，以供应商账单为准。
-const PRICING_UPDATED_AT = '2026-08-02'
+const PRICING_UPDATED_AT = '2026-08-24'
 const PRICING = {
+  'embedding-3': {
+    provider: '智谱AI', input: 0.5, output: 0.5, type: 'token', official: true,
+    source: 'https://docs.bigmodel.cn/cn/guide/models/embedding/embedding-3'
+  },
   'glm-5': {
     provider: '智谱AI', type: 'token', official: true,
     source: 'https://bigmodel.cn/pricing',

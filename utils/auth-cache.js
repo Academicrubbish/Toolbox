@@ -26,13 +26,15 @@ export function getAuthCache() {
 /**
  * 保存认证缓存
  * @param {string} openid 用户 openid
- * @param {number} expireDays 过期天数，默认 7 天
+ * @param {string} sessionToken 服务端签发的知识库会话凭证
+ * @param {number} expiresAt 服务端凭证过期时间戳
  */
-export function setAuthCache(openid, expireDays = DEFAULT_EXPIRE_DAYS) {
+export function setAuthCache(openid, sessionToken, expiresAt) {
   try {
-    const expireTime = Date.now() + expireDays * 24 * 60 * 60 * 1000
+    const expireTime = Number(expiresAt) || (Date.now() + DEFAULT_EXPIRE_DAYS * 24 * 60 * 60 * 1000)
     const cache = {
       openid: openid,
+      sessionToken: sessionToken || '',
       expireTime: expireTime,
       createTime: Date.now()
     }
@@ -61,7 +63,8 @@ export function clearAuthCache() {
  */
 export function isAuthCacheValid() {
   const cache = getAuthCache()
-  if (!cache || !cache.openid) {
+  // 旧版本只缓存 openid，不具备服务端可验证身份；升级后要求重新登录一次
+  if (!cache || !cache.openid || !cache.sessionToken) {
     return false
   }
   
@@ -87,6 +90,16 @@ export function getOpenidFromCache() {
   
   const cache = getAuthCache()
   return cache ? cache.openid : null
+}
+
+/**
+ * 从缓存获取服务端会话凭证
+ * @returns {string|null} session token
+ */
+export function getSessionTokenFromCache() {
+  if (!isAuthCacheValid()) return null
+  const cache = getAuthCache()
+  return cache ? cache.sessionToken : null
 }
 
 /**

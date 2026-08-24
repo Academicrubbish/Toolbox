@@ -4,7 +4,9 @@
   "description": "知识库：语义搜索云函数（embedding+余弦 与 关键词混合检索，含降级）",
   "main": "index.js",
   "dependencies": {
-    "axios": "^1.6.0"
+    "axios": "^1.6.0",
+    "kb-auth": "file:../common/kb-auth",
+    "kb-vector": "file:../common/kb-vector"
   },
   "cloudfunction-config": {
     "memorySize": 256,

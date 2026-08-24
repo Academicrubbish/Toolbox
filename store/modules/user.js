@@ -1,4 +1,10 @@
-import { setAuthCache, getOpenidFromCache, clearAuthCache, isAuthCacheValid } from '@/utils/auth-cache.js'
+import {
+  setAuthCache,
+  getOpenidFromCache,
+  getSessionTokenFromCache,
+  clearAuthCache,
+  isAuthCacheValid
+} from '@/utils/auth-cache.js'
 
 // 延迟初始化数据库连接，避免在模块加载时 uniCloud 未初始化
 const getDb = () => {
@@ -11,6 +17,7 @@ const getDb = () => {
 const user = {
   state: {
     openid: '',
+    sessionToken: '',
     userData: {},
     isGuest: true,  // 游客状态标识，默认为 true（游客状态）
     authStateVersion: 0  // 授权状态版本号，每次登录成功时递增
@@ -19,6 +26,9 @@ const user = {
   mutations: {
     SET_OPENID: (state, openid) => {
       state.openid = openid
+    },
+    SET_SESSION_TOKEN: (state, token) => {
+      state.sessionToken = token || ''
     },
     SET_USERDATA: (state, userData) => {
       state.userData = userData
@@ -33,6 +43,7 @@ const user = {
       // 如果从已登录状态变为游客状态，清除缓存
       if (wasGuest === false && isGuest === true) {
         clearAuthCache()
+        state.sessionToken = ''
       }
     },
     INCREMENT_AUTH_STATE_VERSION: (state) => {
@@ -52,10 +63,16 @@ const user = {
           name: 'login',
           data: { code: code.code }
         }).then(res => {
-          let openid = res.result.data.openid
+          const loginData = res.result && res.result.data
+          if (!loginData || !loginData.openid || !loginData.sessionToken) {
+            reject(new Error(res.result?.message || '登录服务未返回有效凭证'))
+            return
+          }
+          const openid = loginData.openid
           commit('SET_OPENID', openid)
+          commit('SET_SESSION_TOKEN', loginData.sessionToken)
           // 保存到缓存
-          setAuthCache(openid)
+          setAuthCache(openid, loginData.sessionToken, loginData.expiresAt)
           resolve(openid)
         }).catch(error => {
           reject(error)
@@ -71,13 +88,15 @@ const user = {
         }
         
         const cachedOpenid = getOpenidFromCache()
-        if (!cachedOpenid) {
+        const cachedSessionToken = getSessionTokenFromCache()
+        if (!cachedOpenid || !cachedSessionToken) {
           resolve(false)
           return
         }
         
         // 恢复 openid 到 state
         commit('SET_OPENID', cachedOpenid)
+        commit('SET_SESSION_TOKEN', cachedSessionToken)
         
         // 尝试获取用户信息，验证 openid 是否仍然有效
         dispatch('GetInfo')
@@ -90,6 +109,7 @@ const user = {
               // 用户信息获取失败，清除缓存
               clearAuthCache()
               commit('SET_OPENID', '')
+              commit('SET_SESSION_TOKEN', '')
               commit('SET_IS_GUEST', true)
               resolve(false)
             }
@@ -98,6 +118,7 @@ const user = {
             // 获取用户信息失败，清除缓存
             clearAuthCache()
             commit('SET_OPENID', '')
+            commit('SET_SESSION_TOKEN', '')
             commit('SET_IS_GUEST', true)
             resolve(false)
           })

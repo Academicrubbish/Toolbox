@@ -1,6 +1,16 @@
 import store from '@/store';
 import { withAuth } from '@/utils/api-auth.js';
 
+function rejectCloudError(result, fallbackMessage) {
+  if (result && result.code === -401) {
+    store.commit('SET_IS_GUEST', true);
+    store.commit('SET_OPENID', '');
+    store.commit('SET_SESSION_TOKEN', '');
+    return Promise.reject(new Error('登录凭证已过期，请重新登录'));
+  }
+  return Promise.reject(new Error(result?.message || fallbackMessage));
+}
+
 /**
  * 知识库 API（第二期：语义搜索）
  * 云函数 semanticSearch：语义 + 关键词混合检索，接口故障自动降级为关键词搜索。
@@ -22,7 +32,9 @@ export const semanticSearch = function(data, options = {}) {
       name: 'semanticSearch',
       data: {
         keyword: keyword.trim(),
+        // 过渡发布兼容：旧云函数读取 openid，新云函数只验证 sessionToken 并忽略 openid。
         openid: user.openid,
+        sessionToken: user.sessionToken,
         pageNum,
         pageSize
       }
@@ -36,7 +48,7 @@ export const semanticSearch = function(data, options = {}) {
           }
         };
       } else {
-        return Promise.reject(new Error(res.result?.message || '搜索失败'));
+        return rejectCloudError(res.result, '搜索失败');
       }
     });
   }, store, options)(data);
@@ -55,14 +67,16 @@ export const getRelatedRecords = function(sourceId, options = {}) {
       data: {
         mode: 'byRecord',
         sourceId: sourceId,
+        // 过渡发布兼容：确认新版云函数稳定后可删除该冗余字段。
         openid: store.state.user.openid,
+        sessionToken: store.state.user.sessionToken,
         topK: 5
       }
     }).then(res => {
       if (res.result && res.result.code === 0) {
         return { result: { data: res.result.data || [] } };
       } else {
-        return Promise.reject(new Error(res.result?.message || '获取相关笔记失败'));
+        return rejectCloudError(res.result, '获取相关笔记失败');
       }
     });
   }, store, options)(sourceId);

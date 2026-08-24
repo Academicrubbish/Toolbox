@@ -1,10 +1,13 @@
 'use strict'
+const { issueSession } = require('kb-auth')
+
 const WECHAT_APP_ID = process.env.WECHAT_APP_ID
 const WECHAT_APP_SECRET = process.env.WECHAT_APP_SECRET
+const KB_SESSION_SECRET = process.env.KB_SESSION_SECRET
 
 exports.main = async (event, context) => {
-	if (!WECHAT_APP_ID || !WECHAT_APP_SECRET) {
-		return { code: -1, message: '微信登录服务缺少 WECHAT_APP_ID 或 WECHAT_APP_SECRET 环境变量' }
+	if (!WECHAT_APP_ID || !WECHAT_APP_SECRET || !KB_SESSION_SECRET) {
+		return { code: -1, message: '微信登录服务配置缺失' }
 	}
 	if (!event || !event.code) {
 		return { code: -1, message: '微信登录 code 为空' }
@@ -20,6 +23,19 @@ exports.main = async (event, context) => {
 		dataType: 'json' // 指定返回值为json格式，自动进行parse
 	})
 
-	//返回数据给客户端
-	return res
+	const data = res.data || {}
+	if (!data.openid || data.errcode) {
+		return { code: -1, message: data.errmsg || '微信登录失败' }
+	}
+
+	const session = issueSession(data.openid, KB_SESSION_SECRET)
+	return {
+		code: 0,
+		message: 'success',
+		data: {
+			openid: data.openid,
+			sessionToken: session.token,
+			expiresAt: session.expiresAt
+		}
+	}
 }

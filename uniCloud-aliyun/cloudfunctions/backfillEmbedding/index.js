@@ -41,16 +41,18 @@ exports.main = async (event, context) => {
 		let enqueued = 0
 		let skipped = 0
 		let hasMore = true
+		let cursor = String(event.afterId || '')
 
 		while (page < maxPages && hasMore && Date.now() - start < TIME_BUDGET_MS) {
 			page++
 			const recRes = await db.collection('daily_record')
+				.where({ _id: _.gt(cursor) })
 				.orderBy('_id', 'asc')
-				.skip((page - 1) * pageSize)
 				.limit(pageSize)
 				.get()
 			const records = (recRes.result || recRes).data || []
 			if (records.length === 0) break
+			cursor = records[records.length - 1]._id
 			if (records.length < pageSize) hasMore = false
 			scanned += records.length
 
@@ -62,7 +64,7 @@ exports.main = async (event, context) => {
 		return {
 			code: 0,
 			message: `扫描 ${scanned} 篇：新投递 ${enqueued}，跳过 ${skipped}${hasMore ? '（还有剩余，请再次运行）' : '（已全部扫完）'}`,
-			data: { scanned, enqueued, skipped, hasMore, pages: page }
+			data: { scanned, enqueued, skipped, hasMore, pages: page, nextCursor: hasMore ? cursor : '' }
 		}
 	} catch (err) {
 		console.error('[backfillEmbedding] 执行失败：', err.message)
@@ -101,9 +103,12 @@ async function enqueuePage(db, _, records) {
 		.filter(r => !vectorized.has(r._id) && !queued.has(r._id))
 		.map(r => ({
 			source_id: r._id,
-			content: '',
+			create_by: r.createBy || '',
+			source_version: r.updateTime || '',
 			status: 'pending',
 			error_msg: '',
+			claim_token: '',
+			retry_count: 0,
 			create_time: now,
 			update_time: now
 		}))
@@ -142,7 +147,7 @@ async function collectStats(db, _) {
 	const vectorized = seen.size
 
 	const queue = {}
-	for (const status of ['pending', 'processing', 'done', 'failed']) {
+	for (const status of ['pending', 'processing', 'done', 'failed', 'cancelled']) {
 		const res = await db.collection('embed_task_queue').where({ status }).count()
 		queue[status] = (res.result || res).total || 0
 	}

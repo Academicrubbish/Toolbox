@@ -1,5 +1,8 @@
 'use strict'
 const axios = require('axios')
+const { verifySession } = require('kb-auth')
+const { cosine } = require('kb-vector')
+const { mergeHybridResults } = require('./search-utils')
 
 /**
  * 语义搜索云函数（知识库第二期）
@@ -29,18 +32,22 @@ const MAX_VECTOR_ROWS = 10000
 const EMBED_TIMEOUT = 10000
 
 const ZHIPU_API_KEY = process.env.ZHIPU_API_KEY
+const KB_SESSION_SECRET = process.env.KB_SESSION_SECRET
 
 exports.main = async (event, context) => {
+	let openid
+	try {
+		openid = verifySession(event && event.sessionToken, KB_SESSION_SECRET).openid
+	} catch (err) {
+		return { code: -401, message: err.message || '登录凭证无效', data: [], total: 0 }
+	}
+
 	// 第三期：相关笔记推荐模式，与搜索模式共用向量与余弦逻辑
 	if (event && event.mode === 'byRecord') {
-		return relatedByRecord(event)
+		return relatedByRecord(event, openid)
 	}
 
-	const { keyword = '', openid, pageNum = 1, pageSize = 10 } = event
-
-	if (!openid) {
-		return { code: -1, message: 'openid不能为空', data: [], total: 0 }
-	}
+	const { keyword = '', pageNum = 1, pageSize = 10 } = event
 	const kw = String(keyword).trim()
 	if (!kw) {
 		return { code: -1, message: '搜索关键词不能为空', data: [], total: 0 }
@@ -61,14 +68,8 @@ exports.main = async (event, context) => {
 
 		// 2. 融合：关键词命中在前（时间倒序），语义命中去重后按相似度在后
 		const keywordIds = keywordResult.ids
-		const keywordIdSet = new Set(keywordIds)
-		const semanticExtras = semanticResult
-			? semanticResult.hits.filter(h => !keywordIdSet.has(h.source_id))
-			: []
-		const orderedIds = keywordIds.concat(semanticExtras.map(h => h.source_id))
-		const hitMap = {}
-		keywordIds.forEach(id => { hitMap[id] = { matchType: 'keyword' } })
-		semanticExtras.forEach(h => { hitMap[h.source_id] = { matchType: 'semantic', score: h.score, digest: h.digest } })
+		const merged = mergeHybridResults(keywordIds, semanticResult ? semanticResult.hits : [])
+		const { orderedIds, hitMap, semanticExtras } = merged
 
 		// 3. 分页后拉取完整记录（数据库层再次按 openid 收窄）
 		const pageIds = orderedIds.slice(skip, skip + limit)
@@ -112,11 +113,8 @@ exports.main = async (event, context) => {
  * @param {Object} event { openid, sourceId, topK? }
  * @returns {Promise<Object>} { code, data: 记录数组（带 relatedScore、summarizeContent） }
  */
-async function relatedByRecord(event) {
-	const { openid, sourceId, topK } = event
-	if (!openid) {
-		return { code: -1, message: 'openid不能为空', data: [] }
-	}
+async function relatedByRecord(event, openid) {
+	const { sourceId, topK } = event
 	if (!sourceId) {
 		return { code: -1, message: 'sourceId不能为空', data: [] }
 	}
@@ -297,20 +295,6 @@ async function fetchAll(queryFactory, maxRows = Infinity) {
 		cursor += data.length
 	}
 	return rows
-}
-
-/** 计算两个向量的余弦相似度 */
-function cosine(a, b) {
-	let dot = 0
-	let normA = 0
-	let normB = 0
-	for (let i = 0; i < a.length; i++) {
-		dot += a[i] * b[i]
-		normA += a[i] * a[i]
-		normB += b[i] * b[i]
-	}
-	if (!normA || !normB) return 0
-	return dot / (Math.sqrt(normA) * Math.sqrt(normB))
 }
 
 /** 转义正则特殊字符（与 searchRecord 保持一致的转义规则） */
