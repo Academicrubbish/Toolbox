@@ -20,7 +20,8 @@ const user = {
     sessionToken: '',
     userData: {},
     isGuest: true,  // 游客状态标识，默认为 true（游客状态）
-    authStateVersion: 0  // 授权状态版本号，每次登录成功时递增
+    authStateVersion: 0,  // 授权状态版本号，每次登录成功时递增
+    authInitialized: false  // 缓存认证是否恢复完成，完成前首页不加载游客示例
   },
 
   mutations: {
@@ -48,6 +49,9 @@ const user = {
     },
     INCREMENT_AUTH_STATE_VERSION: (state) => {
       state.authStateVersion += 1;
+    },
+    SET_AUTH_INITIALIZED: (state, initialized) => {
+      state.authInitialized = !!initialized;
     }
   },
 
@@ -82,15 +86,20 @@ const user = {
     // 从缓存恢复登录状态
     RestoreFromCache({ commit, dispatch }) {
       return new Promise((resolve) => {
+        const finishRestore = (restored) => {
+          commit('SET_AUTH_INITIALIZED', true)
+          resolve(restored)
+        }
+
         if (!isAuthCacheValid()) {
-          resolve(false)
+          finishRestore(false)
           return
         }
         
         const cachedOpenid = getOpenidFromCache()
         const cachedSessionToken = getSessionTokenFromCache()
         if (!cachedOpenid || !cachedSessionToken) {
-          resolve(false)
+          finishRestore(false)
           return
         }
         
@@ -104,14 +113,14 @@ const user = {
             if (isRegister) {
               // 用户信息获取成功，恢复登录状态
               commit('SET_IS_GUEST', false)
-              resolve(true)
+              finishRestore(true)
             } else {
               // 用户信息获取失败，清除缓存
               clearAuthCache()
               commit('SET_OPENID', '')
               commit('SET_SESSION_TOKEN', '')
               commit('SET_IS_GUEST', true)
-              resolve(false)
+              finishRestore(false)
             }
           })
           .catch(() => {
@@ -120,7 +129,7 @@ const user = {
             commit('SET_OPENID', '')
             commit('SET_SESSION_TOKEN', '')
             commit('SET_IS_GUEST', true)
-            resolve(false)
+            finishRestore(false)
           })
       })
     },

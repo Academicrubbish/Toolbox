@@ -1,10 +1,16 @@
 <template>
   <view class="home-page">
     <view class="record-container">
-      <z-paging ref="paging" v-model="flatRecordList" @query="queryList">
+      <z-paging
+        ref="paging"
+        v-model="flatRecordList"
+        :auto="false"
+        @query="queryList"
+      >
         <view slot="top">
           <nav-bar
             showMenu
+            :showMenuBadge="showGuestLoginHint"
             @menu-click="sidebarVisible = true"
             title="Markdown"
           >
@@ -169,22 +175,33 @@
 
       <!-- 快速创建 Sheet -->
       <create-sheet
+        ref="createSheet"
         :visible="sheetVisible"
         :tagMap="tagMap"
         :summarizeId="pendingSummarizeId"
         :summaryPreview="summaryPreview"
+        :submitting="recordSaving"
         @close="handleSheetClose"
         @method-select="handleMethodSelect"
         @submit="handleSheetSubmit"
+        @draft-change="handleDraftChange"
       />
     </view>
 
     <!-- 登录授权弹窗 -->
-    <login-modal ref="loginModal" @success="handleLoginSuccess" />
+    <login-modal
+      ref="loginModal"
+      @success="handleLoginSuccess"
+      @cancel="handleLoginCancel"
+    />
   </view>
 </template>
 <script>
-import { getRecordList, addRecord } from "@/api/record.js";
+import {
+  getRecordList,
+  getRecordBySummarizeId,
+  addRecord,
+} from "@/api/record.js";
 import { semanticSearch } from "@/api/kb.js";
 import { getDictCategoryList } from "@/api/dictCategory.js";
 import { batchQueryAiResults } from "@/api/aiLearn.js";
@@ -201,9 +218,19 @@ import RecordCard from "@/component/record-card/index.vue";
 import NavBar from "@/component/nav-bar/index.vue";
 import Sidebar from "@/component/sidebar/index.vue";
 import CreateSheet from "@/component/create-sheet/index.vue";
-import { setLoginModalRef } from "@/utils/api-auth.js";
+import { setLoginModalRef, notifyLoginResult } from "@/utils/api-auth.js";
 import { processOcr, processLinkImport } from "@/utils/record-create.js";
 import moment from "moment";
+
+const {
+  buildRecordScopeKey,
+  shouldAcceptRecordQuery,
+} = require("../../utils/record-query-state.js");
+const {
+  saveRecordDraft,
+  getRecordDraft,
+  clearRecordDraft,
+} = require("../../utils/record-draft.js");
 
 export default {
   components: {
@@ -230,8 +257,6 @@ export default {
       showAuthFailed: false,
       isLoadFailed: false,
       zStatic,
-      lastAuthStateVersion: 0,
-      lastIsGuest: null,
       searchKeyword: "",
       isSearchMode: false,
       searchDegraded: false,
@@ -244,11 +269,27 @@ export default {
       sheetCreationMode: false,
       pendingSummarizeId: "",
       summaryPreview: "",
+      recordQueryId: 0,
+      loadedRecordScope: "",
+      pendingRecordScopeReload: false,
+      recordReloadScheduled: false,
+      isPageVisible: false,
+      initialRecordLoadStarted: false,
+      recordSaving: false,
+      draftRecoveryScope: "",
+      draftRecoveryChecking: false,
+      draftRecoveryPromptVisible: false,
     };
   },
   computed: {
     isGuest() {
       return this.$store.state.user.isGuest;
+    },
+    authInitialized() {
+      return this.$store.state.user.authInitialized;
+    },
+    showGuestLoginHint() {
+      return this.authInitialized && this.isGuest;
     },
     filteredRecordList() {
       if (!this.selectedTagId) return this.flatRecordList;
@@ -258,6 +299,9 @@ export default {
     },
     groupedRecordList() {
       return groupRecordsByDate(this.filteredRecordList);
+    },
+    recordScopeKey() {
+      return buildRecordScopeKey(this.$store.state.user);
     },
   },
 
@@ -269,62 +313,86 @@ export default {
     } catch (e) {
       this.appVersion = "开发版";
     }
-    this.lastAuthStateVersion = this.$store.state.user.authStateVersion;
-    this.lastIsGuest = this.$store.state.user.isGuest;
     this.$nextTick(() => {
       if (this.$refs.loginModal) {
         setLoginModalRef(this.$refs.loginModal);
       }
+      this.ensureInitialRecordLoad();
     });
   },
   onShow() {
+    this.isPageVisible = true;
+    this.ensureInitialRecordLoad();
+
     // 子页面（表单/详情）修改数据后设置脏标记，返回首页时统一刷新
     // 说明：原事件总线方案在首页 onHide 后监听器已注销，收不到子页面事件，改用 globalData 脏标记
+    let recordDirty = false;
     if (getApp().globalData && getApp().globalData.recordDirty) {
       getApp().globalData.recordDirty = false;
-      if (this.$refs.paging) this.$refs.paging.refresh();
+      recordDirty = true;
     }
 
-    const currentAuthStateVersion = this.$store.state.user.authStateVersion;
-    const currentIsGuest = this.$store.state.user.isGuest;
-
-    if (
-      this.lastAuthStateVersion !== currentAuthStateVersion ||
-      (this.lastIsGuest === true && currentIsGuest === false)
-    ) {
+    // 登录可能发生在编辑子页。返回首页时必须核对当前列表是否仍属于同一身份。
+    const scopeChanged = this.loadedRecordScope
+      && this.loadedRecordScope !== this.recordScopeKey;
+    if (this.pendingRecordScopeReload || scopeChanged) {
       this.refreshAfterAuthChange();
-      this.lastAuthStateVersion = currentAuthStateVersion;
-      this.lastIsGuest = currentIsGuest;
+    } else if (recordDirty && this.$refs.paging) {
+      this.$refs.paging.refresh();
     }
 
     // Sheet 创建模式：编辑器返回后持有 summarizeId，Sheet 自动进入 Phase 2
     if (this.sheetCreationMode) {
       const sid = this.$store.state.summarize.summarizeId;
       if (sid) {
-        this.pendingSummarizeId = sid;
-        this.fetchSummaryPreview(sid);
+        const storedDraft = getRecordDraft(this.$store.state.user.openid);
+        const draft = storedDraft?.summarizeId === sid
+          ? storedDraft
+          : saveRecordDraft({
+            openid: this.$store.state.user.openid,
+            summarizeId: sid,
+          });
+        this.activateRecordDraft(draft || { summarizeId: sid });
         this.$store.dispatch("deleteSummary");
-        this.sheetCreationMode = false;
       }
+      this.sheetCreationMode = false;
     }
+
+    this.checkUnfinishedRecordDraft();
   },
-  onHide() {},
+  onHide() {
+    this.isPageVisible = false;
+  },
   watch: {
-    "$store.state.user.authStateVersion": {
-      handler(newVersion, oldVersion) {
-        if (
-          newVersion !== oldVersion &&
-          newVersion > this.lastAuthStateVersion
-        ) {
-          this.refreshAfterAuthChange();
-          this.lastAuthStateVersion = newVersion;
-          this.lastIsGuest = this.$store.state.user.isGuest;
+    authInitialized: {
+      handler(initialized) {
+        if (initialized) {
+          this.ensureInitialRecordLoad();
+          this.checkUnfinishedRecordDraft();
+        }
+      },
+      immediate: false,
+    },
+    recordScopeKey: {
+      handler(newScope, oldScope) {
+        if (newScope !== oldScope) {
+          this.handleRecordScopeChange();
         }
       },
       immediate: false,
     },
   },
   methods: {
+    ensureInitialRecordLoad() {
+      if (!this.authInitialized || this.initialRecordLoadStarted) return;
+      if (!this.$refs.paging) {
+        this.pendingRecordScopeReload = true;
+        return;
+      }
+      this.initialRecordLoadStarted = true;
+      this.pendingRecordScopeReload = true;
+      this.refreshAfterAuthChange();
+    },
     loadTagList() {
       getDictCategoryList()
         .then((res) => {
@@ -339,6 +407,8 @@ export default {
         .catch(() => {});
     },
     queryList(pageNo, pageSize) {
+      const requestId = ++this.recordQueryId;
+      const requestScope = this.recordScopeKey;
       const queryPromise =
         this.searchKeyword && this.searchKeyword.trim()
           ? semanticSearch(
@@ -359,16 +429,38 @@ export default {
 
       queryPromise
         .then((res) => {
+          if (!shouldAcceptRecordQuery({
+            requestId,
+            latestRequestId: this.recordQueryId,
+            requestScope,
+            currentScope: this.recordScopeKey,
+          })) {
+            return;
+          }
+
           this.showAuthFailed = false;
           this.isLoadFailed = false;
           // 语义服务不可用时云函数返回 degraded，结果仍是关键词搜索
           this.searchDegraded = !!res.result.degraded;
           const list = res.result.data || [];
+          this.loadedRecordScope = requestScope;
+          this.pendingRecordScopeReload = false;
           this.totalRecordCount = list.length;
           this.fetchAiResults(list);
-          this.$refs.paging.complete(list);
+          if (this.$refs.paging) {
+            this.$refs.paging.complete(list);
+          }
         })
         .catch((err) => {
+          if (!shouldAcceptRecordQuery({
+            requestId,
+            latestRequestId: this.recordQueryId,
+            requestScope,
+            currentScope: this.recordScopeKey,
+          })) {
+            return;
+          }
+
           const errorMessage = err?.message || err?.errMsg || String(err || "");
           const isAuthError =
             errorMessage.includes("未授权") ||
@@ -433,17 +525,150 @@ export default {
       }
     },
     addRecord() {
+      const draft = this.getCurrentRecordDraft();
+      if (draft) {
+        this.offerRecordDraftRecovery(draft, true);
+        return;
+      }
+      this.startNewRecord();
+    },
+    startNewRecord() {
       this.pendingSummarizeId = "";
       this.summaryPreview = "";
       this.sheetVisible = true;
     },
     handleSheetClose() {
       this.sheetVisible = false;
-      if (this.pendingSummarizeId) {
-        delSummarize(this.pendingSummarizeId);
+      if (!this.pendingSummarizeId) {
+        this.summaryPreview = "";
+        return;
       }
-      this.pendingSummarizeId = "";
-      this.summaryPreview = "";
+
+      const summarizeId = this.pendingSummarizeId;
+      uni.showModal({
+        title: "记录尚未完成",
+        content: "正文已经保存，还需要填写标题和标签。确定放弃将删除刚才保存的正文。",
+        confirmText: "放弃内容",
+        confirmColor: "#FF3B30",
+        cancelText: "继续填写",
+        success: (res) => {
+          if (res.confirm) {
+            clearRecordDraft(
+              this.$store.state.user.openid,
+              summarizeId,
+            );
+            this.pendingSummarizeId = "";
+            this.summaryPreview = "";
+            if (this.$refs.createSheet) {
+              this.$refs.createSheet.reset();
+            }
+            delSummarize(summarizeId).catch(() => {
+              uni.showToast({ title: "草稿清理失败", icon: "none" });
+            });
+          } else {
+            this.sheetVisible = true;
+          }
+        },
+        fail: () => {
+          this.sheetVisible = true;
+        },
+      });
+    },
+    getCurrentRecordDraft() {
+      const openid = this.$store.state.user.openid;
+      if (this.isGuest || !openid) return null;
+      return getRecordDraft(openid);
+    },
+    handleDraftChange({ title, tags }) {
+      const openid = this.$store.state.user.openid;
+      if (!openid || !this.pendingSummarizeId) return;
+      const current = getRecordDraft(openid);
+      saveRecordDraft({
+        openid,
+        summarizeId: this.pendingSummarizeId,
+        title,
+        tags,
+        savedAt: current?.summarizeId === this.pendingSummarizeId
+          ? current.savedAt
+          : Date.now(),
+      });
+    },
+    activateRecordDraft(draft) {
+      if (!draft || !draft.summarizeId) return;
+      this.pendingSummarizeId = draft.summarizeId;
+      this.sheetVisible = true;
+      this.draftRecoveryScope = this.recordScopeKey;
+      this.fetchSummaryPreview(draft.summarizeId);
+      this.$nextTick(() => {
+        if (this.$refs.createSheet) {
+          this.$refs.createSheet.restoreDraft(draft);
+        }
+      });
+    },
+    checkUnfinishedRecordDraft() {
+      if (
+        !this.authInitialized
+        || this.isGuest
+        || !this.isPageVisible
+        || this.pendingSummarizeId
+        || this.draftRecoveryScope === this.recordScopeKey
+      ) {
+        return;
+      }
+
+      this.draftRecoveryScope = this.recordScopeKey;
+      const draft = this.getCurrentRecordDraft();
+      if (draft) {
+        this.offerRecordDraftRecovery(draft, false);
+      }
+    },
+    offerRecordDraftRecovery(draft, fromCreateAction) {
+      if (this.draftRecoveryChecking || this.draftRecoveryPromptVisible) return;
+      this.draftRecoveryChecking = true;
+      getRecordBySummarizeId(draft.summarizeId)
+        .then((recordRes) => {
+          const existingRecord = recordRes?.result?.data?.[0];
+          if (existingRecord) {
+            clearRecordDraft(draft.openid, draft.summarizeId);
+            if (this.$refs.paging) this.$refs.paging.refresh();
+            if (fromCreateAction) this.startNewRecord();
+            return null;
+          }
+          return getSummarize(draft.summarizeId);
+        })
+        .then((res) => {
+          if (!res) return;
+          const summary = res?.result?.data?.[0];
+          if (!summary) {
+            clearRecordDraft(draft.openid, draft.summarizeId);
+            if (fromCreateAction) this.startNewRecord();
+            return;
+          }
+          this.showDraftRecoveryPrompt(draft);
+        })
+        .catch(() => {
+          if (fromCreateAction) {
+            uni.showToast({ title: "草稿检查失败，请重试", icon: "none" });
+          }
+        })
+        .finally(() => {
+          this.draftRecoveryChecking = false;
+        });
+    },
+    showDraftRecoveryPrompt(draft) {
+      this.draftRecoveryPromptVisible = true;
+      uni.showModal({
+        title: "发现未完成记录",
+        content: "上次的正文已经保存，是否继续填写标题和标签？",
+        confirmText: "继续完成",
+        cancelText: "稍后处理",
+        success: (res) => {
+          if (res.confirm) this.activateRecordDraft(draft);
+        },
+        complete: () => {
+          this.draftRecoveryPromptVisible = false;
+        },
+      });
     },
     fetchSummaryPreview(summarizeId) {
       getSummarize(summarizeId)
@@ -496,7 +721,8 @@ export default {
       }
     },
     handleSheetSubmit({ title, tags }) {
-      this.sheetVisible = false;
+      if (this.recordSaving) return;
+      this.recordSaving = true;
       const data = {
         title,
         tags,
@@ -511,6 +737,11 @@ export default {
             res.result &&
             (res.result.code === 0 || res.result.code === undefined)
           ) {
+            clearRecordDraft(
+              this.$store.state.user.openid,
+              this.pendingSummarizeId,
+            );
+            this.sheetVisible = false;
             this.pendingSummarizeId = "";
             this.summaryPreview = "";
             uni.showToast({ title: "保存成功", icon: "success" });
@@ -524,8 +755,12 @@ export default {
             });
           }
         })
-        .catch(() => {
-          uni.showToast({ title: "保存失败", icon: "none" });
+        .catch((err) => {
+          const errorMessage = err?.message || err?.errMsg || "保存失败，请重试";
+          uni.showToast({ title: errorMessage, icon: "none" });
+        })
+        .finally(() => {
+          this.recordSaving = false;
         });
     },
     goDetail(row) {
@@ -553,30 +788,55 @@ export default {
     },
     dialogClose() {},
     handleLoginSuccess() {
-      this.$store.commit("SET_IS_GUEST", false);
-      uni.showToast({ title: "登录成功", icon: "success" });
-      this.refreshAfterAuthChange();
+      notifyLoginResult(true);
+    },
+    handleRecordScopeChange() {
+      // 立即作废登录前仍在飞行中的游客请求，并清空不属于当前身份的旧列表。
+      this.recordQueryId += 1;
+      this.loadedRecordScope = "";
+      this.flatRecordList = [];
+      this.aiResultMap = {};
+      this.totalRecordCount = 0;
+      this.searchKeyword = "";
+      this.isSearchMode = false;
+      this.searchDegraded = false;
+      this.pendingRecordScopeReload = true;
+      this.draftRecoveryScope = "";
+
+      if (this.isPageVisible) {
+        this.refreshAfterAuthChange();
+        this.$nextTick(() => this.checkUnfinishedRecordDraft());
+      }
     },
     refreshAfterAuthChange() {
       this.showAuthFailed = false;
       this.isLoadFailed = false;
       this.loadTagList();
-      setTimeout(() => {
-        try {
-          if (this.$refs.paging) {
-            this.$refs.paging.reload();
-          }
-        } catch (e) {
-          // ignore ref access errors during auth state transition
+      this.pendingRecordScopeReload = false;
+
+      if (this.recordReloadScheduled) return;
+      this.recordReloadScheduled = true;
+      this.$nextTick(() => {
+        this.recordReloadScheduled = false;
+        if (!this.isPageVisible || !this.$refs.paging) {
+          this.pendingRecordScopeReload = true;
+          return;
         }
-      }, 100);
+
+        const reloadPromise = this.$refs.paging.reload();
+        if (reloadPromise && typeof reloadPromise.catch === "function") {
+          reloadPromise.catch(() => {});
+        }
+      });
     },
     handleDefaultReload() {
       if (this.$refs.paging) {
         this.$refs.paging.reload();
       }
     },
-    handleLoginCancel() {},
+    handleLoginCancel() {
+      notifyLoginResult(false);
+    },
     onSearchInput(e) {
       this.searchKeyword = e.detail.value || "";
     },

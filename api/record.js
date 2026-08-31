@@ -119,14 +119,50 @@ export function getRecord(id) {
   return getRequest().doc(id).get()
 }
 
+// 根据正文 ID 查询当前用户的记录，用于草稿恢复和保存幂等校验
+export const getRecordBySummarizeId = withAuth(function(summarizeId) {
+  const openid = store.state?.user?.openid
+  if (!openid || !summarizeId) {
+    return Promise.resolve({ result: { data: [] } })
+  }
+  return getRequest()
+    .where({ summarizeId, createBy: openid })
+    .limit(1)
+    .get()
+}, store, { autoShowLogin: false })
+
 // 添加记录（需要登录）
 // 保存成功后投递向量化任务（fire-and-forget，不影响保存主流程）
 export const addRecord = withAuth(function(data) {
-  return getRequest().add(data).then(res => {
-    const newId = res?.result?.id || res?.result?.data
-    if (newId) enqueueEmbedTask(newId)
-    return res
-  })
+  // data 可能在游客状态下先构造，必须在登录完成后重新读取当前用户身份。
+  const openid = store.state?.user?.openid;
+  if (!openid) {
+    return Promise.reject(new Error('登录状态异常，请重新登录'));
+  }
+  const recordData = {
+    ...data,
+    createBy: openid,
+  };
+  if (!recordData.summarizeId) {
+    return Promise.reject(new Error('正文不存在，请重新编辑后保存'));
+  }
+
+  // 客户端可能在数据库写入后、清理本地草稿前退出；重试时复用已有记录。
+  return getRequest()
+    .where({ summarizeId: recordData.summarizeId, createBy: openid })
+    .limit(1)
+    .get()
+    .then(existingRes => {
+      const existing = existingRes?.result?.data?.[0]
+      if (existing) {
+        return { result: { code: 0, id: existing._id, existing: true } }
+      }
+      return getRequest().add(recordData).then(res => {
+        const newId = res?.result?.id || res?.result?.data
+        if (newId) enqueueEmbedTask(newId)
+        return res
+      })
+    })
 }, store)
 
 // 更新记录（需要登录）

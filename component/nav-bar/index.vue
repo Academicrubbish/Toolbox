@@ -9,8 +9,17 @@
         <!-- 左侧区域 -->
         <view class="nav-bar__left">
           <slot name="left">
-            <view v-if="showMenu" class="nav-bar__menu" @tap="handleMenuClick">
+            <view
+              v-if="showMenu"
+              class="nav-bar__menu"
+              role="button"
+              :aria-label="showMenuBadge ? '打开菜单，当前为游客模式，可登录' : '打开菜单'"
+              @tap="handleMenuClick"
+            >
               <text class="iconfont icon-menus"></text>
+              <view v-if="showMenuBadge" class="nav-bar__menu-badge" aria-hidden="true">
+                <text class="cuIcon-myfill"></text>
+              </view>
             </view>
             <view v-if="showBack" class="nav-bar__back" @tap="handleBack">
               <text class="cuIcon-back"></text>
@@ -48,6 +57,11 @@ export default {
     },
     /** 是否显示菜单按钮（首页专用） */
     showMenu: {
+      type: Boolean,
+      default: false
+    },
+    /** 游客状态下在菜单按钮上显示登录提示徽标 */
+    showMenuBadge: {
       type: Boolean,
       default: false
     }
@@ -125,6 +139,7 @@ export default {
   }
 
   &__menu {
+    position: relative;
     width: 44px;
     height: 44px;
     display: flex;
@@ -136,6 +151,29 @@ export default {
 
     &:active {
       background: $color-primary-light;
+    }
+  }
+
+  &__menu-badge {
+    position: absolute;
+    top: 3px;
+    right: 1px;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid $color-bg-card;
+    border-radius: 50%;
+    background: $color-warning;
+    color: $color-text-inverse;
+    box-sizing: border-box;
+    box-shadow: 0 1px 4px rgba(255, 149, 0, 0.28);
+    pointer-events: none;
+
+    .cuIcon-myfill {
+      font-size: 10px;
+      line-height: 1;
     }
   }
 

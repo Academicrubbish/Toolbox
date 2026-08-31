@@ -6,7 +6,12 @@
 
       <!-- 标题 -->
       <view class="sheet-title">
-        <text class="text-bold">新建记录</text>
+        <text class="text-bold">{{ contentReady ? '完成记录（第 2/2 步）' : '新建记录' }}</text>
+      </view>
+
+      <view v-if="contentReady" class="save-step-tip">
+        <text class="cuIcon-infofill"></text>
+        <text>正文已保存，请填写标题和标签后再保存记录</text>
       </view>
 
       <!-- Phase 1：选择输入方式 -->
@@ -50,9 +55,10 @@
             <input
               class="form-input"
               type="text"
-              v-model="title"
+              :value="title"
               placeholder="请输入记录标题"
               maxlength="50"
+              @input="handleTitleInput"
             />
             <text class="char-count text-gray text-xs">{{ title.length }}/50</text>
           </view>
@@ -84,7 +90,7 @@
           <view class="content-ready">
             <view class="content-ready-info">
               <text class="cuIcon-roundcheckfill text-success"></text>
-              <text class="content-ready-text">已完成</text>
+              <text class="content-ready-text">正文已保存</text>
             </view>
             <view class="content-ready-reedit" @tap="handleMethodTap('reedit')">重新编辑</view>
           </view>
@@ -98,10 +104,10 @@
       <view v-if="contentReady" class="sheet-footer">
         <button
           class="submit-btn"
-          :class="{ 'submit-btn--disabled': !canSubmit }"
-          :disabled="!canSubmit"
+          :class="{ 'submit-btn--disabled': !canSubmit || submitting }"
+          :disabled="!canSubmit || submitting"
           @tap="handleSubmit"
-        >保存记录</button>
+        >{{ submitting ? '保存中...' : '保存记录' }}</button>
       </view>
     </view>
   </view>
@@ -130,6 +136,11 @@ export default {
     summaryPreview: {
       type: String,
       default: ''
+    },
+    /** 最终记录是否正在写入数据库 */
+    submitting: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -167,6 +178,7 @@ export default {
   },
   methods: {
     handleClose() {
+      if (this.submitting) return;
       this.showSheet = false;
       this.$emit('close');
     },
@@ -177,6 +189,22 @@ export default {
       } else {
         this.selectedTags.push(tagId);
       }
+      this.emitDraftChange();
+    },
+    handleTitleInput(e) {
+      this.title = e.detail.value || '';
+      this.emitDraftChange();
+    },
+    emitDraftChange() {
+      if (!this.contentReady) return;
+      this.$emit('draft-change', {
+        title: this.title,
+        tags: [...this.selectedTags]
+      });
+    },
+    restoreDraft(draft = {}) {
+      this.title = draft.title || '';
+      this.selectedTags = Array.isArray(draft.tags) ? [...draft.tags] : [];
     },
     handleMethodTap(method) {
       if (method === 'link') {
@@ -186,12 +214,11 @@ export default {
       this.$emit('method-select', method);
     },
     handleSubmit() {
-      if (!this.canSubmit) return;
+      if (!this.canSubmit || this.submitting) return;
       this.$emit('submit', {
         title: this.title.trim(),
         tags: [...this.selectedTags]
       });
-      this.reset();
     },
     onTransitionEnd(e) {
       if (e.propertyName === 'transform' && !this.showSheet) {
@@ -210,6 +237,10 @@ export default {
         this.$nextTick(() => { this.showSheet = true });
       } else {
         this.showSheet = false;
+        // 已保存正文进入第二步时，临时关闭面板也要保留标题和标签。
+        if (!this.contentReady) {
+          this.reset();
+        }
       }
     }
   }
@@ -274,6 +305,19 @@ export default {
     overflow-y: auto;
     padding: 0 $spacing-md;
   }
+}
+
+.save-step-tip {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  margin: 0 $spacing-lg $spacing-md;
+  padding: $spacing-sm $spacing-md;
+  border-radius: $radius-small;
+  background: $color-primary-light;
+  color: $color-primary;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .form-row {

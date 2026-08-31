@@ -44,6 +44,8 @@ import { debounce } from "lodash-es";
 import moment from "moment";
 import NavBar from "@/component/nav-bar/index.vue";
 
+const { saveRecordDraft } = require("../../utils/record-draft.js");
+
 export default {
   components: {
     mdEditor,
@@ -112,44 +114,54 @@ export default {
 
       uni.showLoading({ title: "上传中", mask: true });
 
-      const richText = await this.replaceImageUrlsWithCloudPath(e.textareaData);
-      const now = moment().format("YYYY-MM-DD HH:mm:ss");
       const isUpdate = this.status === "update";
-      const successMsg = isUpdate ? "修改成功" : "添加成功";
-      const errorMsg = isUpdate ? "修改失败" : "添加失败";
+      try {
+        const richText = await this.replaceImageUrlsWithCloudPath(e.textareaData);
+        const now = moment().format("YYYY-MM-DD HH:mm:ss");
 
-      if (isUpdate) {
-        this.deleteImageFromCloudStorage(this.form.content);
-      }
+        if (isUpdate) {
+          this.deleteImageFromCloudStorage(this.form.content);
+        }
 
-      const form = isUpdate
-        ? { content: richText, createTime: this.form.createTime, updateTime: now }
-        : { content: richText, createTime: now, updateTime: now };
+        const form = isUpdate
+          ? { content: richText, createTime: this.form.createTime, updateTime: now }
+          : { content: richText, createTime: now, updateTime: now };
+        const res = await (isUpdate
+          ? updateSummarize(this.form._id, form)
+          : addSummarize(form));
 
-      const apiCall = isUpdate
-        ? updateSummarize(this.form._id, form)
-        : addSummarize(form);
+        if (!res.result || (res.result.code !== 0 && res.result.code !== undefined)) {
+          throw new Error(res.result?.message || "正文保存失败");
+        }
 
-      apiCall
-        .then((res) => {
-          uni.hideLoading();
-          if (res.result && (res.result.code === 0 || res.result.code === undefined)) {
-            if (!isUpdate) {
-              this.$store.dispatch("cacheSummary", { id: res.result.id, status: 'add' });
-            }
-            uni.showToast({
-              title: successMsg,
-              icon: "none",
-              mask: true,
-              success: () => uni.navigateBack({ delta: 1 }),
-            });
+        if (!isUpdate) {
+          const summarizeId = res.result.id || res.result.data;
+          if (!summarizeId || typeof summarizeId !== "string") {
+            throw new Error("正文保存结果异常，请重试");
           }
-        })
-        .catch((err) => {
-          uni.hideLoading();
-          if (err?.message === '用户取消登录') return;
-          uni.showToast({ title: errorMsg, icon: "none" });
+          saveRecordDraft({
+            openid: this.$store.state.user.openid,
+            summarizeId,
+          });
+          await this.$store.dispatch("cacheSummary", {
+            id: summarizeId,
+            status: "add",
+          });
+        }
+
+        uni.hideLoading();
+        uni.showToast({
+          title: isUpdate ? "修改成功" : "正文已保存",
+          icon: "none",
+          mask: true,
+          success: () => uni.navigateBack({ delta: 1 }),
         });
+      } catch (err) {
+        uni.hideLoading();
+        const message = err?.message || "正文保存失败，请重试";
+        if (message.includes("未授权") || message.includes("取消登录")) return;
+        uni.showToast({ title: message, icon: "none" });
+      }
     }, 500),
     // 修改操作删除之前的图片
     deleteImageFromCloudStorage(htmlString) {
