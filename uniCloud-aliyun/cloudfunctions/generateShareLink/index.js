@@ -1,4 +1,5 @@
 'use strict'
+const { verifySession } = require('kb-auth')
 
 /**
  * 生成文章分享链接
@@ -21,7 +22,9 @@ const EXPIRE_MAP = {
 exports.main = async (event, context) => {
   const { recordId, expireType, shareType = 'record', logId } = event
   const db = uniCloud.database()
-  const openid = event.openid || ''
+  let openid
+  try { openid = verifySession(event.sessionToken, process.env.KB_SESSION_SECRET).openid }
+  catch (err) { return { code: -401, message: '登录已过期，请重新登录' } }
 
   if (!expireType || !openid) {
     return { code: -1, message: '参数缺失或未登录' }

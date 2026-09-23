@@ -1,4 +1,5 @@
 'use strict'
+const { verifySession } = require('kb-auth')
 
 exports.main = async (event, context) => {
 	const { content, recordId } = event
@@ -7,9 +8,19 @@ exports.main = async (event, context) => {
 		return { code: -1, message: '笔记内容不能为空' }
 	}
 
+	let openid
+	try { openid = verifySession(event.sessionToken, process.env.KB_SESSION_SECRET).openid }
+	catch (err) { return { code: -401, message: '登录已过期，请重新登录' } }
 	const db = uniCloud.database()
-	// 优先用客户端显式传入的 openid（阿里云自定义登录下 UNICLOUD_INFO.OPENID 不可靠）
-	const openid = event.openid || (event.UNICLOUD_INFO && event.UNICLOUD_INFO.OPENID) || ''
+	// 与 noteService 的可读规则一致：本人笔记或公共示例（createBy 为空串）均可辅导；
+	// 不带 recordId 的直接提交（旧版契约）不受归属校验限制。
+	if (recordId) {
+		const recordRes = await db.collection('daily_record').where({ _id: recordId }).limit(1).get()
+		const record = (recordRes.data || recordRes.result?.data || [])[0]
+		if (!record || (record.createBy !== openid && record.createBy !== '')) {
+			return { code: -403, message: '笔记不存在或无权操作' }
+		}
+	}
 	const now = Date.now()
 
 	try {

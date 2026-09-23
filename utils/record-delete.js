@@ -18,9 +18,7 @@ export function deleteRecordCascade(recordId, summarizeId) {
 		}
 		// 记录已删，后续清理不需要阻塞用户
 		const tasks = [deleteAiLogsByRecordId(recordId)]
-		if (summarizeId) {
-			tasks.push(delSummarize(summarizeId))
-		}
+		if (summarizeId) tasks.push(delSummarize(summarizeId))
 		return Promise.all(tasks)
 	})
 }

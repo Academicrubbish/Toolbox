@@ -1,67 +1,14 @@
-import store from '@/store';
-import { withAuth } from '@/utils/api-auth.js';
+import store from '@/store'
+import { withAuth } from '@/utils/api-auth.js'
+import { noteRequest } from '@/api/noteService.js'
 
-// 延迟初始化数据库连接，避免在模块加载时 uniCloud 未初始化
-const getDb = () => {
-  if (typeof uniCloud === 'undefined' || !uniCloud.database) {
-    throw new Error('uniCloud 未初始化，请确保在应用启动后再调用数据库操作')
-  }
-  return uniCloud.database()
-}
-
-const getRequest = () => {
-  return getDb().collection("dict_category")
-}
-
-// 查询标签列表（根据授权状态返回不同数据）
-export function getDictCategoryList() {
-  const db = getDb()
-  const request = getRequest()
-  const openid = store.state?.user?.openid
-  
-  // 如果已登录，返回：用户标签 + 公共标签
-  if (openid && openid !== '') {
-    return request.where(
-      db.command.or([
-        { createBy: openid },  // 当前用户的标签
-        { createBy: '' }       // 公共标签（createBy为空字符串）
-      ])
-    ).orderBy('createTime desc').get()
-  }
-  
-  // 如果未登录，只返回公共标签
-  return request.where({
-    createBy: ''
-  }).orderBy('createTime desc').get()
-}
-
-// 查询标签详情（不需要登录）
-export function getDictCategory(id) {
-  return getRequest().doc(id).get()
-}
-
-// 添加标签（需要登录）
-export const addDictCategory = withAuth(function(data) {
-  // 登录成功后，从 store 中实时获取 openid，确保 createBy 正确
-  const openid = store.state?.user?.openid;
-  if (openid && openid !== '') {
-    data.createBy = openid;
-  }
-  return getRequest().add(data)
-}, store)
-
-// 更新标签（需要登录）
-export const updateDictCategory = withAuth(function(id, data) {
-  // 登录成功后，从 store 中实时获取 openid，确保 createBy 正确
-  const openid = store.state?.user?.openid;
-  if (openid && openid !== '') {
-    data.createBy = openid;
-  }
-  return getRequest().doc(id).update(data)
-}, store)
-
-// 删除标签（需要登录）
-export const delDictCategory = withAuth(function(id) {
-  return getRequest().doc(id).remove()
-}, store)
-
+/** 获取标签列表（含公共示例标签） */
+export const getDictCategoryList = () => noteRequest('listCategories')
+/** 获取标签详情 */
+export const getDictCategory = id => noteRequest('getCategory', { id })
+/** 新增标签 */
+export const addDictCategory = withAuth(value => noteRequest('addCategory', { value }), store)
+/** 更新标签 */
+export const updateDictCategory = withAuth((id, value) => noteRequest('updateCategory', { id, value }), store)
+/** 删除标签 */
+export const delDictCategory = withAuth(id => noteRequest('deleteCategory', { id }), store)
