@@ -55,16 +55,22 @@ exports.main = async event => {
     const now = Date.now()
     const timestamp = dateTime(now)
     // 标签查询须在事务外：阿里云 uniCloud 事务内只支持 doc() 与 add()，不支持 where 查询。
+    // system 标记用于在创建文档的标签选择器与标签管理页隐藏该标签。
     const categoryRows = rows(await db.collection('dict_category')
       .where({ createBy: owner, name: '外部汇入' }).limit(1).get())
-    const existingCategoryId = categoryRows[0] && categoryRows[0]._id
+    const existingCategory = categoryRows[0]
+    if (existingCategory && !existingCategory.system) {
+      await db.collection('dict_category').doc(existingCategory._id).update({ system: true })
+        .catch(error => console.error('[archiveNote] system flag:', error.message))
+    }
+    const existingCategoryId = existingCategory && existingCategory._id
     const tx = await db.startTransaction()
     let recordId
     try {
       let categoryId = existingCategoryId
       if (!categoryId) {
         categoryId = idOf(await tx.collection('dict_category').add({
-          name: '外部汇入', description: '从外部 AI 会话汇入的笔记',
+          name: '外部汇入', description: '从外部 AI 会话汇入的笔记', system: true,
           createBy: owner, createTime: timestamp
         }))
       }

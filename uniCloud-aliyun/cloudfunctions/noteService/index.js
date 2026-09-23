@@ -187,8 +187,12 @@ exports.main = async event => {
       return ok(null)
     }
     if (action === 'listCategories') {
-      const condition = openid ? db.command.or([{ createBy: openid }, { createBy: '' }]) : { createBy: '' }
-      return ok(rows(await db.collection('dict_category').where(condition).orderBy('createTime', 'desc').get()))
+      // 两次明确查询后合并，不依赖 or 命令在云函数端的兼容性；保持 createTime 倒序。
+      const own = openid ? rows(await db.collection('dict_category').where({ createBy: openid }).get()) : []
+      const shared = rows(await db.collection('dict_category').where({ createBy: '' }).get())
+      const merged = [...own, ...shared]
+        .sort((a, b) => String(b.createTime || '').localeCompare(String(a.createTime || '')))
+      return ok(merged)
     }
     if (action === 'getCategory') {
       const item = cleanId(data.id) ? first(await db.collection('dict_category').doc(data.id).get()) : null
@@ -205,7 +209,9 @@ exports.main = async event => {
       return ok(idOf(added), { id: idOf(added) })
     }
     if (action === 'updateCategory') {
-      if (!await owner(db, 'dict_category', data.id, openid)) throw new Error('标签不存在或无权操作')
+      const item = await owner(db, 'dict_category', data.id, openid)
+      if (!item) throw new Error('标签不存在或无权操作')
+      if (item.system) throw new Error('系统标签由 AI 归档自动管理，不可修改')
       const name = String(data.value && data.value.name || '').trim()
       if (!name || name.length > 40) throw new Error('标签名称需为 1-40 个字符')
       const description = String(data.value.description || '')
@@ -214,7 +220,9 @@ exports.main = async event => {
       return ok(null)
     }
     if (action === 'deleteCategory') {
-      if (!await owner(db, 'dict_category', data.id, openid)) throw new Error('标签不存在或无权操作')
+      const item = await owner(db, 'dict_category', data.id, openid)
+      if (!item) throw new Error('标签不存在或无权操作')
+      if (item.system) throw new Error('系统标签由 AI 归档自动管理，不可删除')
       await db.collection('dict_category').doc(data.id).remove()
       return ok(null)
     }

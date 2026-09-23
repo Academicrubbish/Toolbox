@@ -234,7 +234,8 @@ export default {
           if (res && res.result) {
             const data = res.result.data;
             if (Array.isArray(data)) {
-              this.tagList = data;
+              // 系统标签（如「外部汇入」）由 AI 归档自动管理，不参与手动选择
+              this.tagList = data.filter(tag => !tag.system);
             } else {
               this.tagList = [];
             }

@@ -13,6 +13,11 @@ const summaries = [
   { _id: 'sum-1', content: '私有正文', createBy: 'alice' },
   { _id: 'sum-public', content: '公共正文' }
 ]
+const categories = [
+  { _id: 'tag-own', createBy: 'alice', name: '工作', createTime: '2026-09-01 10:00:00' },
+  { _id: 'tag-system', createBy: 'alice', name: '外部汇入', system: true, createTime: '2026-09-02 10:00:00' },
+  { _id: 'tag-public', createBy: '', name: '示例', createTime: '2026-09-03 10:00:00' }
+]
 
 function query(items) {
   let selection = items
@@ -53,6 +58,7 @@ function load() {
       collection(name) {
         if (name === 'daily_record') return query(records)
         if (name === 'summarize') return query(summaries)
+        if (name === 'dict_category') return query(categories)
         return query([])
       }
     } } },
@@ -85,6 +91,21 @@ test('伪造或过期登录凭证不能读写', async () => {
   const write = await service({ action: 'deleteRecord', data: { id: 'private-1' } })
   assert.equal(result.code, -401)
   assert.equal(write.code, -401)
+})
+
+test('标签列表合并个人/公共/系统标签并按时间倒序', async () => {
+  const mine = await service({ action: 'listCategories', sessionToken: 'alice-token', data: {} })
+  // 云函数运行于 vm 沙箱，返回数组原型不同，展开为本realm数组再比较
+  assert.deepEqual([...mine.data.map(tag => tag._id)], ['tag-public', 'tag-system', 'tag-own'])
+  const guest = await service({ action: 'listCategories', data: {} })
+  assert.deepEqual([...guest.data.map(tag => tag._id)], ['tag-public'])
+})
+
+test('系统标签不可手动修改或删除', async () => {
+  const update = await service({ action: 'updateCategory', sessionToken: 'alice-token', data: { id: 'tag-system', value: { name: '改名' } } })
+  const remove = await service({ action: 'deleteCategory', sessionToken: 'alice-token', data: { id: 'tag-system' } })
+  assert.match(update.message, /系统标签/)
+  assert.match(remove.message, /系统标签/)
 })
 
 // 可写 fixture：验证删除正文的图片级联顺序与失败语义
