@@ -27,7 +27,7 @@ exports.main = async event => {
     if (action === 'listByRecord') {
       if (!await readableRecord(db, data.recordId, openid)) return ok([])
       const logs = rows(await db.collection('ai_learn_logs').where({ record_id: data.recordId })
-        .orderBy('create_time desc').limit(50).get())
+        .orderBy('create_time', 'desc').limit(50).get())
       return ok(logs)
     }
     if (action === 'getDetail') {
@@ -51,7 +51,7 @@ exports.main = async event => {
       const size = Math.min(50, Math.max(1, Number(data.pageSize) || 10))
       const logs = rows(await db.collection('ai_learn_logs').where({
         create_by: openid, status: db.command.in(['success', 'pending'])
-      }).orderBy('create_time desc').skip((page - 1) * size).limit(size).get())
+      }).orderBy('create_time', 'desc').skip((page - 1) * size).limit(size).get())
       return ok(logs)
     }
     if (action === 'deleteByRecord') {

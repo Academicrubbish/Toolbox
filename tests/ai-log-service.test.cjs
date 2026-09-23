@@ -34,7 +34,12 @@ function fixture() {
       },
       limit() { return this },
       field() { return this },
-      orderBy() { return this },
+      // 云函数数据库 API 要求两参数：orderBy(field, 'asc'|'desc')
+      orderBy(field, order) {
+        assert.ok(typeof field === 'string' && !/\s/.test(field), `orderBy 字段不合法: ${field}`)
+        assert.ok(order === 'asc' || order === 'desc', `orderBy 需两参数 (field, order): ${field}`)
+        return this
+      },
       skip() { return this },
       async get() { return { data: selection } },
       async remove() {

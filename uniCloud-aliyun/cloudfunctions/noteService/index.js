@@ -86,7 +86,7 @@ exports.main = async event => {
       const page = Math.max(1, Number(data.pageNum) || 1)
       const size = Math.min(50, Math.max(1, Number(data.pageSize) || 10))
       const found = rows(await db.collection('daily_record').where({ createBy: openid })
-        .orderBy('createTime desc').skip((page - 1) * size).limit(size).get())
+        .orderBy('createTime', 'desc').skip((page - 1) * size).limit(size).get())
       return ok(await attachSummaries(db, found))
     }
     if (action === 'getRecord') {
@@ -188,7 +188,7 @@ exports.main = async event => {
     }
     if (action === 'listCategories') {
       const condition = openid ? db.command.or([{ createBy: openid }, { createBy: '' }]) : { createBy: '' }
-      return ok(rows(await db.collection('dict_category').where(condition).orderBy('createTime desc').get()))
+      return ok(rows(await db.collection('dict_category').where(condition).orderBy('createTime', 'desc').get()))
     }
     if (action === 'getCategory') {
       const item = cleanId(data.id) ? first(await db.collection('dict_category').doc(data.id).get()) : null

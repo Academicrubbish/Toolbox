@@ -17,7 +17,7 @@ exports.main = async event => {
   try {
     const action = event.action
     if (action === 'list') {
-      const keys = rows(await table.where({ createBy: openid }).orderBy('createdAt desc').limit(100).get())
+      const keys = rows(await table.where({ createBy: openid }).orderBy('createdAt', 'desc').limit(100).get())
       return { code: 0, data: keys.map(publicRow) }
     }
     if (action === 'create' || action === 'rotate') {

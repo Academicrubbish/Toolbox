@@ -24,7 +24,12 @@ function query(items) {
     doc(id) { selection = items.filter(item => item._id === id); return this },
     limit() { return this },
     field() { return this },
-    orderBy() { return this },
+    // 云函数数据库 API 要求两参数：orderBy(field, 'asc'|'desc')，单字符串写法在阿里云上报"排序字符不合法"
+    orderBy(field, order) {
+      assert.ok(typeof field === 'string' && !/\s/.test(field), `orderBy 字段不合法: ${field}`)
+      assert.ok(order === 'asc' || order === 'desc', `orderBy 需两参数 (field, order): ${field}`)
+      return this
+    },
     skip() { return this },
     async get() { return { data: selection } },
     async update() { throw new Error('不应写入') },
