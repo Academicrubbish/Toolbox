@@ -1,0 +1,1 @@
+{"name":"archiveKeyManager","version":"1.0.0","dependencies":{"kb-auth":"file:../common/kb-auth","ai-archive-core":"file:../common/ai-archive-core"}}
