@@ -553,17 +553,14 @@ export default {
         cancelText: "继续填写",
         success: (res) => {
           if (res.confirm) {
-            clearRecordDraft(
-              this.$store.state.user.openid,
-              summarizeId,
-            );
-            this.pendingSummarizeId = "";
-            this.summaryPreview = "";
-            if (this.$refs.createSheet) {
-              this.$refs.createSheet.reset();
-            }
-            delSummarize(summarizeId).catch(() => {
-              uni.showToast({ title: "草稿清理失败", icon: "none" });
+            delSummarize(summarizeId).then(() => {
+              clearRecordDraft(this.$store.state.user.openid, summarizeId);
+              this.pendingSummarizeId = "";
+              this.summaryPreview = "";
+              if (this.$refs.createSheet) this.$refs.createSheet.reset();
+            }).catch(() => {
+              this.sheetVisible = true;
+              uni.showToast({ title: "草稿清理失败，请重试", icon: "none" });
             });
           } else {
             this.sheetVisible = true;

@@ -57,17 +57,68 @@ async function checkTags(db, tags, openid) {
   return [...new Set(found.filter(tag => tag.createBy === '' || tag.createBy === openid).map(tag => tag._id))]
 }
 
-/**
- * 提取正文里的云存储图片 fileID（cloud:// 协议），供删除正文时级联清理。
- */
+/** 提取本应用上传的图片 fileID；阿里云也会返回 HTTPS 形式的 fileID。 */
 function extractCloudImageIds(content) {
   const ids = []
-  const regex = /<img[^>]*src=["']([^"']+)["']/gi
-  let match
-  while ((match = regex.exec(content)) !== null) {
-    if (/^cloud:\/\//i.test(match[1]) && !ids.includes(match[1])) ids.push(match[1])
+  const patterns = [
+    /<img[^>]*src=["']([^"']+)["']/gi,
+    /!\[[^\]]*\]\((?:<([^>]+)>|([^\s)]+))/g
+  ]
+  for (const regex of patterns) {
+    let match
+    while ((match = regex.exec(content)) !== null) {
+      const id = match[1] || match[2]
+      if ((/^cloud:\/\//i.test(id) || /^https?:\/\/[^/]+\/(?:cloudstorage\/)?(?:recordImg|ocr)\//i.test(id)) && !ids.includes(id)) ids.push(id)
+    }
   }
   return ids
+}
+
+async function deleteImages(images) {
+  if (!images.length) return
+  const missing = value => /not.?found|not.?exist|不存在/i.test(String(value && (value.message || value.errorMessage || value.code || value)))
+  let result
+  try { result = await uniCloud.deleteFile({ fileList: images }) }
+  catch (error) {
+    if (images.length === 1 && missing(error)) return
+    if (images.length > 1 && missing(error)) {
+      for (const id of images) await deleteImages([id])
+      return
+    }
+    throw error
+  }
+  const failed = Array.isArray(result && result.fileList)
+    ? result.fileList.filter(file => file.code && file.code !== 'SUCCESS' && file.code !== 0 && file.code !== '0')
+    : []
+  if (failed.length) {
+    if (images.length > 1) {
+      for (const id of images) await deleteImages([id])
+    } else if (!missing(failed[0])) {
+      throw new Error('云图片删除失败，请重试')
+    }
+  }
+}
+
+async function unsharedImages(db, images, summaryId) {
+  const unique = []
+  for (const id of images) {
+    // 图片地址复制到其他正文时保留云文件；查找失败则由调用者保留原笔记供重试。
+    const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const refs = rows(await db.collection('summarize').where({ content: new RegExp(escaped) }).limit(2).get())
+    if (!refs.some(item => item._id !== summaryId)) unique.push(id)
+  }
+  return unique
+}
+
+async function cleanupAiLogs(db, recordId) {
+  for (;;) {
+    const logs = rows(await db.collection('ai_learn_logs').where({ record_id: recordId })
+      .field({ _id: true, batch_id: true }).limit(100).get())
+    if (!logs.length) return
+    const batchIds = [...new Set(logs.map(log => log.batch_id).filter(Boolean))]
+    if (batchIds.length) await db.collection('ai_task_queue').where({ batch_id: db.command.in(batchIds) }).remove()
+    await db.collection('ai_learn_logs').where({ _id: db.command.in(logs.map(log => log._id)) }).remove()
+  }
 }
 
 exports.main = async event => {
@@ -130,14 +181,27 @@ exports.main = async event => {
     if (action === 'deleteRecord') {
       const record = await owner(db, 'daily_record', data.id, openid)
       if (!record) throw new Error('笔记不存在或无权操作')
-      // 老正文缺少所有者字段；删除笔记前补上，后续级联删除仍可鉴权。
+      let summary = null
       if (record.summarizeId) {
-        const summary = first(await db.collection('summarize').doc(record.summarizeId).get())
-        if (summary && !summary.createBy) {
-          await db.collection('summarize').doc(record.summarizeId).update({ createBy: openid })
+        const linked = first(await db.collection('summarize').doc(record.summarizeId).get())
+        if (linked && (!linked.createBy || linked.createBy === openid)) {
+          // 旧数据可能有多篇笔记共用正文，不能因删除其中一篇就删除共用图片。
+          const refs = rows(await db.collection('daily_record').where({ summarizeId: record.summarizeId }).limit(2).get())
+          if (!refs.some(item => item._id !== record._id)) summary = linked
         }
       }
-      await db.collection('daily_record').doc(data.id).remove()
+      // 图片删除失败时，笔记和正文均保留，用户可从原入口重试。
+      if (summary) await deleteImages(await unsharedImages(db, extractCloudImageIds(summary.content || ''), summary._id))
+      const tx = await db.startTransaction()
+      try {
+        if (summary) await tx.collection('summarize').doc(summary._id).remove()
+        await tx.collection('daily_record').doc(data.id).remove()
+        await tx.commit()
+      } catch (error) {
+        try { await tx.rollback() } catch (_) { /* 事务可能已自动回滚 */ }
+        throw error
+      }
+      await cleanupAiLogs(db, data.id).catch(error => console.error('[noteService] AI logs:', error.message))
       return ok(null)
     }
     if (action === 'getRecordTitles') {
@@ -170,19 +234,30 @@ exports.main = async event => {
       return ok(idOf(added), { id: idOf(added) })
     }
     if (action === 'updateSummarize') {
-      if (!await canAccessSummary(db, data.id, openid, true)) throw new Error('正文不存在或无权操作')
+      const previous = await canAccessSummary(db, data.id, openid, true)
+      if (!previous) throw new Error('正文不存在或无权操作')
       const content = String(data.value && data.value.content || '')
       if (!content.trim() || content.length > 1000000) throw new Error('正文为空或过长')
       await db.collection('summarize').doc(data.id).update({ content,
         updateTime: nowText() })
+      // 保存成功后只清理被移除的图片；失败只会留下待清理文件，不会破坏当前正文。
+      const retained = new Set(extractCloudImageIds(content))
+      const removed = extractCloudImageIds(previous.content || '').filter(id => !retained.has(id))
+      await unsharedImages(db, removed, data.id).then(deleteImages)
+        .catch(error => console.error('[noteService] old images:', error.message))
       return ok(null)
     }
     if (action === 'deleteSummarize') {
+      if (!cleanId(data.id)) throw new Error('正文 ID 无效')
+      const existing = first(await db.collection('summarize').doc(data.id).get())
       const item = await canAccessSummary(db, data.id, openid, true)
+      // 兼容旧版客户端：deleteRecord 已级联删除正文时，再次清理视为成功。
+      if (!existing) return ok(null)
       if (!item) throw new Error('正文不存在或无权操作')
-      // 与旧版顺序一致：先删云存储图片再删记录，图片删除失败时记录保留、可重试。
+      const linked = first(await db.collection('daily_record').where({ summarizeId: data.id }).limit(1).get())
+      if (linked) throw new Error('正文仍被笔记使用，请删除笔记')
       const images = extractCloudImageIds(item.content || '')
-      if (images.length) await uniCloud.deleteFile({ fileList: images })
+      await deleteImages(await unsharedImages(db, images, data.id))
       await db.collection('summarize').doc(data.id).remove()
       return ok(null)
     }

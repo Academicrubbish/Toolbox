@@ -40,6 +40,7 @@ import {
   getSummarize
 } from "@/api/summarize";
 import loginMixin from "@/utils/login-mixin.js";
+import { checkLoginBeforeRequest } from "@/utils/api-auth.js";
 import { debounce } from "lodash-es";
 import moment from "moment";
 import NavBar from "@/component/nav-bar/index.vue";
@@ -112,16 +113,13 @@ export default {
         return;
       }
 
-      uni.showLoading({ title: "上传中", mask: true });
-
       const isUpdate = this.status === "update";
       try {
+        // 游客先完成登录，再上传图片，避免取消登录后留下云存储孤儿文件。
+        if (!await checkLoginBeforeRequest(this.$store)) return;
+        uni.showLoading({ title: "上传中", mask: true });
         const richText = await this.replaceImageUrlsWithCloudPath(e.textareaData);
         const now = moment().format("YYYY-MM-DD HH:mm:ss");
-
-        if (isUpdate) {
-          this.deleteImageFromCloudStorage(this.form.content);
-        }
 
         const form = isUpdate
           ? { content: richText, createTime: this.form.createTime, updateTime: now }
@@ -163,26 +161,6 @@ export default {
         uni.showToast({ title: message, icon: "none" });
       }
     }, 500),
-    // 修改操作删除之前的图片
-    deleteImageFromCloudStorage(htmlString) {
-      // 正则表达式匹配所有图片的 src 属性
-      const regex = /<img.*?src=["'](.*?)["']/g;
-
-      let matches;
-      const imageUrls = [];
-
-      // 使用正则表达式进行匹配
-      while ((matches = regex.exec(htmlString)) !== null) {
-        imageUrls.push(matches[1]);
-      }
-
-      if (imageUrls.length) {
-        uniCloud.callFunction({
-          name: "delImage",
-          data: { imgList: imageUrls },
-        });
-      }
-    },
     // 将图片上传至云存储，返回云存储图片地址
     async uploadImageToCloudStorage(src) {
       let res = await uniCloud.uploadFile({
