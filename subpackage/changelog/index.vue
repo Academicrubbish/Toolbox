@@ -75,6 +75,8 @@ export default {
     copyContentLink(e) {
       const node = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.data;
       const href = node && node.attrs && node.attrs.href;
+      // TODO 调试：验证事件链路与节点数据，确认后移除
+      console.log('[changelog] tap:', JSON.stringify({ tag: node && node.tag, href: href || null, text: node && node.text }));
       if (href && /^https?:\/\//i.test(href)) {
         uni.setClipboardData({
           data: href,
