@@ -44,7 +44,7 @@ export const callGenerateLearnNote = withAuth(function(data) {
 }, store);
 
 /**
- * 查询学习结果列表（服务端按记录可见性过滤：本人或公共示例记录）
+ * 查询学习结果列表（服务端只返回本人笔记中的日志，兼容旧日志缺少创建人字段）
  * @param {Object} data { recordId }
  */
 export const getLearnResultList = function(data) {

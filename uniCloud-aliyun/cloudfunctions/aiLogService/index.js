@@ -7,11 +7,11 @@ const first = result => rows(result)[0] || null
 const cleanId = value => typeof value === 'string' && value.length > 0 && value.length <= 100 ? value : ''
 const ok = data => ({ code: 0, data })
 
-// AI 辅导日志的可见性与笔记一致：本人日志可见，公共示例记录（createBy 为空串）上的日志对所有人可见。
+// AI 辅导日志只属于提交者；公共示例笔记不承载用户生成的 AI 日志。
 async function readableRecord(db, recordId, openid) {
-  if (!cleanId(recordId)) return false
+  if (!openid || !cleanId(recordId)) return false
   const item = first(await db.collection('daily_record').where({ _id: recordId }).limit(1).get())
-  return !!item && (item.createBy === '' || item.createBy === openid)
+  return !!item && item.createBy === openid
 }
 
 exports.main = async event => {
@@ -28,11 +28,11 @@ exports.main = async event => {
       if (!await readableRecord(db, data.recordId, openid)) return ok([])
       const logs = rows(await db.collection('ai_learn_logs').where({ record_id: data.recordId })
         .orderBy('create_time', 'desc').limit(50).get())
-      return ok(logs)
+      return ok(logs.filter(log => !log.create_by || log.create_by === openid))
     }
     if (action === 'getDetail') {
       const log = cleanId(data.logId) ? first(await db.collection('ai_learn_logs').where({ _id: data.logId }).limit(1).get()) : null
-      if (log && (log.create_by === openid || await readableRecord(db, log.record_id, openid))) return ok(log)
+      if (log && openid && (log.create_by === openid || (!log.create_by && await readableRecord(db, log.record_id, openid)))) return ok(log)
       return ok(null)
     }
     if (action === 'batchHasResults') {
@@ -42,8 +42,8 @@ exports.main = async event => {
       if (!readable.length) return ok([])
       const found = rows(await db.collection('ai_learn_logs').where({
         record_id: db.command.in(readable), status: 'success'
-      }).field({ record_id: true }).limit(200).get())
-      return ok(found)
+      }).field({ record_id: true, create_by: true }).limit(200).get())
+      return ok(found.filter(log => !log.create_by || log.create_by === openid))
     }
     if (action === 'history') {
       if (!openid) return { code: -401, message: '请先登录' }

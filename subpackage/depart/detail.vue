@@ -46,7 +46,7 @@
       </view>
 
       <!-- AI 笔记内联卡片 -->
-      <view v-if="noteResults.length || exerciseResults.length || isAiProcessing" class="ai-inline-card">
+      <view v-if="!isGuest && !isExampleRecord && (noteResults.length || exerciseResults.length || isAiProcessing)" class="ai-inline-card">
         <view v-if="isAiProcessing" class="ai-loading">
           <text class="cuIcon-loading2 text-warning"></text>
           <text class="text-gray text-xs margin-left-sm">AI 正在生成中...</text>
@@ -333,8 +333,10 @@ export default {
     },
     loadAiResults() {
       if (!this.recordData || !this.recordData._id) return;
-      getLearnResultList({ recordId: this.recordData._id })
+      const recordId = this.recordData._id;
+      getLearnResultList({ recordId })
         .then((res) => {
+          if (!this.recordData || this.recordData._id !== recordId || this.isGuest || this.isExampleRecord) return;
           this.aiResults = res.result?.data || [];
           this.noteResults = this.aiResults.filter(r => r.type === 'note' && r.status === 'success');
           this.exerciseResults = this.aiResults.filter(r => r.type === 'exercise' && r.status === 'success');
@@ -377,7 +379,13 @@ export default {
           }
 
           this.recordData = recordRes.result.data[0];
-          this.loadAiResults();
+          if (!this.isGuest && !this.isExampleRecord) this.loadAiResults();
+          else {
+            this.aiResults = [];
+            this.noteResults = [];
+            this.exerciseResults = [];
+            this.isAiProcessing = false;
+          }
           // 相关笔记推荐：仅本人笔记（游客/示例记录无向量，跳过请求）
           if (!this.isGuest && !this.isExampleRecord) {
             this.loadRelatedRecords(this.recordData._id);

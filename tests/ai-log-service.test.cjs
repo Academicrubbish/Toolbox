@@ -6,7 +6,7 @@ const path = require('node:path')
 
 const source = fs.readFileSync(path.join(__dirname, '../uniCloud-aliyun/cloudfunctions/aiLogService/index.js'), 'utf8')
 
-function fixture() {
+function fixture({ legacy = false } = {}) {
   const records = [
     { _id: 'rec-private', createBy: 'alice' },
     { _id: 'rec-sample', createBy: '' }
@@ -16,6 +16,7 @@ function fixture() {
     { _id: 'log-2', record_id: 'rec-sample', create_by: 'bob', status: 'success', batch_id: 'b2', type: 'note' },
     { _id: 'log-3', record_id: 'rec-sample', create_by: 'alice', status: 'pending', batch_id: 'b3', type: 'exercise' }
   ]
+  if (legacy) logs.push({ _id: 'log-old', record_id: 'rec-private', create_by: '', status: 'success', batch_id: 'old', type: 'note' })
   const queue = [
     { _id: 'q-1', batch_id: 'b1' },
     { _id: 'q-2', batch_id: 'b2' },
@@ -72,12 +73,14 @@ function fixture() {
   return { main: module.exports.main, logs, queue }
 }
 
-test('游客可读示例记录的日志，读不到私有记录的日志', async () => {
+test('游客不能读 AI 日志，示例记录不展示用户日志', async () => {
   const { main } = fixture()
   const sample = await main({ action: 'listByRecord', data: { recordId: 'rec-sample' } })
   const owned = await main({ action: 'listByRecord', data: { recordId: 'rec-private' } })
-  assert.equal(sample.data.length, 2)
+  const loggedInSample = await main({ action: 'listByRecord', sessionToken: 'bob-token', data: { recordId: 'rec-sample' } })
+  assert.equal(sample.data.length, 0)
   assert.equal(owned.data.length, 0)
+  assert.equal(loggedInSample.data.length, 0)
 })
 
 test('他人不能读取私有记录的日志详情', async () => {
@@ -86,6 +89,28 @@ test('他人不能读取私有记录的日志详情', async () => {
   const allowed = await main({ action: 'getDetail', sessionToken: 'alice-token', data: { logId: 'log-1' } })
   assert.equal(denied.data, null)
   assert.equal(allowed.data._id, 'log-1')
+})
+
+test('游客和其他用户无法通过日志 ID 查看示例记录上的旧日志', async () => {
+  const { main } = fixture()
+  const guest = await main({ action: 'getDetail', data: { logId: 'log-2' } })
+  const other = await main({ action: 'getDetail', sessionToken: 'alice-token', data: { logId: 'log-2' } })
+  const author = await main({ action: 'getDetail', sessionToken: 'bob-token', data: { logId: 'log-2' } })
+  assert.equal(guest.data, null)
+  assert.equal(other.data, null)
+  assert.equal(author.data._id, 'log-2')
+})
+
+test('私有笔记主人仍能查看旧版缺少创建人字段的日志', async () => {
+  const { main } = fixture({ legacy: true })
+  const own = await main({ action: 'listByRecord', sessionToken: 'alice-token', data: { recordId: 'rec-private' } })
+  const detail = await main({ action: 'getDetail', sessionToken: 'alice-token', data: { logId: 'log-old' } })
+  const guest = await main({ action: 'getDetail', data: { logId: 'log-old' } })
+  const other = await main({ action: 'getDetail', sessionToken: 'bob-token', data: { logId: 'log-old' } })
+  assert.deepEqual(own.data.map(log => log._id).sort(), ['log-1', 'log-old'])
+  assert.equal(detail.data._id, 'log-old')
+  assert.equal(guest.data, null)
+  assert.equal(other.data, null)
 })
 
 test('历史查询要求登录且只返回本人日志', async () => {

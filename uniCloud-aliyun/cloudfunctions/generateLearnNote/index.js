@@ -12,12 +12,12 @@ exports.main = async (event, context) => {
 	try { openid = verifySession(event.sessionToken, process.env.KB_SESSION_SECRET).openid }
 	catch (err) { return { code: -401, message: '登录已过期，请重新登录' } }
 	const db = uniCloud.database()
-	// 与 noteService 的可读规则一致：本人笔记或公共示例（createBy 为空串）均可辅导；
-	// 不带 recordId 的直接提交（旧版契约）不受归属校验限制。
+	// 公共示例只用于浏览，不能把个人提交的内容挂到示例记录下。
+	// 不带 recordId 的直接提交保留旧版契约，但仍要求登录。
 	if (recordId) {
 		const recordRes = await db.collection('daily_record').where({ _id: recordId }).limit(1).get()
 		const record = (recordRes.data || recordRes.result?.data || [])[0]
-		if (!record || (record.createBy !== openid && record.createBy !== '')) {
+		if (!record || record.createBy !== openid) {
 			return { code: -403, message: '笔记不存在或无权操作' }
 		}
 	}
