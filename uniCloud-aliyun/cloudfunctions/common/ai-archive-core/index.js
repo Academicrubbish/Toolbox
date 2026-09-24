@@ -45,7 +45,7 @@ function validateArchive(input) {
   if (!title || title.length > 120) throw new Error('标题需为 1-120 个字符')
   if (!content) throw new Error('正文不能为空')
   if (content.length > 60000) throw new Error('正文过长，最多 60000 个字符')
-  if (requestId && !/^[A-Za-z0-9_-]{1,80}$/.test(requestId)) throw new Error('请求标识格式无效')
+  if (!/^[A-Za-z0-9_-]{1,80}$/.test(requestId)) throw new Error('请求标识需为 1-80 位字母、数字、下划线或连字符')
   return { title, content, requestId }
 }
 

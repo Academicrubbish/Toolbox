@@ -19,6 +19,7 @@ test('归档数据需要合理标题和 Markdown 正文', () => {
   assert.throws(() => core.validateArchive({ title: '标题', content: ' '.repeat(5) }), /正文/)
   assert.throws(() => core.validateArchive({ title: '标题', content: 'x'.repeat(60001) }), /过长/)
   assert.throws(() => core.validateArchive({ title: '标题', content: '正文', requestId: '$bad' }), /请求标识/)
+  assert.throws(() => core.validateArchive({ title: '标题', content: '正文' }), /请求标识/)
 })
 
 test('只有有效密钥可归档', () => {
