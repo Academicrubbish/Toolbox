@@ -22,10 +22,12 @@
           <text class="danger" @tap="revoke(item)">撤销</text>
         </view>
       </view>
-      <view class="help">把密钥和部署后的 HTTPS 归档接口地址交给 AI Skill。多个密钥可以分别命名，归档时由你选择目标。</view>
-      <view class="skill-box" @tap="copySkillRepo">
+      <view class="help">把密钥交给 AI Skill 后即可归档。多个密钥可以分别命名，归档时由你选择目标。</view>
+      <view class="skill-box">
         <text class="skill-title">Skill 获取地址（点击复制）</text>
-        <text class="skill-value" selectable>github.com/Academicrubbish/Toolbox/tree/main/skills/ai-note-archive</text>
+        <text class="skill-value" @tap="copySkillRepo">github.com/Academicrubbish/Toolbox/tree/main/skills/ai-note-archive</text>
+        <text class="install-tip">不知道怎么装？把安装提示词发给你的 AI，它会自动帮你安装并配好归档：</text>
+        <button class="install-button" @tap="copyInstallPrompt">复制安装提示词</button>
       </view>
     </view>
   </view>
@@ -34,6 +36,10 @@
 <script>
 import NavBar from '@/component/nav-bar/index.vue'
 import { listArchiveKeys, createArchiveKey, rotateArchiveKey, revokeArchiveKey } from '@/api/archiveKeys.js'
+
+const SKILL_REPO_URL = 'https://github.com/Academicrubbish/Toolbox/tree/main/skills/ai-note-archive'
+// 部署者在 uniCloud 控制台为 archiveNote 配置的 URL 化地址，换域名时同步修改
+const ARCHIVE_ENDPOINT = 'https://api.coptis.top/archiveNote'
 
 export default {
   components: { NavBar },
@@ -67,7 +73,15 @@ export default {
       finally { this.busy = false }
     },
     copySecret() { uni.setClipboardData({ data: this.newSecret }) },
-    copySkillRepo() { uni.setClipboardData({ data: 'https://github.com/Academicrubbish/Toolbox/tree/main/skills/ai-note-archive' }) },
+    copySkillRepo() { uni.setClipboardData({ data: SKILL_REPO_URL }) },
+    copyInstallPrompt() {
+      uni.setClipboardData({
+        data: '请帮我安装 AI 笔记归档 skill：\n' +
+          '1. 从 ' + SKILL_REPO_URL + ' 获取 SKILL.md 和 scripts/archive.py，安装到你的 Skills 目录并启用\n' +
+          '2. 安装后用该 skill 关联连接：名称「Toolbox」，归档接口 ' + ARCHIVE_ENDPOINT + '，密钥我接下来单独发你\n' +
+          '3. 配好后，我对你说「归档这段对话」时，按 skill 流程整理当前对话并保存'
+      })
+    },
     rotate(item) {
       uni.showModal({ title: '重新生成密钥', content: `旧密钥「${item.name}」会立即失效，确定继续吗？`,
         success: async result => {
@@ -112,4 +126,6 @@ export default {
 .skill-box { background: #eef3fe; border-radius: 18rpx; padding: 24rpx; margin-top: 20rpx; }
 .skill-title { display: block; color: #3557b2; font-size: 24rpx; }
 .skill-value { display: block; word-break: break-all; margin-top: 12rpx; font-size: 24rpx; color: #1f2937; }
+.install-tip { display: block; color: #6b7280; font-size: 24rpx; line-height: 1.6; margin-top: 20rpx; }
+.install-button { margin-top: 16rpx; background: #3557b2; color: #fff; font-size: 26rpx; border-radius: 16rpx; }
 </style>
