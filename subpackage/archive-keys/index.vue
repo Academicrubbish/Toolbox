@@ -23,6 +23,10 @@
         </view>
       </view>
       <view class="help">把密钥和部署后的 HTTPS 归档接口地址交给 AI Skill。多个密钥可以分别命名，归档时由你选择目标。</view>
+      <view class="skill-box" @tap="copySkillRepo">
+        <text class="skill-title">Skill 获取地址（点击复制）</text>
+        <text class="skill-value" selectable>github.com/Academicrubbish/Toolbox/tree/main/skills/ai-note-archive</text>
+      </view>
     </view>
   </view>
 </template>
@@ -63,6 +67,7 @@ export default {
       finally { this.busy = false }
     },
     copySecret() { uni.setClipboardData({ data: this.newSecret }) },
+    copySkillRepo() { uni.setClipboardData({ data: 'https://github.com/Academicrubbish/Toolbox/tree/main/skills/ai-note-archive' }) },
     rotate(item) {
       uni.showModal({ title: '重新生成密钥', content: `旧密钥「${item.name}」会立即失效，确定继续吗？`,
         success: async result => {
@@ -104,4 +109,7 @@ export default {
 .meta { margin-top: 18rpx; color: #6b7280; font-size: 24rpx; }
 .actions { display: flex; gap: 48rpx; margin-top: 30rpx; color: #4a77e8; font-size: 26rpx; }.danger { color: #d94a4a; }
 .help { margin-top: 48rpx; }
+.skill-box { background: #eef3fe; border-radius: 18rpx; padding: 24rpx; margin-top: 20rpx; }
+.skill-title { display: block; color: #3557b2; font-size: 24rpx; }
+.skill-value { display: block; word-break: break-all; margin-top: 12rpx; font-size: 24rpx; color: #1f2937; }
 </style>
