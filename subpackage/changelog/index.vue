@@ -196,6 +196,8 @@ export default {
   font-size: 26rpx;
   color: #444;
   line-height: 1.8;
+  /* 长网址等连续 ASCII 串在可选文本（inline-block）内无法自动断行，需强制断词 */
+  word-break: break-all;
 
   ::v-deep h1, ::v-deep h2, ::v-deep h3, ::v-deep h4 {
     font-size: 28rpx;
