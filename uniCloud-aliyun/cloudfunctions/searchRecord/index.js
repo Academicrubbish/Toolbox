@@ -1,4 +1,5 @@
 'use strict'
+const { verifySession } = require('kb-auth')
 
 /**
  * 首页模糊查询云函数
@@ -13,7 +14,10 @@
 exports.main = async (event, context) => {
   
   const db = uniCloud.database()
-  const { keyword = '', openid, pageNum = 1, pageSize = 10 } = event
+  const { keyword = '', pageNum = 1, pageSize = 10 } = event
+  let openid
+  try { openid = verifySession(event.sessionToken, process.env.KB_SESSION_SECRET).openid }
+  catch (err) { return { code: -401, message: '登录已过期，请重新登录', data: [], total: 0 } }
   
   // 参数校验
   if (!openid) {
@@ -227,4 +231,3 @@ exports.main = async (event, context) => {
     }
   }
 }
-

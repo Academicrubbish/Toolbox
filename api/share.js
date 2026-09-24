@@ -17,7 +17,7 @@ export const callGenerateShareLink = withAuth(function(data) {
 			expireType: data.expireType,
 			shareType: data.shareType || 'record',
 			logId: data.logId || '',
-			openid: user.openid
+			sessionToken: user.sessionToken
 		}
 	}).then(res => {
 		if (res.result && res.result.code === 0) {

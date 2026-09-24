@@ -127,13 +127,13 @@ export default {
     };
   },
   computed: {
-    // 公共标签
+    // 公共标签（系统标签如「外部汇入」由 AI 归档自动管理，不在列表展示）
     publicTags() {
-      return this.tagList.filter(item => this.isPublicTag(item));
+      return this.tagList.filter(item => this.isPublicTag(item) && !item.system);
     },
     // 个人标签
     personalTags() {
-      return this.tagList.filter(item => !this.isPublicTag(item));
+      return this.tagList.filter(item => !this.isPublicTag(item) && !item.system);
     },
   },
   onLoad() {

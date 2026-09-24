@@ -44,6 +44,10 @@
 				{
 					"path": "changelog/index",
 					"style": {}
+				},
+				{
+					"path": "archive-keys/index",
+					"style": {}
 				}
 			]
 		}

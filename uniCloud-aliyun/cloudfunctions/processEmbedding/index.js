@@ -3,6 +3,7 @@ const axios = require('axios')
 const crypto = require('crypto')
 const { chunkNote } = require('kb-vector')
 const { nextFailureState } = require('./task-state')
+const { classifyApiError } = require('./classify-error')
 
 // ========== 常量 ==========
 const AI_FUNCTION = 'embedding'
@@ -90,12 +91,24 @@ exports.main = async (event, context) => {
 				if (result.skip) console.log('[processEmbedding] 跳过', sourceId, '：', result.skip)
 				await markTasks(db, sourceTasks.map(t => t._id), claimToken, 'done', '')
 			} catch (err) {
-				console.error('[processEmbedding] 笔记向量化失败', sourceId, '：', err.message)
+				const failure = classifyApiError(err)
+				console.error('[processEmbedding] 笔记向量化失败', sourceId, '：', failure.message)
+				if (failure.kind === 'rate') {
+					// 限流/过载：回队退避等待下轮触发，不消耗重试次数
+					await resetTasks(db, sourceTasks, claimToken, failure.message)
+					stats.skip++
+					continue
+				}
 				stats.fail++
-				await retryOrFailTasks(db, sourceTasks, claimToken, err.message || '向量化失败')
+				if (failure.kind === 'quota') {
+					// 余额/额度耗尽：重试无意义，直接熔断并写明充值指引
+					await markTasks(db, sourceTasks.map(t => t._id), claimToken, 'failed', failure.message)
+				} else {
+					await retryOrFailTasks(db, sourceTasks, claimToken, failure.message)
+				}
 				await recordAiCall(db, {
 					openid: owner,
-					usage: null, durationMs: null, status: 'error', errorMsg: err.message
+					usage: null, durationMs: null, status: 'error', errorMsg: failure.message
 				})
 			}
 		}

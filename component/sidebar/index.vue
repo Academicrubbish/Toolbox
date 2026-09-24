@@ -31,6 +31,13 @@
             <text class="menu-text">标签管理</text>
             <text class="cuIcon-right menu-arrow"></text>
           </view>
+          <view v-if="!isGuest" class="menu-item" @tap="handleNavigate('/subpackage/archive-keys/index')">
+            <view class="menu-icon menu-icon--indigo">
+              <text class="cuIcon-lock"></text>
+            </view>
+            <text class="menu-text">AI 归档密钥</text>
+            <text class="cuIcon-right menu-arrow"></text>
+          </view>
           <view class="menu-item" @tap="handleNavigate('/subpackage/changelog/index')">
             <view class="menu-icon menu-icon--green">
               <text class="cuIcon-newsfill"></text>

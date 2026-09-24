@@ -1,6 +1,27 @@
 import store from '@/store';
 import { withAuth } from '@/utils/api-auth.js';
 
+// 与 noteRequest 一致：会话过期时清空本地登录态，下次 withAuth 调用重新弹出登录。
+function invalidateExpiredSession(result) {
+  if (!result || result.code !== -401) return
+  store.commit('SET_IS_GUEST', true)
+  store.commit('SET_OPENID', '')
+  store.commit('SET_SESSION_TOKEN', '')
+}
+
+// AI 辅导日志统一走云函数鉴权（ai_learn_logs / ai_task_queue 已禁止客户端直连）
+function aiLogRequest(action, data = {}) {
+  return uniCloud.callFunction({
+    name: 'aiLogService',
+    data: { action, data, sessionToken: store.state.user.sessionToken || '' }
+  }).then(response => {
+    const result = response.result || {}
+    invalidateExpiredSession(result)
+    if (result.code !== 0) throw new Error(result.message || 'AI 日志操作失败')
+    return result
+  })
+}
+
 /**
  * 调用AI辅导生成（写入pending记录+任务队列，定时触发器异步处理）
  * @param {string} content 笔记内容
@@ -12,7 +33,7 @@ export const callGenerateLearnNote = withAuth(function(data) {
 		data: {
 			content: data.content,
 			recordId: data.recordId,
-			openid: store.state.user.openid
+			sessionToken: store.state.user.sessionToken
 		}
 	}).then(res => {
 		if (res.result && res.result.code === 0) {
@@ -23,26 +44,17 @@ export const callGenerateLearnNote = withAuth(function(data) {
 }, store);
 
 /**
- * 查询学习结果列表（通过 record_id 定位，无需 create_by 过滤）
- * @param {string} recordId 关联的记录ID
+ * 查询学习结果列表（服务端按记录可见性过滤：本人或公共示例记录）
+ * @param {Object} data { recordId }
  */
 export const getLearnResultList = function(data) {
-	const db = uniCloud.database();
-
-	return db.collection('ai_learn_logs')
-		.where({
-			record_id: data.recordId
-		})
-		.orderBy('create_time desc')
-		.limit(50)
-		.get()
-		.then(res => {
-			return {
-				result: {
-					data: res.result?.data || []
-				}
-			};
-		});
+	return aiLogRequest('listByRecord', { recordId: data.recordId }).then(result => {
+		return {
+			result: {
+				data: result.data || []
+			}
+		};
+	});
 };
 
 /**
@@ -50,12 +62,14 @@ export const getLearnResultList = function(data) {
  * @param {string} logId ai_learn_logs 记录ID
  */
 export const getLearnResultDetail = function(logId) {
-	const db = uniCloud.database();
-	return db.collection('ai_learn_logs').doc(logId).get();
+	return aiLogRequest('getDetail', { logId }).then(result => {
+		// 保持旧 clientDB doc().get() 的 { result: { data: [] } } 形状
+		return { result: { data: result.data ? [result.data] : [] } };
+	});
 };
 
 /**
- * 批量查询记录是否有成功的AI学习结果
+ * 批量查询记录是否有成功的AI学习结果（仅统计当前用户可见的记录）
  * @param {Array<string>} recordIds 记录ID数组
  * @returns {Object} 以 recordId 为 key，值为 { hasAiNote: boolean, aiNoteCount: number }
  */
@@ -64,166 +78,79 @@ export const batchQueryAiResults = function(recordIds) {
 		return Promise.resolve({});
 	}
 
-	const db = uniCloud.database();
+	return aiLogRequest('batchHasResults', { recordIds }).then(result => {
+		const batchResult = {};
+		const list = result.data || [];
 
-	return db.collection('ai_learn_logs')
-		.where({
-			record_id: db.command.in(recordIds),
-			status: 'success'
-		})
-		.field({ record_id: true, _id: true })
-		.limit(200)
-		.get()
-		.then(res => {
-			const result = {};
-			const list = res.result?.data || [];
-
-			list.forEach(item => {
-				const rid = item.record_id;
-				if (!result[rid]) {
-					result[rid] = { hasAiNote: true, aiNoteCount: 0 };
-				}
-				result[rid].aiNoteCount++;
-			});
-
-			return result;
+		list.forEach(item => {
+			const rid = item.record_id;
+			if (!batchResult[rid]) {
+				batchResult[rid] = { hasAiNote: true, aiNoteCount: 0 };
+			}
+			batchResult[rid].aiNoteCount++;
 		});
+
+		return batchResult;
+	});
 };
 
-/**
- * 查询某记录的成功AI学习结果数量
- * @param {string} recordId 记录ID
- * @returns {Object} { hasAiResult: boolean, aiResultCount: number, hasPending: boolean }
- */
 /**
  * 获取当前用户所有 AI 辅导历史（跨记录，按 batch_id 分组）
  * @param {Object} data { pageNo, pageSize }
  * @returns {Promise<{data: Array}>} 分组后的 batch 数组
  */
 export const getAiLearnHistory = function(data) {
-	const db = uniCloud.database();
-	const dbCmd = db.command;
 	const { pageNo = 1, pageSize = 10 } = data;
-	const skip = (pageNo - 1) * pageSize;
-	const openid = store.state.user.openid;
 
-	return db.collection('ai_learn_logs')
-		.where({
-			create_by: openid,
-			status: dbCmd.in(['success', 'pending'])
+	return aiLogRequest('history', { pageNo, pageSize }).then(result => {
+		const logs = result.data || [];
+		if (logs.length === 0) return { data: [] };
+
+		// 批量查询记录标题
+		const recordIds = [...new Set(logs.map(l => l.record_id).filter(Boolean))];
+		return uniCloud.callFunction({
+			name: 'noteService',
+			data: { action: 'getRecordTitles', data: { ids: recordIds }, sessionToken: store.state.user.sessionToken }
 		})
-		.orderBy('create_time', 'desc')
-		.skip(skip)
-		.limit(pageSize)
-		.get()
-		.then(res => {
-			const logs = res.result?.data || [];
-			if (logs.length === 0) return { data: [] };
-
-			// 批量查询记录标题
-			const recordIds = [...new Set(logs.map(l => l.record_id).filter(Boolean))];
-			return db.collection('daily_record')
-				.where({ _id: dbCmd.in(recordIds) })
-				.field({ _id: true, title: true })
-				.limit(100)
-				.get()
-				.then(recRes => {
-					const recordMap = {};
-					(recRes.result?.data || []).forEach(r => {
-						recordMap[r._id] = r.title || '未命名记录';
-					});
-
-					// 按 batch_id 分组，配对 note + exercise
-					const groupMap = {};
-					const groupOrder = [];
-					logs.forEach(log => {
-						const bid = log.batch_id || log._id;
-						if (!groupMap[bid]) {
-							groupMap[bid] = {
-								batchId: bid,
-								recordId: log.record_id,
-								recordTitle: recordMap[log.record_id] || '未命名记录',
-								createTime: log.create_time,
-								note: null,
-								exercise: null,
-								hasPending: false
-							};
-							groupOrder.push(bid);
-						}
-						const g = groupMap[bid];
-						if (log.type === 'note') g.note = log;
-						if (log.type === 'exercise') g.exercise = log;
-						if (log.status === 'pending') g.hasPending = true;
-					});
-					return { data: groupOrder.map(bid => groupMap[bid]) };
+			.then(recRes => {
+				const recordMap = {};
+				(recRes.result?.data || []).forEach(r => {
+					recordMap[r._id] = r.title || '未命名记录';
 				});
-		});
+
+				// 按 batch_id 分组，配对 note + exercise
+				const groupMap = {};
+				const groupOrder = [];
+				logs.forEach(log => {
+					const bid = log.batch_id || log._id;
+					if (!groupMap[bid]) {
+						groupMap[bid] = {
+							batchId: bid,
+							recordId: log.record_id,
+							recordTitle: recordMap[log.record_id] || '未命名记录',
+							createTime: log.create_time,
+							note: null,
+							exercise: null,
+							hasPending: false
+						};
+						groupOrder.push(bid);
+					}
+					const g = groupMap[bid];
+					if (log.type === 'note') g.note = log;
+					if (log.type === 'exercise') g.exercise = log;
+					if (log.status === 'pending') g.hasPending = true;
+				});
+				return { data: groupOrder.map(bid => groupMap[bid]) };
+			});
+	});
 };
 
 /**
- * 级联删除：删除某记录关联的所有 AI 日志 + 任务队列
+ * 级联删除：删除本人创建的该记录 AI 日志 + 关联任务队列（需登录）
  * @param {string} recordId 记录ID
  */
 export const deleteAiLogsByRecordId = function(recordId) {
 	if (!recordId) return Promise.resolve();
 
-	const db = uniCloud.database();
-	const dbCmd = db.command;
-
-	// 1. 查出该记录关联的所有 AI 日志 ID 和 batch_id
-	return db.collection('ai_learn_logs')
-		.where({ record_id: recordId })
-		.field({ _id: true, batch_id: true })
-		.limit(200)
-		.get()
-		.then(res => {
-			const logs = res.result?.data || [];
-			if (logs.length === 0) return { deleted: 0 };
-
-			const logIds = logs.map(l => l._id);
-			const batchIds = [...new Set(logs.map(l => l.batch_id).filter(Boolean))];
-
-			// 2. 删除 AI 日志
-			const deleteLogs = db.collection('ai_learn_logs')
-				.where({ _id: dbCmd.in(logIds) })
-				.remove();
-
-			// 3. 删除关联的任务队列
-			const deleteQueue = batchIds.length > 0
-				? db.collection('ai_task_queue')
-					.where({ batch_id: dbCmd.in(batchIds) })
-					.remove()
-				: Promise.resolve();
-
-			return Promise.all([deleteLogs, deleteQueue]).then(() => ({
-				deleted: logIds.length
-			}));
-		});
-};
-
-export const getAiResultCount = function(recordId) {
-	const db = uniCloud.database();
-
-	return db.collection('ai_learn_logs')
-		.where({
-			record_id: recordId,
-			status: db.command.in(['success', 'pending'])
-		})
-		.field({ _id: true, status: true })
-		.limit(100)
-		.get()
-		.then(res => {
-			const list = res.result?.data || [];
-			let successCount = 0;
-			let hasPending = false;
-			list.forEach(item => {
-				if (item.status === 'success') successCount++;
-				if (item.status === 'pending') hasPending = true;
-			});
-			return {
-				hasAiResult: successCount > 0,
-				aiResultCount: successCount,
-				hasPending: hasPending
-			};
-		});
+	return aiLogRequest('deleteByRecord', { recordId }).then(result => result.data || { deleted: 0 });
 };
