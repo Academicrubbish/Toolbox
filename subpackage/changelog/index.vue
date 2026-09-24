@@ -71,6 +71,17 @@ export default {
         success: () => uni.showToast({ title: '已复制群号', icon: 'success' })
       });
     },
+    // 小程序内链接无法跳转外部浏览器，日志内容里的链接点击改为复制地址
+    copyContentLink(e) {
+      const node = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.data;
+      const href = node && node.attrs && node.attrs.href;
+      if (href && /^https?:\/\//i.test(href)) {
+        uni.setClipboardData({
+          data: href,
+          success: () => uni.showToast({ title: '链接已复制', icon: 'success' })
+        });
+      }
+    },
     loadChangelog() {
       this.loading = true;
       getChangelogList()
@@ -79,7 +90,7 @@ export default {
             if (item.content) {
               item.nodes = this.towxml(item.content, "markdown", {
                 events: {
-                  tap: (e) => { console.log("tap", e); }
+                  tap: (e) => this.copyContentLink(e)
                 }
               });
             }
@@ -196,8 +207,6 @@ export default {
   font-size: 26rpx;
   color: #444;
   line-height: 1.8;
-  /* 长网址等连续 ASCII 串在可选文本（inline-block）内无法自动断行，需强制断词 */
-  word-break: break-all;
 
   ::v-deep h1, ::v-deep h2, ::v-deep h3, ::v-deep h4 {
     font-size: 28rpx;
