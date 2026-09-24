@@ -71,19 +71,6 @@ export default {
         success: () => uni.showToast({ title: '已复制群号', icon: 'success' })
       });
     },
-    // 小程序内链接无法跳转外部浏览器，日志内容里的链接点击改为复制地址
-    copyContentLink(e) {
-      const node = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.data;
-      const href = node && node.attrs && node.attrs.href;
-      // TODO 调试：验证事件链路与节点数据，确认后移除
-      console.log('[changelog] tap:', JSON.stringify({ tag: node && node.tag, href: href || null, text: node && node.text }));
-      if (href && /^https?:\/\//i.test(href)) {
-        uni.setClipboardData({
-          data: href,
-          success: () => uni.showToast({ title: '链接已复制', icon: 'success' })
-        });
-      }
-    },
     loadChangelog() {
       this.loading = true;
       getChangelogList()
@@ -92,7 +79,7 @@ export default {
             if (item.content) {
               item.nodes = this.towxml(item.content, "markdown", {
                 events: {
-                  tap: (e) => this.copyContentLink(e)
+                  tap: (e) => { console.log("tap", e); }
                 }
               });
             }
