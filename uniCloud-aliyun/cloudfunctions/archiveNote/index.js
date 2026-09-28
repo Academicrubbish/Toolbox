@@ -44,8 +44,21 @@ exports.main = async event => {
 
   const db = uniCloud.database()
   try {
-    const key = rows(await db.collection('ai_archive_keys').where({ secretHash: hashKey(secret) }).limit(1).get())[0]
-    if (!isKeyUsable(key, secret)) return response(401, { code: -401, message: '归档密钥无效或已过期' })
+    const secretHash = hashKey(secret)
+    const key = rows(await db.collection('ai_archive_keys').where({ secretHash }).limit(1).get())[0]
+    if (!key) {
+      // 认证日志只记失败阶段；HTTP 请求本身可能含有原始密钥，不在这里重复记录。
+      console.warn('[archiveNote] auth rejected: key lookup returned no rows')
+      return response(401, { code: -401, message: '归档密钥无效或已过期' })
+    }
+    if (!isKeyUsable(key, secret)) {
+      console.warn('[archiveNote] auth rejected: matched key unusable', {
+        revoked: Boolean(key.revokedAt),
+        expired: Date.now() >= key.expiresAt,
+        hashMatches: key.secretHash === secretHash
+      })
+      return response(401, { code: -401, message: '归档密钥无效或已过期' })
+    }
     const owner = key.createBy
     const archiveRequestId = hashKey(key._id + ':' + payload.requestId)
     // 固定 _id 是数据库级唯一约束；并发的同一请求只有一次插入能成功。
@@ -61,7 +74,9 @@ exports.main = async event => {
         .where({ createBy: owner, name: '外部汇入' }).limit(1).get())[0]
       const tx = await db.startTransaction()
       try {
-        const currentKey = rows(await tx.collection('ai_archive_keys').doc(key._id).get())[0]
+        // uniCloud 事务内 doc().get() 的 data 是单个对象，不是普通查询的数组。
+        const currentKeyResult = await tx.collection('ai_archive_keys').doc(key._id).get()
+        const currentKey = currentKeyResult && (currentKeyResult.result || currentKeyResult).data
         if (!isKeyUsable(currentKey, secret, now)) {
           await tx.rollback()
           return response(401, { code: -401, message: '归档密钥无效或已过期' })

@@ -8,19 +8,24 @@ const source = fs.readFileSync(path.join(__dirname, '../uniCloud-aliyun/cloudfun
 
 function fixture() {
   const issued = core.issueKey('个人', 'alice')
+  const warnings = []
   const tables = {
     ai_archive_keys: [{ ...issued.document, _id: 'key-1' }],
     daily_record: [], summarize: [], dict_category: [], embed_task_queue: []
   }
   let nextId = 1
   let transactionVersion = 0
-  function collection(name, state = tables) {
+  function collection(name, state = tables, inTransaction = false) {
     let selected = state[name]
+    let byId = false
     return {
       where(condition) { selected = selected.filter(row => Object.entries(condition).every(([field, value]) => row[field] === value)); return this },
-      doc(id) { selected = state[name].filter(row => row._id === id); return this },
+      doc(id) { selected = state[name].filter(row => row._id === id); byId = true; return this },
       limit() { return this },
-      async get() { return { data: selected.map(row => ({ ...row })) } },
+      async get() {
+        const data = selected.map(row => ({ ...row }))
+        return { data: inTransaction && byId ? data[0] || null : data }
+      },
       async add(value) {
         const id = value._id || `new-${nextId++}`
         if (state[name].some(row => row._id === id)) throw new Error('duplicate _id')
@@ -35,7 +40,7 @@ function fixture() {
       const snapshot = Object.fromEntries(Object.entries(tables).map(([name, rows]) => [name, rows.map(row => ({ ...row }))]))
       const version = transactionVersion
       return {
-        collection: name => collection(name, snapshot),
+        collection: name => collection(name, snapshot, true),
         async commit() {
           if (version !== transactionVersion) throw new Error('transaction write conflict')
           for (const name of ['ai_archive_keys', 'daily_record', 'summarize', 'dict_category']) {
@@ -50,10 +55,12 @@ function fixture() {
   const module = { exports: {} }
   vm.runInNewContext(source, {
     module, exports: module.exports, require(name) { assert.equal(name, 'ai-archive-core'); return core },
-    uniCloud: { database: () => db }, console, setTimeout
+    uniCloud: { database: () => db },
+    console: { ...console, warn: (...args) => warnings.push(args) },
+    setTimeout
   })
   const event = (secret, body) => ({ httpMethod: 'POST', headers: { authorization: 'Bearer ' + secret }, body: JSON.stringify(body) })
-  return { main: module.exports.main, event, issued, tables }
+  return { main: module.exports.main, event, issued, tables, warnings }
 }
 
 function parsed(result) { return JSON.parse(result.body) }
@@ -64,6 +71,22 @@ test('HTTP 归档只接受 POST 和有效密钥', async () => {
   assert.equal((await main(event('an_' + 'x'.repeat(43), { title: '标题', content: '正文', requestId: 'invalid-key' }))).statusCode, 401)
   assert.equal(tables.daily_record.length, 0)
   assert.equal((await main(event(issued.secret, { title: '', content: '正文' }))).statusCode, 400)
+})
+
+test('认证失败只记录原因类别，不把密钥写进应用日志', async () => {
+  const { main, event, issued, tables, warnings } = fixture()
+  const body = { title: '标题', content: '正文', requestId: 'auth-diagnostic' }
+  const unknown = 'an_' + 'x'.repeat(43)
+  assert.equal((await main(event(unknown, body))).statusCode, 401)
+  assert.match(warnings[0][0], /key lookup returned no rows/)
+  assert.equal(JSON.stringify(warnings).includes(unknown), false)
+
+  tables.ai_archive_keys[0].revokedAt = Date.now()
+  assert.equal((await main(event(issued.secret, body))).statusCode, 401)
+  assert.match(warnings[1][0], /matched key unusable/)
+  assert.equal(warnings[1][1].revoked, true)
+  assert.equal(warnings[1][1].hashMatches, true)
+  assert.equal(JSON.stringify(warnings).includes(issued.secret), false)
 })
 
 test('归档进入普通笔记和专属标签，同一请求重试不重复写入', async () => {
