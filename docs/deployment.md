@@ -117,7 +117,7 @@ uniCloud 环境变量按云函数隔离。同名变量不会自动共享，必�
 
 建议按以下顺序部署：
 
-1. 先上传公共模块：`common/kb-auth`、`common/kb-vector`
+1. 先上传公共模块：`common/ai-alert-check`、`common/kb-auth`、`common/kb-vector`
 2. 基础功能：`login`、`searchRecord`、`delImage`、`parseMarkdown`
 3. 知识库：`manageEmbedding`、`processEmbedding`、`backfillEmbedding`、`semanticSearch`
 4. 内容导入：`processOcr`、`parseWechatArticle`
@@ -141,9 +141,11 @@ uniCloud 环境变量按云函数隔离。同名变量不会自动共享，必�
 
 | 云函数 | Cron | 含义 |
 |--------|------|------|
-| `processLearnNote` | `0 */1 * * * * *` | 每分钟消费一条 AI 学习任务 |
+| `processLearnNote` | `0 */1 * * * * *` | 每分钟消费一条 AI 学习任务，第 7 分钟同时检查 AI 用量和失败率 |
 | `processEmbedding` | `0 */2 * * * * *` | 每两分钟消费一批向量任务 |
-| `checkAiAlert` | `0 7 * * * * *` | 每小时第 7 分钟检查 AI 用量和失败率 |
+| `checkAiAlert` | 无 | 保留手动检查入口 |
+
+已有空间先上传 `common/ai-alert-check` 和 `processLearnNote`。在第 7 分钟确认新函数日志出现 `[checkAiAlert] 检查完成`，再上传 `checkAiAlert`，并在控制台核对旧函数的定时触发器已清空。
 
 uniCloud 定时触发使用 UTC+8。阿里云正式版最低触发间隔为一分钟。参考：[uniCloud 定时触发器](https://doc.dcloud.net.cn/uniCloud/trigger.html)
 

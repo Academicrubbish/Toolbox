@@ -65,7 +65,31 @@ const SYSTEM_PROMPT = `你是一位经验丰富、耐心细致的辅导老师，
 
 const ZHIPU_API_KEY = process.env.ZHIPU_API_KEY
 
-exports.main = async (event, context) => {
+exports.main = async (event = {}, context = {}) => {
+	const source = context.SOURCE || context.source
+	const timer = source === 'timing' || source === 'timer'
+	const scheduledAt = Date.parse(event?.Time || event?.triggerTime) || Date.now()
+	if (!timer || new Date(scheduledAt).getUTCMinutes() !== 7) return processNextNote()
+
+	// 两项工作同时开始。即使笔记提前返回，也等告警落库再结束本次云函数。
+	const alerts = runHourlyAlerts(scheduledAt)
+	try {
+		return await processNextNote()
+	} finally {
+		await alerts
+	}
+}
+
+async function runHourlyAlerts(scheduledAt) {
+	try {
+		const result = await require('ai-alert-check').checkAlerts(scheduledAt)
+		console.log('[checkAiAlert] 检查完成，新增告警数:', result.data.alerts)
+	} catch (error) {
+		console.error('[checkAiAlert] 检查失败：', error.message)
+	}
+}
+
+async function processNextNote() {
 	if (!ZHIPU_API_KEY) {
 		console.error('[processLearnNote] 缺少 ZHIPU_API_KEY 环境变量')
 		return { code: -1, message: 'AI 学习服务配置缺失' }

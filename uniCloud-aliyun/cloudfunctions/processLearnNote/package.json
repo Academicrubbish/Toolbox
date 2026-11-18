@@ -4,7 +4,8 @@
   "description": "AI辅导：定时触发器消费任务队列，调用GLM生成精讲笔记+练习题",
   "main": "index.js",
   "dependencies": {
-    "axios": "^1.6.0"
+    "axios": "^1.6.0",
+    "ai-alert-check": "file:../common/ai-alert-check"
   },
   "cloudfunction-config": {
     "memorySize": 512,
